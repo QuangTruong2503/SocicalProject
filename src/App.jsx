@@ -1,40 +1,85 @@
-import React from 'react';
-import { BrowserRouter as Router, Routes, Route, Link, NavLink } from 'react-router-dom';
-import Home from './pages/Home';
-import Project1 from './pages/Project1';
-import Project2 from './pages/Project2';
+import React, { useState } from 'react';
+import Header from './components/Header.jsx';
+import ProductForm from './components/ProductForm.jsx';
+import CompanyConfig from './components/CompanyConfig.jsx';
+import ResultTabs from './components/ResultTabs.jsx';
+import { callOpenAI } from './services/openaiService';
+import { generateWebsitePrompt, generateYouTubePrompt, generateFacebookPrompt } from './utils/promptTemplates';
 
-function App() {
+export default function App() {
+  // State quản lý Input
+  const [productName, setProductName] = useState('');
+  const [specs, setSpecs] = useState('');
+  const [companyInfo, setCompanyInfo] = useState('CÔNG TY TNHH THƯƠNG MẠI MÁY MÓC MINH TÂM\nĐịa chỉ: Số 83 Đường Ao Đôi, Phường Bình Trị Đông, Thành phố Hồ Chí Minh\nHotline: 0902.988.539\nWebsite: www.nppminhtam.com');
+  
+  // State quản lý Output & Loading
+  const [isLoading, setIsLoading] = useState(false);
+  const [results, setResults] = useState({
+    website: '',
+    youtube: '',
+    facebook: ''
+  });
+
+  const handleGenerate = async () => {
+    if (!productName.trim()) {
+      alert("Vui lòng nhập tên sản phẩm!");
+      return;
+    }
+
+    setIsLoading(true);
+    
+    // Khởi tạo 3 prompts
+    const promptWeb = generateWebsitePrompt(productName, specs, companyInfo);
+    const promptYT = generateYouTubePrompt(productName, specs);
+    const promptFB = generateFacebookPrompt(productName, specs, companyInfo);
+
+    try {
+      // Chạy song song 3 API calls để tiết kiệm thời gian
+      const [resWeb, resYT, resFB] = await Promise.all([
+        callOpenAI(promptWeb),
+        callOpenAI(promptYT),
+        callOpenAI(promptFB)
+      ]);
+
+      setResults({
+        website: resWeb,
+        youtube: resYT,
+        facebook: resFB
+      });
+    } catch (error) {
+      alert("Đã xảy ra lỗi khi tạo nội dung. Xem console để biết chi tiết.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   return (
-    <Router>
-      <div className="min-vh-100 bg-light">
-        {/* Navbar hiện đại */}
-        <nav className="navbar navbar-expand-lg navbar-dark bg-dark shadow-sm mb-4">
-          <div className="container">
-            <Link className="navbar-brand fw-bold" to="/">
-              <i className="bi bi-cpu-fill me-2"></i>MINH TÂM DEV
-            </Link>
-            <div className="navbar-nav ms-auto d-flex flex-row gap-3">
-              <NavLink className={({isActive}) => isActive ? "nav-link active fw-bold" : "nav-link"} to="/">Trang chủ</NavLink>
-              <NavLink className={({isActive}) => isActive ? "nav-link active fw-bold" : "nav-link"} to="/project1">Dự án 1</NavLink>
-              <NavLink className={({isActive}) => isActive ? "nav-link active fw-bold" : "nav-link"} to="/project2">Dự án 2</NavLink>
-            </div>
+    <div className="bg-light min-vh-100 pb-5">
+      <Header />
+      <div className="container">
+        <div className="row">
+          {/* Cột Trái: Nhập liệu */}
+          <div className="col-lg-5">
+            <CompanyConfig 
+              companyInfo={companyInfo} 
+              setCompanyInfo={setCompanyInfo} 
+            />
+            <ProductForm 
+              productName={productName}
+              setProductName={setProductName}
+              specs={specs}
+              setSpecs={setSpecs}
+              onGenerate={handleGenerate}
+              isLoading={isLoading}
+            />
           </div>
-        </nav>
-
-        {/* Khu vực nội dung chính */}
-        <div className="container pb-5">
-          <Routes>
-            <Route path="/" element={<Home />} />
-            <Route path="/project1" element={<Project1 />} />
-            <Route path="/project2" element={<Project2 />} />
-          </Routes>
           
-          
+          {/* Cột Phải: Kết quả */}
+          <div className="col-lg-7">
+            <ResultTabs results={results} />
+          </div>
         </div>
       </div>
-    </Router>
+    </div>
   );
 }
-
-export default App;
