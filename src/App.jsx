@@ -30,7 +30,7 @@ export default function App() {
     
     // Khởi tạo 3 prompts
     const promptWeb = generateWebsitePrompt(productName, specs, companyInfo);
-    const promptYT = generateYouTubePrompt(productName, specs);
+    const promptYT = generateYouTubePrompt(productName, specs, companyInfo);
     const promptFB = generateFacebookPrompt(productName, specs, companyInfo);
 
     try {
