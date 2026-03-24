@@ -9,21 +9,21 @@ Website: www.nppminhtam.com
 Email: bhnppminhtam@gmail.com`
   },
   {
-    id: 'tech-corp',
-    name: 'CÔNG TY CỔ PHẦN CÔNG NGHỆ TECH CORP',
-    details: `CÔNG TY CỔ PHẦN CÔNG NGHỆ TECH CORP
-Địa chỉ: Tòa nhà Bitexco, Quận 1, Thành phố Hồ Chí Minh
-Hotline: 1900.9999
-Website: www.techcorp.vn
-Email: contact@techcorp.vn`
+    id: 'knm',
+    name: 'CÔNG TY CỔ PHẦN ĐẦU TƯ QUỐC TẾ KỶ NGUYÊN MỚI',
+    details: `CÔNG TY CỔ PHẦN ĐẦU TƯ QUỐC TẾ KỶ NGUYÊN MỚI
+Địa chỉ: 108/55F Trần Văn Quang, Phường 10, Q.Tân Bình, TP.HCM
+Hotline: 0888.936.279
+Website: https://maydungcu.com/
+Email: kd.maydungcu@gmail.com`
   },
   {
-    id: 'green-eco',
-    name: 'CÔNG TY NÔNG SẢN GREEN ECO',
-    details: `CÔNG TY NÔNG SẢN GREEN ECO
-Địa chỉ: Khu Nông nghiệp Công nghệ cao, Củ Chi, Thành phố Hồ Chí Minh
-Hotline: 0888.123.456
-Website: www.greeneco.vn
-Email: sale@greeneco.vn`
+    id: 'himarket',
+    name: 'CÔNG TY CỔ PHẦN ĐẦU TƯ QUỐC TẾ HIMARKET',
+    details: `CÔNG TY CỔ PHẦN ĐẦU TƯ QUỐC TẾ HIMARKET
+Địa chỉ: 18 Đường Số 77, Phường Tân Quy, Quận 7, Tp. Hồ Chí Minh
+Hotline: 0888.571.179
+Website: https://www.himarket.vn/
+Email: himarketvn@gmail.com`
   }
 ];
