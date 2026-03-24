@@ -1,4 +1,3 @@
-import React from 'react';
 
 export default function HistoryDropdown({ history, onSelectHistory }) {
   if (!history || history.length === 0) return null; // Ẩn nếu chưa có lịch sử
