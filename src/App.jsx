@@ -3,29 +3,34 @@ import Header from './components/Header';
 import CompanyConfig from './components/CompanyConfig';
 import ProductForm from './components/ProductForm';
 import ResultTabs from './components/ResultTabs';
-import HistoryDropdown from './components/HistoryDropDown.jsx';
+import HistoryDropdown from './components/HistoryDropdown';
 import { callOpenAI } from './services/openaiService';
-import { generateWebsitePrompt, generateYouTubePrompt, generateFacebookPrompt } from './utils/promptTemplates';
+import { generateWebsitePrompt, generateYouTubePrompt, generateFacebookPrompt, generateTiktokPrompt } from './utils/promptTemplates';
 import { predefinedCompanies } from './utils/companyData';
 
 export default function App() {
-  // State quản lý Input
   const [productName, setProductName] = useState('');
   const [specs, setSpecs] = useState('');
   const [companyInfo, setCompanyInfo] = useState(predefinedCompanies[0].details);
   
-  // State quản lý Output & Loading
+  // State quản lý Checkbox
+  const [selectedPlatforms, setSelectedPlatforms] = useState({
+    website: true,
+    youtube: true,
+    facebook: true,
+    tiktok: true // Mặc định chọn cả 4
+  });
+  
   const [isLoading, setIsLoading] = useState(false);
   const [results, setResults] = useState({
     website: '',
     youtube: '',
-    facebook: ''
+    facebook: '',
+    tiktok: ''
   });
 
-  // State quản lý Lịch sử
   const [history, setHistory] = useState([]);
 
-  // Hook: Đọc lịch sử từ Session Storage khi ứng dụng vừa load
   useEffect(() => {
     const savedHistory = sessionStorage.getItem('seo_content_history');
     if (savedHistory) {
@@ -33,7 +38,6 @@ export default function App() {
     }
   }, []);
 
-  // Hàm tạo nội dung bằng OpenAI
   const handleGenerate = async () => {
     if (!productName.trim()) {
       alert("Vui lòng nhập tên sản phẩm!");
@@ -42,59 +46,72 @@ export default function App() {
 
     setIsLoading(true);
     
-    const promptWeb = generateWebsitePrompt(productName, specs, companyInfo);
-    const promptYT = generateYouTubePrompt(productName, specs);
-    const promptFB = generateFacebookPrompt(productName, specs, companyInfo);
+    // Mảng lưu trữ các tác vụ gọi API song song
+    const apiCalls = [];
+    const keys = [];
+
+    // Chỉ đưa vào mảng gọi API nếu checkbox được chọn
+    if (selectedPlatforms.website) {
+      apiCalls.push(callOpenAI(generateWebsitePrompt(productName, specs, companyInfo)));
+      keys.push('website');
+    }
+    if (selectedPlatforms.youtube) {
+      apiCalls.push(callOpenAI(generateYouTubePrompt(productName, specs, companyInfo)));
+      keys.push('youtube');
+    }
+    if (selectedPlatforms.facebook) {
+      apiCalls.push(callOpenAI(generateFacebookPrompt(productName, specs, companyInfo)));
+      keys.push('facebook');
+    }
+    if (selectedPlatforms.tiktok) {
+      apiCalls.push(callOpenAI(generateTiktokPrompt(productName, specs)));
+      keys.push('tiktok');
+    }
 
     try {
-      const [resWeb, resYT, resFB] = await Promise.all([
-        callOpenAI(promptWeb),
-        callOpenAI(promptYT),
-        callOpenAI(promptFB)
-      ]);
-
-      const newResults = {
-        website: resWeb,
-        youtube: resYT,
-        facebook: resFB
-      };
+      // Thực thi đồng loạt các API cần thiết
+      const responses = await Promise.all(apiCalls);
+      
+      // Tạo object kết quả mới (các nền tảng không được chọn sẽ trả về chuỗi rỗng)
+      const newResults = { website: '', youtube: '', facebook: '', tiktok: '' };
+      keys.forEach((key, index) => {
+        newResults[key] = responses[index];
+      });
 
       setResults(newResults);
 
-      // --- LOGIC LƯU LỊCH SỬ ---
-      // Tạo object lưu trữ đầy đủ Input và Output của phiên bản này
+      // Lưu lịch sử
       const newItem = {
-        id: Date.now().toString(), // ID duy nhất dựa trên thời gian
+        id: Date.now().toString(),
         timestamp: new Date().toLocaleTimeString('vi-VN') + ' ' + new Date().toLocaleDateString('vi-VN'),
         productName,
         specs,
         companyInfo,
+        selectedPlatforms, // Lưu lại cả cấu hình nền tảng lúc tạo
         results: newResults
       };
       
-      // Đưa item mới lên đầu mảng lịch sử
       const updatedHistory = [newItem, ...history];
       setHistory(updatedHistory);
-      
-      // Lưu mảng mới vào Session Storage
       sessionStorage.setItem('seo_content_history', JSON.stringify(updatedHistory));
 
     } catch (error) {
-      alert("Đã xảy ra lỗi khi tạo nội dung. Xem console để biết chi tiết.");
+      alert("Đã xảy ra lỗi khi tạo nội dung. Vui lòng thử lại.");
     } finally {
       setIsLoading(false);
     }
   };
 
-  // Hàm xử lý khi người dùng chọn một mục trong Dropbox lịch sử
   const handleSelectHistory = (historyId) => {
     const selectedItem = history.find(item => item.id === historyId);
     if (selectedItem) {
-      // Phục hồi lại toàn bộ State tương ứng với mục lịch sử đó
       setProductName(selectedItem.productName);
       setSpecs(selectedItem.specs);
       setCompanyInfo(selectedItem.companyInfo);
       setResults(selectedItem.results);
+      if (selectedItem.selectedPlatforms) {
+        setSelectedPlatforms(selectedItem.selectedPlatforms);
+      }
     }
   };
 
@@ -103,19 +120,17 @@ export default function App() {
       <Header />
       <div className="container">
         
-        {/* Dropdown Lịch sử */}
-        <HistoryDropdown 
-          history={history} 
-          onSelectHistory={handleSelectHistory} 
-        />
+        <HistoryDropdown history={history} onSelectHistory={handleSelectHistory} />
 
-        <div className="row">
-          {/* Cột Trái: Nhập liệu */}
+        {/* BỐ CỤC MỚI: HÀNG 1 - Khu vực Nhập liệu (chia làm 2 cột) */}
+        <div className="row mb-3">
           <div className="col-lg-5">
             <CompanyConfig 
               companyInfo={companyInfo} 
               setCompanyInfo={setCompanyInfo} 
             />
+          </div>
+          <div className="col-lg-7">
             <ProductForm 
               productName={productName}
               setProductName={setProductName}
@@ -123,14 +138,19 @@ export default function App() {
               setSpecs={setSpecs}
               onGenerate={handleGenerate}
               isLoading={isLoading}
+              selectedPlatforms={selectedPlatforms}
+              setSelectedPlatforms={setSelectedPlatforms}
             />
           </div>
-          
-          {/* Cột Phải: Kết quả */}
-          <div className="col-lg-7">
+        </div>
+        
+        {/* BỐ CỤC MỚI: HÀNG 2 - Khu vực Kết quả (Dàn ngang full width) */}
+        <div className="row">
+          <div className="col-12">
             <ResultTabs results={results} />
           </div>
         </div>
+
       </div>
     </div>
   );

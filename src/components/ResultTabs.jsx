@@ -6,8 +6,8 @@ export default function ResultTabs({ results }) {
 
   return (
     <div className="card shadow-sm border-primary">
-      <div className="card-header bg-white border-bottom-0 pt-3 pb-0">
-        <ul className="nav nav-tabs">
+      <div className="card-header bg-white border-bottom-0 pt-3 pb-0 d-flex flex-wrap">
+        <ul className="nav nav-tabs w-100">
           <li className="nav-item">
             <button className={`nav-link fw-bold ${activeTab === 'website' ? 'active text-primary border-primary border-bottom-0' : 'text-muted'}`} onClick={() => setActiveTab('website')}>
               🌐 Website SEO
@@ -23,13 +23,19 @@ export default function ResultTabs({ results }) {
               📘 Facebook Post
             </button>
           </li>
+          {/* TAB TIKTOK MỚI */}
+          <li className="nav-item">
+            <button className={`nav-link fw-bold ${activeTab === 'tiktok' ? 'active text-primary border-primary border-bottom-0' : 'text-muted'}`} onClick={() => setActiveTab('tiktok')}>
+              🎵 TikTok Cap
+            </button>
+          </li>
         </ul>
       </div>
       <div className="card-body bg-white">
-        {/* Render nội dung tương ứng với tab được chọn */}
         {activeTab === 'website' && <OutputPanel content={results.website} />}
         {activeTab === 'youtube' && <OutputPanel content={results.youtube} />}
         {activeTab === 'facebook' && <OutputPanel content={results.facebook} />}
+        {activeTab === 'tiktok' && <OutputPanel content={results.tiktok} />}
       </div>
     </div>
   );

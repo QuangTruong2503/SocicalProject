@@ -45,7 +45,7 @@ Tuyệt đối KHÔNG viết kịch bản video. Hãy xuất kết quả TUYỆT
 Tối ưu cho thuật toán YouTube hiểu sản phẩm:
 Tiêu đề: [Tên sản phẩm gốc]: [2-3 tính từ giật tít về độ bền/hiệu suất/đặc tính nổi bật nhất]! #shorts #[Tên_Thương_Hiệu] #[Từ_khóa_ngách]
 Mô tả:
-Khám phá {{PRODUCT_NAME}} – [Viết 1 câu định vị hấp dẫn, chỉ ra sản phẩm này là lựa chọn số 1 dành cho đối tượng khách hàng nào (ví dụ: thợ mộc, thợ cơ khí, người dùng gia đình...)]!
+Khám phá ${productName} – [Viết 1 câu định vị hấp dẫn, chỉ ra sản phẩm này là lựa chọn số 1 dành cho đối tượng khách hàng nào (ví dụ: thợ mộc, thợ cơ khí, người dùng gia đình...)]!
 ✅ [Rút trích điểm mạnh 1 từ thông số kỹ thuật, viết thật ngắn gọn, ví dụ: Xuất xứ/Động cơ...]
 ✅ [Rút trích điểm mạnh 2 từ thông số kỹ thuật, ví dụ: Công suất/Chất liệu...]
 ✅ [Rút trích điểm mạnh 3 từ thông số kỹ thuật, ví dụ: Tính năng an toàn/Độ bền...]
@@ -75,3 +75,27 @@ Hãy trình bày theo bố cục sau:
 - Tạo sự khan hiếm hoặc thúc giục khách hàng hành động ngay (Inbox/Gọi điện để nhận tư vấn hoặc ưu đãi).
 - Chèn đầy đủ và nguyên văn thông tin liên hệ sau ở cuối bài: ${companyInfo}.
 `;
+
+export const generateTiktokPrompt = (productName, specs) => `
+Vai trò: Bạn là một chuyên gia Content Marketing và chuyên gia tối ưu SEO trên nền tảng TikTok.
+Tên sản phẩm: ${productName}
+Thông số kỹ thuật: ${specs}
+
+Nhiệm vụ: Viết bài đăng TikTok cho sản phẩm dựa trên thông tin được cung cấp.
+
+Yêu cầu cấu trúc bài viết:
+
+Tiêu đề (Dòng đầu): Viết in hoa, chứa tên sản phẩm + 2 đặc điểm nổi bật nhất + Emoji phù hợp.
+
+Mở đầu (Hook): Đặt một câu hỏi đánh vào nỗi đau hoặc nhu cầu thực tế của khách hàng.
+
+Thân bài (Lợi ích): Sử dụng danh sách (bullet points) với các icon thu hút. Không chỉ liệt kê thông số, hãy chuyển thông số thành Lợi ích (Ví dụ: "Pin 18V" -> "Hoạt động mạnh mẽ, không lo dây dợ").
+
+Lưu ý đặc biệt: Ghi rõ về phụ kiện đi kèm hoặc lưu ý sử dụng (nếu có).
+
+Hashtag: Chèn 10-12 hashtag bao gồm: Tên thương hiệu, mã máy, dòng sản phẩm, từ khóa ngành và hashtag xu hướng TikTok.
+
+Phong cách ngôn ngữ: Chuyên nghiệp, tin cậy nhưng vẫn gần gũi, sử dụng thuật ngữ ngành chính xác.
+
+Thông tin sản phẩm để viết: > [Dán thông số kỹ thuật, tên máy và phụ kiện vào đây]
+`
