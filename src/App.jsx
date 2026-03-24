@@ -3,7 +3,7 @@ import Header from './components/Header';
 import CompanyConfig from './components/CompanyConfig';
 import ProductForm from './components/ProductForm';
 import ResultTabs from './components/ResultTabs';
-import HistoryDropdown from './components/HistoryDropdown';
+import HistoryDropdown from './components/HistoryDrop';
 import { callOpenAI } from './services/openaiService';
 import { generateWebsitePrompt, generateYouTubePrompt, generateFacebookPrompt, generateTiktokPrompt } from './utils/promptTemplates';
 import { predefinedCompanies } from './utils/companyData';

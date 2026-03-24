@@ -1,5 +1,5 @@
 
-export default function HistoryDropdown({ history, onSelectHistory }) {
+export default function HistoryDrop({ history, onSelectHistory }) {
   if (!history || history.length === 0) return null; // Ẩn nếu chưa có lịch sử
 
   return (
