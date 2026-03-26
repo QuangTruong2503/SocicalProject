@@ -33,29 +33,31 @@ ${companyInfo}
 Câu hỏi thường gặp (FAQ)
 [Tạo ra 4 câu hỏi mà khách hàng thực tế sẽ thắc mắc nhất về sản phẩm này (ví dụ: thời lượng pin, cách bảo dưỡng/châm dầu, cách dùng tính năng đặc biệt, độ bền so với máy đời cũ). Đưa ra câu trả lời chi tiết, chuyên sâu mang tính tư vấn kỹ thuật.]`;
 
-export const generateYouTubePrompt = (productName, specs, companyInfo) => `
-Bạn là một chuyên gia phát triển kênh YouTube, đặc biệt am hiểu thuật toán của YouTube Shorts.
+export const generateYouTubePrompt = (productName, specs, companyInfo, keywords) => `
+Đóng vai là một chuyên gia SEO YouTube và sáng tạo nội dung. Hãy viết một bộ nội dung chuẩn SEO cho video YouTube review/giới thiệu sản phẩm theo các thông tin dưới đây:
 Dựa vào các thông tin sau:
 - Tên sản phẩm: ${productName}
 - Thông số kỹ thuật: ${specs}
 - Thông tin công ty: ${companyInfo}
+- Từ khóa liên quan: ${keywords}
+YÊU CẦU NỘI DUNG (Trình bày đúng 4 phần sau):
 
-Tuyệt đối KHÔNG viết kịch bản video. Hãy xuất kết quả TUYỆT ĐỐI tuân thủ theo form mẫu dưới đây, giữ nguyên các biểu tượng icon (✅, 👉, 📞):
+1. Tiêu đề Video (YouTube Title): Đề xuất 3-5 lựa chọn tiêu đề hấp dẫn, giật tít để tối ưu tỷ lệ click (CTR). Bắt buộc phải chứa từ khóa chính.
 
-Tối ưu cho thuật toán YouTube hiểu sản phẩm:
-Tiêu đề: [Tên sản phẩm gốc]: [2-3 tính từ giật tít về độ bền/hiệu suất/đặc tính nổi bật nhất]! #shorts #[Tên_Thương_Hiệu] #[Từ_khóa_ngách]
-Mô tả:
-Khám phá ${productName} – [Viết 1 câu định vị hấp dẫn, chỉ ra sản phẩm này là lựa chọn số 1 dành cho đối tượng khách hàng nào (ví dụ: thợ mộc, thợ cơ khí, người dùng gia đình...)]!
-✅ [Rút trích điểm mạnh 1 từ thông số kỹ thuật, viết thật ngắn gọn, ví dụ: Xuất xứ/Động cơ...]
-✅ [Rút trích điểm mạnh 2 từ thông số kỹ thuật, ví dụ: Công suất/Chất liệu...]
-✅ [Rút trích điểm mạnh 3 từ thông số kỹ thuật, ví dụ: Tính năng an toàn/Độ bền...]
-✅ [Rút trích điểm mạnh 4 từ thông số kỹ thuật]
-👉 Link mua hàng chính hãng: [Trích xuất chính xác địa chỉ Website từ phần Thông tin công ty]
-📞 Tư vấn kỹ thuật: [Trích xuất chính xác số điện thoại Hotline từ phần Thông tin công ty]
-[Tạo 7-10 Hashtags viết liền không dấu liên quan sát nhất đến thương hiệu, sản phẩm, ngành hàng và tên nhà phân phối, ví dụ: #TenThuongHieu #TenSanPham #NganhHang #NPPMinhTam]
+2. Mô tả Video (Video Description):
 
-3. Thẻ Tags (Từ khóa ẩn)
-[Tạo 10-15 từ khóa SEO mở rộng, bao gồm cả từ khóa ngắn và dài liên quan đến công dụng, tên máy, mã máy, thương hiệu. Chỉ ngăn cách nhau bằng dấu phẩy ","]`;
+Gửi lời chào phù hợp tới [Đối tượng khách hàng]. Giới thiệu hấp dẫn về ${productName} và phải chứa từ khóa chính ngay trong 2-3 dòng đầu tiên.
+
+Viết đoạn văn bản mô tả thực tế, xoáy sâu vào thông số: ${specs}. Lồng ghép một cách tự nhiên và mượt mà toàn bộ từ khóa trong danh sách ${keywords} vào trong bài viết. Tuyệt đối không nhồi nhét từ khóa một cách khiên cưỡng, đứt đoạn.
+
+Kêu gọi người xem like, subscribe và chèn y nguyên khối thông tin mua hàng dưới đây:
+${companyInfo}
+
+3. Danh sách Tag YouTube (Tags): Trích xuất toàn bộ từ khóa trong danh sách trên, cộng thêm các từ khóa mở rộng liên quan đến ${productName} và thương hiệu. Trình bày thành một dải từ khóa cách nhau bằng dấu phẩy để tôi dễ copy.
+
+4. Gợi ý Hashtags: Cung cấp trên 10 hashtag sát nhất với sản phẩm, từ khóa liên quan, đối tượng và thương hiệu (viết liền, không dấu, có dấu # ở trước).
+
+Giọng văn: Chuyên nghiệp, am hiểu kỹ thuật nhưng phải gần gũi, thực tế, nói đúng "ngôn ngữ" của khách hàng thợ mộc, thợ sửa xe, gia đình, xưởng cơ khí."`;
 
 export const generateFacebookPrompt = (productName, specs, companyInfo) => `
 Bạn là một Copywriter chuyên nghiệp thực chiến trên Facebook, chuyên viết bài quảng cáo bán hàng mang lại tỷ lệ chuyển đổi cao.

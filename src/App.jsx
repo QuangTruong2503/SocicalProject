@@ -4,7 +4,7 @@ import CompanyConfig from './components/CompanyConfig';
 import ProductForm from './components/ProductForm';
 import ResultTabs from './components/ResultTabs';
 import HistoryDropdown from './components/HistoryDrop';
-import { callOpenAI } from './services/openaiService';
+import { callOpenAI, extractTextFromImage } from './services/openaiService';
 import { generateWebsitePrompt, generateYouTubePrompt, generateFacebookPrompt, generateTiktokPrompt } from './utils/promptTemplates';
 import { predefinedCompanies } from './utils/companyData';
 
@@ -12,6 +12,8 @@ export default function App() {
   const [productName, setProductName] = useState('');
   const [specs, setSpecs] = useState('');
   const [companyInfo, setCompanyInfo] = useState(predefinedCompanies[0].details);
+  const [keywords, setKeywords] = useState(''); // State mới cho từ khóa
+  const [isExtracting, setIsExtracting] = useState(false); // Trạng thái đang đọc ảnh
   
   // State quản lý Checkbox
   const [selectedPlatforms, setSelectedPlatforms] = useState({
@@ -56,7 +58,7 @@ export default function App() {
       keys.push('website');
     }
     if (selectedPlatforms.youtube) {
-      apiCalls.push(callOpenAI(generateYouTubePrompt(productName, specs, companyInfo)));
+      apiCalls.push(callOpenAI(generateYouTubePrompt(productName, specs, companyInfo, keywords)));
       keys.push('youtube');
     }
     if (selectedPlatforms.facebook) {
@@ -107,6 +109,7 @@ export default function App() {
     if (selectedItem) {
       setProductName(selectedItem.productName);
       setSpecs(selectedItem.specs);
+      setKeywords(selectedItem.keywords || ''); // Phục hồi từ khóa
       setCompanyInfo(selectedItem.companyInfo);
       setResults(selectedItem.results);
       if (selectedItem.selectedPlatforms) {
@@ -115,6 +118,31 @@ export default function App() {
     }
   };
 
+  // Hàm chuyển file ảnh sang dạng Base64 để gửi lên OpenAI
+  const convertToBase64 = (file) => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = () => resolve(reader.result);
+      reader.onerror = error => reject(error);
+    });
+  };
+
+  // Hàm xử lý khi người dùng dán/tải ảnh lên
+  const handleImageUpload = async (file) => {
+    setIsExtracting(true);
+    try {
+      const base64Image = await convertToBase64(file);
+      const extractedText = await extractTextFromImage(base64Image);
+      
+      // Nếu ô từ khóa đã có sẵn chữ, thì thêm dấu phẩy nối tiếp vào
+      setKeywords(prev => prev ? `${prev}, ${extractedText}` : extractedText);
+    } catch (error) {
+      alert(error.message || "Lỗi khi trích xuất chữ từ ảnh!");
+    } finally {
+      setIsExtracting(false);
+    }
+  };
   return (
     <div className="bg-light min-vh-100 pb-5">
       <Header />
@@ -136,6 +164,10 @@ export default function App() {
               setProductName={setProductName}
               specs={specs}
               setSpecs={setSpecs}
+              keywords={keywords}               // Truyền state mới
+              setKeywords={setKeywords}
+              onImageUpload={handleImageUpload} // Truyền hàm xử lý ảnh
+              isExtracting={isExtracting}       // Truyền trạng thái loading ảnh
               onGenerate={handleGenerate}
               isLoading={isLoading}
               selectedPlatforms={selectedPlatforms}
