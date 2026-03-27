@@ -34,30 +34,39 @@ Câu hỏi thường gặp (FAQ)
 [Tạo ra 4 câu hỏi mà khách hàng thực tế sẽ thắc mắc nhất về sản phẩm này (ví dụ: thời lượng pin, cách bảo dưỡng/châm dầu, cách dùng tính năng đặc biệt, độ bền so với máy đời cũ). Đưa ra câu trả lời chi tiết, chuyên sâu mang tính tư vấn kỹ thuật.]`;
 
 export const generateYouTubePrompt = (productName, specs, companyInfo, keywords) => `
-Đóng vai là một chuyên gia SEO YouTube và sáng tạo nội dung. Hãy viết một bộ nội dung chuẩn SEO cho video YouTube review/giới thiệu sản phẩm theo các thông tin dưới đây:
-Dựa vào các thông tin sau:
-- Tên sản phẩm: ${productName}
-- Thông số kỹ thuật: ${specs}
-- Thông tin công ty: ${companyInfo}
-- Từ khóa liên quan: ${keywords}
-YÊU CẦU NỘI DUNG (Trình bày đúng 4 phần sau):
+Đóng vai là một chuyên gia SEO YouTube và chuyên viên sáng tạo nội dung kỹ thuật. Hãy viết một bộ nội dung chuẩn SEO cho video YouTube review/giới thiệu sản phẩm dựa trên các dữ liệu đầu vào sau:
 
-1. Tiêu đề Video (YouTube Title): Đề xuất 3-5 lựa chọn tiêu đề hấp dẫn, giật tít để tối ưu tỷ lệ click (CTR). Bắt buộc phải chứa từ khóa chính.
+[DỮ LIỆU ĐẦU VÀO]
+- Tên sản phẩm: ${productName}
+- Thông số kỹ thuật nổi bật: ${specs}
+- Bộ từ khóa SEO bắt buộc: ${keywords}
+- Thông tin công ty/mua hàng: ${companyInfo}
+
+[YÊU CẦU ĐẦU RA (Trình bày đúng 4 phần sau)]
+
+1. Tiêu đề Video (YouTube Title):
+- Đề xuất 5 lựa chọn tiêu đề giật tít, kích thích sự tò mò để tối ưu tỷ lệ click (CTR).
+- Bắt buộc phải chứa từ khóa chính (ưu tiên đặt ở đầu câu).
+- Khống chế độ dài dưới 70 ký tự để hiển thị tốt nhất trên điện thoại. Có thể dùng thêm 1-2 emoji phù hợp.
 
 2. Mô tả Video (Video Description):
+Gửi lời chào nhắm đúng vào tâm lý của khách hàng. Giới thiệu hấp dẫn về ${productName} và bắt buộc phải chứa từ khóa chính ngay trong 2-3 dòng đầu tiên.
+Đừng chỉ liệt kê ${specs} một cách khô khan, hãy diễn giải các thông số này thành lợi ích thực tế cho người dùng. 
+Lồng ghép khéo léo, mượt mà toàn bộ các từ khóa trong danh sách ${keywords} vào các đoạn văn. Tuyệt đối không nhồi nhét khiên cưỡng làm gãy gọn ngữ pháp. Chia thành các đoạn văn ngắn (3-4 dòng) để dễ đọc.
+Kêu gọi người xem Like, Subscribe kênh và chèn y nguyên khối thông tin liên hệ dưới đây (không thay đổi bất kỳ chữ nào):
 
-Gửi lời chào phù hợp tới [Đối tượng khách hàng]. Giới thiệu hấp dẫn về ${productName} và phải chứa từ khóa chính ngay trong 2-3 dòng đầu tiên.
-
-Viết đoạn văn bản mô tả thực tế, xoáy sâu vào thông số: ${specs}. Lồng ghép một cách tự nhiên và mượt mà toàn bộ từ khóa trong danh sách ${keywords} vào trong bài viết. Tuyệt đối không nhồi nhét từ khóa một cách khiên cưỡng, đứt đoạn.
-
-Kêu gọi người xem like, subscribe và chèn y nguyên khối thông tin mua hàng dưới đây:
 ${companyInfo}
 
-3. Danh sách Tag YouTube (Tags): Trích xuất toàn bộ từ khóa trong danh sách trên, cộng thêm các từ khóa mở rộng liên quan đến ${productName} và thương hiệu. Trình bày thành một dải từ khóa cách nhau bằng dấu phẩy để tôi dễ copy.
+3. Danh sách Tag YouTube (Tags):
+- Tối đa 500 ký tự.
+- Trích xuất toàn bộ từ khóa từ ${keywords}, cộng thêm các từ khóa đuôi dài (long-tail keywords) liên quan mật thiết đến ${productName} và ngành hàng.
+- Định dạng: Trình bày thành một dải từ khóa, phân cách nhau bằng dấu phẩy (, ) để tôi có thể copy/paste trực tiếp vào YouTube (tổng cộng khoảng 400-500 ký tự).
 
-4. Gợi ý Hashtags: Cung cấp trên 10 hashtag sát nhất với sản phẩm, từ khóa liên quan, đối tượng và thương hiệu (viết liền, không dấu, có dấu # ở trước).
+4. Gợi ý Hashtags:
+- Cung cấp 10 - 15 hashtag sát nhất với sản phẩm, từ khóa liên quan, đối tượng và thương hiệu. 
+- Định dạng: Viết liền không dấu, bắt đầu bằng dấu # (Ví dụ: #TenSanPham #ThuongHieu). Đặt tất cả trên cùng một dòng.
 
-Giọng văn: Chuyên nghiệp, am hiểu kỹ thuật nhưng phải gần gũi, thực tế, nói đúng "ngôn ngữ" của khách hàng thợ mộc, thợ sửa xe, gia đình, xưởng cơ khí."`;
+Giọng văn yêu cầu: Chuyên nghiệp, am hiểu kỹ thuật cơ khí/máy móc nhưng phải thực dụng, dứt khoát. Nói đúng "ngôn ngữ" và thuật ngữ của dân kỹ thuật, thợ thầy.`;
 
 export const generateFacebookPrompt = (productName, specs, companyInfo) => `
 Bạn là một Copywriter chuyên nghiệp thực chiến trên Facebook, chuyên viết bài quảng cáo bán hàng mang lại tỷ lệ chuyển đổi cao.
