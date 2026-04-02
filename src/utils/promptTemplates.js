@@ -1,38 +1,44 @@
-export const generateWebsitePrompt = (productName, specs, companyInfo) => `
-Bạn là một chuyên gia Content SEO E-commerce thực thụ. Nhiệm vụ của bạn là viết một bài mô tả sản phẩm chuẩn SEO, văn phong chuyên nghiệp, mang tính tư vấn kỹ thuật cao dựa trên các thông tin đầu vào sau:
+export const generateWebsitePrompt = (productName, specs, companyInfo, keywords) => `
+Bạn là một chuyên gia Content SEO E-commerce và Lập trình viên Front-end. Nhiệm vụ của bạn là viết bài mô tả sản phẩm chuẩn SEO kỹ thuật, trình bày hoàn toàn bằng mã HTML.
+
+### THÔNG TIN ĐẦU VÀO:
 - Tên sản phẩm: ${productName}
 - Thông số kỹ thuật: ${specs}
 - Thông tin công ty: ${companyInfo}
+- Từ khóa mục tiêu: ${keywords}
 
-Hãy trình bày bài viết tuân thủ TUYỆT ĐỐI theo cấu trúc và các tiêu đề (Heading) dưới đây:
+### YÊU CẦU VỀ ĐỊNH DẠNG (BẮT BUỘC):
+1. Phản hồi của bạn phải bao gồm 2 phần riêng biệt:
+   - Phần 1: Metadata (Dạng text thuần để quản trị viên copy).
+   - Phần 2: Nội dung hiển thị (Bọc toàn bộ trong mã HTML, bắt đầu bằng thẻ <div>).
+2. Sử dụng Semantic HTML: H1 cho tiêu đề chính, H2 và H3 cho các tiêu đề phụ.
+3. Tuyệt đối không sử dụng CSS inline (như style="..."), chỉ sử dụng các thẻ HTML chuẩn: <strong>, <em>, <ul>, <li>, <table>, <tr>, <td>.
 
-1. TỐI ƯU SEO META (Dành cho quản trị viên):
-- Tiêu đề trang (Meta Title): [Dưới 60 ký tự, chứa từ khóa chính]
-- Mô tả trang (Meta Description): [Dưới 150 ký tự, tóm tắt điểm nổi bật, kích thích click]
-- URL Slug: [Thân thiện với SEO, ví dụ: ten-san-pham-chinh-hang]
-- Tags: [Liệt kê 5-7 từ khóa LSI ngăn cách bằng dấu phẩy]
+### CẤU TRÚC CHI TIẾT:
 
---- NỘI DUNG BÀI VIẾT HIỂN THỊ TRÊN WEBSITE ---
+1. TỐI ƯU SEO META (Dạng Text):
+- Meta Title: [Chứa ${productName}, dưới 60 ký tự]
+- Meta Description: [Chứa ${productName} + 1 tính năng nổi bật, dưới 150 ký tự]
+- URL Slug: [Dạng không dấu: ten-san-pham-chinh-hang]
+- Tags: [15 từ khóa LSI ngăn cách bằng dấu phẩy]
 
-[Tạo một Tiêu đề bài viết H1 gồm: Tên sản phẩm + 3 tính từ miêu tả đặc điểm nổi bật nhất, ví dụ: "Máy... - Nhỏ Gọn, Mạnh Mẽ, Hiệu Suất Vượt Trội"]
+2. NỘI DUNG HTML (Bọc trong <div>):
+- H1: [Tên sản phẩm + 3 đặc điểm nổi bật nhất]
+- Giới thiệu: [2 đoạn văn <p> mô tả vị thế sản phẩm, giải quyết nỗi đau gì của khách hàng?]
+- H2: Thông số kỹ thuật
+  [Sử dụng cấu trúc <table> để liệt kê specs. Cột 1: Đặc tính, Cột 2: Thông số. Thêm class="product-specs-table" cho thẻ table]
+- H2: Ưu điểm nổi bật của ${productName}
+  [Triển khai 4-5 thẻ H3. Mỗi H3 là một tính năng. Dưới mỗi H3 là 1 đoạn văn <p> phân tích lợi ích kỹ thuật sâu sắc. Sử dụng <strong> để nhấn mạnh các thông số quan trọng.]
+- H2: Giá bán và địa chỉ mua hàng chính hãng
+  [Sử dụng <p> và <ul> để trình bày thông tin từ ${companyInfo}]
+- H2: Câu hỏi thường gặp (FAQ)
+  [Sử dụng cấu trúc: <strong>Câu hỏi: [Nội dung]</strong> kèm theo <p>Trả lời: [Nội dung chuyên sâu]</p>]
 
-Giới Thiệu Chung
-[Viết 2 đoạn văn tóm tắt: Sản phẩm là gì? Thuộc phân khúc/thương hiệu nào? Dành cho ai/ứng dụng vào công việc gì? Thiết kế và công suất nổi bật ra sao để thay thế các công cụ cũ?]
-
-Thông Số Kỹ Thuật
-[Trình bày lại các thông số kỹ thuật đầu vào dưới dạng danh sách rõ ràng, dễ đọc. Chuyển đổi các thông số thô thành dạng: "Tên thông số: Giá trị"]
-
-Ưu Điểm Nổi Bật
-[Dựa vào thông số, phân tích ra 4-5 ưu điểm thực tế. Trình bày theo dạng:
-- Tên công nghệ/Tính năng: Mô tả chi tiết lợi ích mang lại cho người dùng (ví dụ cắt nhanh hơn, an toàn hơn, tiết kiệm sức lực...)]
-
-Giá Bán Và Nơi Mua Chính Hãng
-Quý khách có thể trải nghiệm và sở hữu ${productName} chính hãng tại:
-${companyInfo}
-
-Câu hỏi thường gặp (FAQ)
-[Tạo ra 4 câu hỏi mà khách hàng thực tế sẽ thắc mắc nhất về sản phẩm này (ví dụ: thời lượng pin, cách bảo dưỡng/châm dầu, cách dùng tính năng đặc biệt, độ bền so với máy đời cũ). Đưa ra câu trả lời chi tiết, chuyên sâu mang tính tư vấn kỹ thuật.]`;
-
+### QUY TẮC VIẾT CONTENT:
+- Ngôn ngữ: Tiếng Việt, văn phong chuyên nghiệp, tin cậy.
+- Mật độ từ khóa: Chèn ${productName} một cách tự nhiên vào các thẻ H2 và đoạn văn đầu tiên.
+- Tránh các từ sáo rỗng (tốt nhất, tuyệt vời nhất), tập trung vào số liệu và hiệu quả thực tế từ ${specs}.
+`;
 export const generateYouTubePrompt = (productName, specs, companyInfo, keywords) => `
 Đóng vai là một chuyên gia SEO YouTube và chuyên viên sáng tạo nội dung kỹ thuật. Hãy viết một bộ nội dung chuẩn SEO cho video YouTube review/giới thiệu sản phẩm dựa trên các dữ liệu đầu vào sau:
 
@@ -59,7 +65,7 @@ ${companyInfo}
 
 3. Danh sách Tag YouTube (Tags):
 - Tối đa 500 ký tự.
-- Trích xuất toàn bộ từ khóa từ ${keywords}, cộng thêm các từ khóa đuôi dài (long-tail keywords) liên quan mật thiết đến ${productName} và ngành hàng.
+- Trích xuất toàn bộ từ khóa từ ${keywords}, cộng thêm các từ khóa đuôi dài (long-tail keywords), từ khóa ngắn liên quan mật thiết đến ${productName} và ngành hàng.
 - Định dạng: Trình bày thành một dải từ khóa, phân cách nhau bằng dấu phẩy (, ) để tôi có thể copy/paste trực tiếp vào YouTube (tổng cộng khoảng 400-500 ký tự).
 
 4. Gợi ý Hashtags:
