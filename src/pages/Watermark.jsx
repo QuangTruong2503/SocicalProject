@@ -1,8 +1,8 @@
 import React, { useState, useCallback } from 'react';
 import LogoUploader from '../components/watermark/LogoUploader';
-import ImageUploader from '../components/watermark/ImageUploader.jsx';
-import WatermarkControls from '../components/watermark/WatermarkControls.jsx';
-import WatermarkGallery from '../components/watermark/WatermarkGallery.jsx';
+import ImageUploader from '../components/watermark/ImageUploader';
+import WatermarkControls from '../components/watermark/WatermarkControls';
+import WatermarkGallery from '../components/watermark/WatermarkGallery';
 import { processWatermark, resizeBlob, buildFileName, compressAndResizeBlob } from '../hooks/useWatermarkProcessor';
 import '../styles/Watermark.css';
 

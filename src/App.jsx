@@ -12,9 +12,9 @@ function HomePage() {
           <p className="card-text">
             Đây là trang chính của ứng dụng. Bạn có thể qua trang AISEO để tạo nội dung cho sản phẩm của mình.
           </p>
-          <Link to="/aiseo" className="btn btn-primary">
+          <NavLink to="/aiseo" className="btn btn-primary">
             Mở AISEO
-          </Link>
+          </NavLink>
         </div>
       </div>
 
