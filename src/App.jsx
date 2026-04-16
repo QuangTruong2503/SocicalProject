@@ -1,5 +1,8 @@
 import { BrowserRouter, Routes, Route, Link } from 'react-router-dom';
 import AISEO from './pages/AISEO.jsx';
+import Watermark from './pages/Watermark.jsx';
+import Footer from './components/Footer.jsx';
+import './styles/App.css';
 function HomePage() {
   return (
     <div className="container py-5">
@@ -37,7 +40,7 @@ export default function App() {
         <nav className="navbar navbar-expand-lg navbar-light bg-white border-bottom">
           <div className="container">
             <Link className="navbar-brand" to="/">
-              AISEO App
+              <img src="/zeplao.png" alt="Logo" width="128" height="64" className="d-inline-block align-text-top me-2 rounded-1" />
             </Link>
             <div className="navbar-nav">
               <Link className="nav-link" to="/">
@@ -46,6 +49,9 @@ export default function App() {
               <Link className="nav-link" to="/aiseo">
                 AISEO
               </Link>
+              <Link className="nav-link" to="/watermark">
+                Watermark
+              </Link>
             </div>
           </div>
         </nav>
@@ -53,9 +59,11 @@ export default function App() {
         <Routes>
           <Route path="/" element={<HomePage />} />
           <Route path="/aiseo" element={<AISEO />} />
+          <Route path="/watermark" element={<Watermark />} />
           <Route path="*" element={<NotFoundPage />} />
         </Routes>
       </div>
+      <Footer />
     </BrowserRouter>
   );
 }
