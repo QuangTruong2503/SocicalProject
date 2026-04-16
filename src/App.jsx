@@ -1,5 +1,8 @@
 import { BrowserRouter, Routes, Route, Link } from 'react-router-dom';
 import AISEO from './pages/AISEO.jsx';
+import Watermark from './pages/Watermark.jsx';
+import Footer from './components/Footer.jsx';
+import './styles/App.css';
 function HomePage() {
   return (
     <div className="container py-5">
@@ -46,6 +49,9 @@ export default function App() {
               <Link className="nav-link" to="/aiseo">
                 AISEO
               </Link>
+              <Link className="nav-link" to="/watermark">
+                Watermark
+              </Link>
             </div>
           </div>
         </nav>
@@ -53,9 +59,11 @@ export default function App() {
         <Routes>
           <Route path="/" element={<HomePage />} />
           <Route path="/aiseo" element={<AISEO />} />
+          <Route path="/watermark" element={<Watermark />} />
           <Route path="*" element={<NotFoundPage />} />
         </Routes>
       </div>
+      <Footer />
     </BrowserRouter>
   );
 }
