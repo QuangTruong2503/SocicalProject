@@ -3,7 +3,7 @@ import LogoUploader from '../components/watermark/LogoUploader';
 import ImageUploader from '../components/watermark/ImageUploader.jsx';
 import WatermarkControls from '../components/watermark/WatermarkControls.jsx';
 import WatermarkGallery from '../components/watermark/WatermarkGallery.jsx';
-import { processWatermark, resizeBlob, buildFileName } from '../hooks/useWatermarkProcessor';
+import { processWatermark, resizeBlob, buildFileName, compressAndResizeBlob } from '../hooks/useWatermarkProcessor';
 import '../styles/Watermark.css';
 
 const DEFAULT_OPTIONS = {
@@ -65,6 +65,11 @@ export default function Watermark() {
         try {
           blob = await resizeBlob(blob, 800, 600);
           fileName = fileName.replace('.jpg', '_800x600.jpg');
+        } catch { /* use original */ }
+      } else if (mode === 'ImageCompress') {
+        try {
+          blob = await compressAndResizeBlob(blob, 800, 600, 100);
+          fileName = fileName.replace('.jpg', '_compressed.jpg');
         } catch { /* use original */ }
       }
 

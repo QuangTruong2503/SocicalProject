@@ -49,6 +49,18 @@ export default function WatermarkGallery({ results, onClear, onDownloadAll, isPr
                   </div>
                 </button>
               </li>
+              <li>
+                <button
+                  className="dropdown-item wm-dropdown-item"
+                  onClick={() => onDownloadAll('ImageCompress')}
+                >
+                  <i className="bi bi-file-zip me-2" />
+                  <div>
+                    <div className="fw-semibold">Nén 800 × 600 (&lt;100KB)</div>
+                    <small className="text-muted">Nén tối ưu cho email &amp; tải nhanh</small>
+                  </div>
+                </button>
+              </li>
             </ul>
           </div>
 

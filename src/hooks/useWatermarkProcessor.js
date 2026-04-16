@@ -3,6 +3,8 @@
  * Core logic: renders each source image with the logo watermark onto a canvas,
  * then exports as JPEG blob.
  */
+import imageCompression from 'browser-image-compression';
+
 export async function processWatermark(sourceFile, logoUrl, options) {
   const { size, opacity, tiled, logoPosition = 'bottom-right' } = options;
 
@@ -122,4 +124,30 @@ export function buildFileName(baseName, index, total) {
   const safeName = baseName.trim() || 'image';
   if (total === 1) return `${safeName}.jpg`;
   return `${safeName}_${String(index + 1).padStart(2, '0')}.jpg`;
+}
+
+/**
+ * Resize and compress a JPEG blob to 800×600 and under 100KB
+ * Uses browser-image-compression for efficient compression
+ */
+export async function compressAndResizeBlob(blob, width = 800, height = 600, maxSizeKB = 100) {
+  try {
+    // First, resize to 800x600
+    const resizedBlob = await resizeBlob(blob, width, height);
+    
+    // Then compress to under maxSizeKB
+    const options = {
+      maxSizeMB: maxSizeKB / 1024, // Convert KB to MB
+      maxWidthOrHeight: Math.max(width, height),
+      useWebWorker: true,
+      quality: 0.8,
+    };
+    
+    const compressedBlob = await imageCompression(resizedBlob, options);
+    return compressedBlob;
+  } catch (err) {
+    console.error('Compression error:', err);
+    // Fallback to just resizing if compression fails
+    return resizeBlob(blob, width, height);
+  }
 }

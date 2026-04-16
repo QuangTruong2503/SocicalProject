@@ -40,7 +40,7 @@ export default function App() {
         <nav className="navbar navbar-expand-lg navbar-light bg-white border-bottom">
           <div className="container">
             <Link className="navbar-brand" to="/">
-              AISEO App
+              <img src="/zeplao.png" alt="Logo" width="128" height="64" className="d-inline-block align-text-top me-2 rounded-1" />
             </Link>
             <div className="navbar-nav">
               <Link className="nav-link" to="/">
