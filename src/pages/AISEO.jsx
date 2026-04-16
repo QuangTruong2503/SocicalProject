@@ -13,6 +13,7 @@ export default function AISEO() {
   const [specs, setSpecs] = useState('');
   const [companyInfo, setCompanyInfo] = useState(predefinedCompanies[0].details);
   const [keywords, setKeywords] = useState('');
+  const [imageUrls, setImageUrls] = useState('');
   const [isExtracting, setIsExtracting] = useState(false);
   const [selectedPlatforms, setSelectedPlatforms] = useState({
     website: true,
@@ -47,7 +48,7 @@ export default function AISEO() {
     const keys = [];
 
     if (selectedPlatforms.website) {
-      apiCalls.push(callOpenAI(generateWebsitePrompt(productName, specs, companyInfo, keywords)));
+      apiCalls.push(callOpenAI(generateWebsitePrompt(productName, specs, companyInfo, keywords, imageUrls)));
       keys.push('website');
     }
     if (selectedPlatforms.youtube) {
@@ -78,6 +79,8 @@ export default function AISEO() {
         productName,
         specs,
         companyInfo,
+        keywords,
+        imageUrls,
         selectedPlatforms,
         results: newResults
       };
@@ -98,6 +101,7 @@ export default function AISEO() {
       setProductName(selectedItem.productName);
       setSpecs(selectedItem.specs);
       setKeywords(selectedItem.keywords || '');
+      setImageUrls(selectedItem.imageUrls || '');
       setCompanyInfo(selectedItem.companyInfo);
       setResults(selectedItem.results);
       if (selectedItem.selectedPlatforms) {
@@ -149,6 +153,8 @@ export default function AISEO() {
               setSpecs={setSpecs}
               keywords={keywords}
               setKeywords={setKeywords}
+              imageUrls={imageUrls}
+              setImageUrls={setImageUrls}
               onImageUpload={handleImageUpload}
               isExtracting={isExtracting}
               onGenerate={handleGenerate}

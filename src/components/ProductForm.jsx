@@ -4,6 +4,7 @@ export default function ProductForm({
   productName, setProductName, 
   specs, setSpecs, 
   keywords, setKeywords, // Thêm state keywords
+  imageUrls, setImageUrls,
   onImageUpload, isExtracting, // Thêm props xử lý ảnh
   onGenerate, isLoading, 
   selectedPlatforms, setSelectedPlatforms 
@@ -54,10 +55,22 @@ export default function ProductForm({
           <textarea className="form-control" rows="3" value={specs} onChange={(e) => setSpecs(e.target.value)} placeholder="Nhập thông số chi tiết..." disabled={isLoading}></textarea>
         </div>
 
+        <div className="mb-3">
+          <label className="form-label fw-bold">URL ảnh sản phẩm (mỗi dòng 1 URL)</label>
+          <textarea
+            className="form-control"
+            rows="2"
+            value={imageUrls}
+            onChange={(e) => setImageUrls(e.target.value)}
+            placeholder="https://example.com/image1.jpg\nhttps://example.com/image2.jpg"
+            disabled={isLoading}
+          ></textarea>
+        </div>
+
         {/* KHU VỰC TỪ KHÓA SEO & ẢNH */}
         <div className="mb-3 position-relative">
           <label className="form-label fw-bold d-flex justify-content-between">
-            <span>Từ khóa SEO (YouTube)</span>
+            <span>Keywords liên quan</span>
             <span className="text-primary" style={{cursor: 'pointer', fontSize: '0.9rem'}} onClick={() => fileInputRef.current.click()}>
               <i className="bi bi-image"></i> Tải ảnh lên
             </span>

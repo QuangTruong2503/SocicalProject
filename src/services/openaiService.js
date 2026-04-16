@@ -5,12 +5,11 @@ const API_KEY = import.meta.env.VITE_OPENAI_API_KEY;
 
 // Hàm cũ: Gọi text thông thường
 export const callOpenAI = async (prompt) => {
-  // ... (giữ nguyên code cũ của bạn)
   try {
     const response = await axios.post(
       API_URL,
       {
-        model: 'gpt-4o',
+        model: 'gpt-5.4-nano',
         messages: [{ role: 'user', content: prompt }],
         temperature: 0.7,
       },
