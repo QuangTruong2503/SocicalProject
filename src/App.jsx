@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route, Link } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, NavLink } from 'react-router-dom';
 import AISEO from './pages/AISEO.jsx';
 import Watermark from './pages/Watermark.jsx';
 import Footer from './components/Footer.jsx';
@@ -26,9 +26,9 @@ function NotFoundPage() {
   return (
     <div className="container py-5">
       <div className="alert alert-warning">Trang không tồn tại.</div>
-      <Link to="/" className="btn btn-secondary">
+      <NavLink to="/" className="btn btn-secondary">
         Quay về Trang chủ
-      </Link>
+      </NavLink>
     </div>
   );
 }
@@ -39,19 +39,19 @@ export default function App() {
       <div className="bg-light min-vh-100">
         <nav className="navbar navbar-expand-lg navbar-light bg-white border-bottom">
           <div className="container">
-            <Link className="navbar-brand" to="/">
+            <NavLink className="navbar-brand" to="/">
               <img src="/zeplao.png" alt="Logo" width="128" height="64" className="d-inline-block align-text-top me-2 rounded-1" />
-            </Link>
+            </NavLink>
             <div className="navbar-nav">
-              <Link className="nav-link" to="/">
+              <NavLink className="nav-link" to="/">
                 Trang chủ
-              </Link>
-              <Link className="nav-link" to="/aiseo">
+              </NavLink>
+              <NavLink className="nav-link" to="/aiseo">
                 AISEO
-              </Link>
-              <Link className="nav-link" to="/watermark">
+              </NavLink>
+              <NavLink className="nav-link" to="/watermark">
                 Watermark
-              </Link>
+              </NavLink>
             </div>
           </div>
         </nav>
