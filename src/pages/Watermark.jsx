@@ -131,7 +131,7 @@ export default function Watermark() {
               {/* Action Bar */}
               <div className="wm-action-bar">
                 <button
-                  className="btn wm-btn-primary wm-create-btn"
+                  className="btn wm-btn-primary wm-create-btn text-light"
                   onClick={handleCreate}
                   disabled={!canCreate}
                 >

@@ -92,32 +92,52 @@ export async function processWatermark(sourceFile, logoUrl, options) {
  * Resize a JPEG blob to 800×600 (letterboxed with black bars)
  */
 export async function resizeBlob(blob, width = 800, height = 600) {
-  return new Promise((resolve, reject) => {
-    const img = new Image();
-    img.onload = () => {
-      const canvas = document.createElement('canvas');
-      canvas.width = width;
-      canvas.height = height;
-      const ctx = canvas.getContext('2d');
-      ctx.fillStyle = '#000';
-      ctx.fillRect(0, 0, width, height);
+  const url = URL.createObjectURL(blob);
+  
+  try {
+    return await new Promise((resolve, reject) => {
+      const img = new Image();
+      
+      img.onload = () => {
+        // Clean up the object URL as soon as the image is loaded
+        URL.revokeObjectURL(url);
 
-      const scale = Math.min(width / img.naturalWidth, height / img.naturalHeight);
-      const dw = img.naturalWidth * scale;
-      const dh = img.naturalHeight * scale;
-      const dx = (width - dw) / 2;
-      const dy = (height - dh) / 2;
-      ctx.drawImage(img, dx, dy, dw, dh);
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
 
-      canvas.toBlob(
-        (b) => (b ? resolve(b) : reject(new Error('resize failed'))),
-        'image/jpeg',
-        0.9
-      );
-    };
-    img.onerror = () => reject(new Error('img load error'));
-    img.src = URL.createObjectURL(blob);
-  });
+        // Fill background
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, width, height);
+
+        // Calculate aspect ratio (Contain)
+        const scale = Math.min(width / img.naturalWidth, height / img.naturalHeight);
+        const dw = img.naturalWidth * scale;
+        const dh = img.naturalHeight * scale;
+        const dx = (width - dw) / 2;
+        const dy = (height - dh) / 2;
+
+        ctx.drawImage(img, dx, dy, dw, dh);
+
+        canvas.toBlob(
+          (result) => (result ? resolve(result) : reject(new Error('Canvas to Blob failed'))),
+          'image/jpeg',
+          0.9
+        );
+      };
+
+      img.onerror = () => {
+        URL.revokeObjectURL(url);
+        reject(new Error('Image load error'));
+      };
+
+      img.src = url;
+    });
+  } catch (error) {
+    URL.revokeObjectURL(url); // Safety fallback
+    throw error;
+  }
 }
 
 export function buildFileName(baseName, index, total) {

@@ -10,19 +10,19 @@ export default function WatermarkGallery({ results, onClear, onDownloadAll, isPr
           <h5 className="wm-gallery-title mb-0">
             <i className="bi bi-grid-1x2-fill me-2" />
             Kết quả
-            <span className="wm-badge ms-2">{results.length}</span>
+            <span className="wm-badge ms-2 text-light">{results.length}</span>
           </h5>
         </div>
 
         <div className="d-flex gap-2 flex-wrap">
           <div className="dropdown">
             <button
-              className="btn wm-btn-primary dropdown-toggle"
+              className="btn btn-primary dropdown-toggle"
               data-bs-toggle="dropdown"
               disabled={results.length === 0}
             >
               <i className="bi bi-download me-2" />
-              Tải tất cả
+              <strong>Tải tất cả</strong>
             </button>
             <ul className="dropdown-menu dropdown-menu-dark dropdown-menu-end wm-dropdown">
               <li>

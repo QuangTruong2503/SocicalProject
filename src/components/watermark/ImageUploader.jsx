@@ -37,7 +37,7 @@ export default function ImageUploader({ images, onImagesChange }) {
         <i className="bi bi-images me-2" />
         Ảnh nguồn
         {images.length > 0 && (
-          <span className="wm-badge ms-2">{images.length}</span>
+          <span className="wm-badge ms-2 text-light">{images.length}</span>
         )}
       </div>
 

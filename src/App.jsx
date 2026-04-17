@@ -2,7 +2,6 @@ import { BrowserRouter, Routes, Route, NavLink } from 'react-router-dom';
 import AISEO from './pages/AISEO.jsx';
 import Watermark from './pages/Watermark.jsx';
 import Footer from './components/Footer.jsx';
-import './styles/App.css';
 function HomePage() {
   return (
     <div className="container py-5">

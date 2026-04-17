@@ -1,1 +1,6 @@
 @import url('https://fonts.googleapis.com/css2?family=Merienda:wght@300..900&display=swap');
+
+.navbar-nav .active {
+  font-weight: 500;
+  color: rgb(0, 94, 255) !important;
+}
