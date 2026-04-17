@@ -1,8 +1,7 @@
 import axios from 'axios';
-
 const API_URL = 'https://api.openai.com/v1/chat/completions';
-const API_KEY = import.meta.env.VITE_OPENAI_API_KEY;
 
+const API_KEY = import.meta.env.VITE_OPENAI_API_KEY;
 // Hàm cũ: Gọi text thông thường
 export const callOpenAI = async (prompt) => {
   try {

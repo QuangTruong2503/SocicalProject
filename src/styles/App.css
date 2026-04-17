@@ -4,3 +4,63 @@
   font-weight: 500;
   color: rgb(0, 94, 255) !important;
 }
+
+/* Bootstrap utility enhancements */
+.bg-danger-light {
+  background-color: #f8d7da;
+}
+
+.bg-info-light {
+  background-color: #d1ecf1;
+}
+
+.text-white-50 {
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.text-muted-light {
+  color: #999;
+}
+
+.text-info-emphasis {
+  color: #055160;
+}
+
+.spinner {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Additional utility classes */
+.min-vh-100 {
+  min-height: 100vh;
+}
+
+.container-fluid {
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+.gap-2 {
+  gap: 0.5rem;
+}
+
+.gap-3 {
+  gap: 0.75rem;
+}
+
+.gap-4 {
+  gap: 1rem;
+}
+
+.fs-7 {
+  font-size: 0.85rem;
+}
