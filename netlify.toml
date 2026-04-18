@@ -3,36 +3,31 @@
   publish = "dist"
   functions = "netlify/functions"
 
-# API redirects - these must have force = true to override catch-all
-[[redirects]]
+# API routes - use rewrites instead of redirects to avoid catch-all interference
+[[rewrites]]
   from = "/api/auth/register"
   to = "/.netlify/functions/auth-register"
   status = 200
-  force = true
 
-[[redirects]]
+[[rewrites]]
   from = "/api/auth/login"
   to = "/.netlify/functions/auth-login"
   status = 200
-  force = true
 
-[[redirects]]
+[[rewrites]]
   from = "/api/hello"
   to = "/.netlify/functions/hello"
   status = 200
-  force = true
 
-[[redirects]]
+[[rewrites]]
   from = "/api/users/:user_id/status"
   to = "/.netlify/functions/user-status?user_id=:user_id"
   status = 200
-  force = true
 
-[[redirects]]
+[[rewrites]]
   from = "/api/users/:user_id"
   to = "/.netlify/functions/user-profile?user_id=:user_id"
   status = 200
-  force = true
 
 # Catch-all for React SPA - must be last
 [[redirects]]
