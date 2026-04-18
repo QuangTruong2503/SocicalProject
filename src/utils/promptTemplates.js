@@ -30,11 +30,7 @@ Tiêu đề (H1): Giật tít theo công thức: [Tên sản phẩm] + [Lợi í
 
 Mở đầu (Sa-pô): Sử dụng phương pháp P-A-S (Problem - Agitate - Solve). Đặt câu hỏi về nỗi đau của thợ (máy nặng, dây dợ lằng nhằng, kẹt mũi gây lật cổ tay). Sau đó giới thiệu sản phẩm là giải pháp lý tưởng, Viết 100 chữ đầu tiên sao cho chứa từ khóa chính một cách tự nhiên nhất, bôi đậm các từ khóa được lồng ghép.
 
-H2 - Giới thiệu công nghệ: Phân tích các công nghệ "đắt tiền" của máy (Brushless, KickBack Control, XPT, AVT...). So sánh ngầm với các dòng máy đời cũ hoặc hàng bãi để làm nổi bật giá trị máy mới.
-
 H2 - Thông số kỹ thuật: Trình bày dưới dạng Table HTML (Border = 1). Cột trái là thông số, cột phải là chi tiết.
-
-H2 - Ưu điểm vượt trội: Sử dụng thẻ <ul> và <li>. Mỗi ưu điểm phải có tiêu đề bôi đậm, sau đó giải thích lợi ích thực tế cho công việc (ví dụ: giúp khoan trên cao không mỏi, giúp an toàn khi gặp cốt thép...).
 
 H2 - Hướng dẫn & Lưu ý: Sử dụng thẻ <ol> và <li>. Tập trung vào việc bảo quản hệ pin, vệ sinh đầu kẹp và cách sử dụng để máy không bị quá tải.
 
@@ -73,14 +69,13 @@ Bạn là một chuyên gia SEO YouTube chuyên biệt cho ngành máy móc côn
 
 #### 1. Bộ 5 Tiêu đề (Titles) Tối ưu CTR:
 - Cấu trúc: [Từ khóa chính] + [Lợi ích cực đại/Cảnh báo] + [Emoji].
-- Yêu cầu: Ít nhất 1 tiêu đề đánh vào tâm lý "Thợ chuyên nghiệp", 1 tiêu đề so sánh, và 1 tiêu đề khẳng định vị thế "Vua" của sản phẩm.
+- Yêu cầu: Ít nhất 1 tiêu đề đánh vào tâm lý người dùng, 1 tiêu đề so sánh, và 1 tiêu đề khẳng định vị thế "Vua" của sản phẩm.
 - Độ dài: < 70 ký tự.
 
 #### 2. Mô tả Video (Description) Chuẩn "SEO Vua":
-- **Đoạn đầu (2 dòng đầu):** Phải chứa từ khóa chính và lời hứa hẹn giải quyết vấn đề của khách hàng (Để hiển thị tốt trên Google Search).
-- **Phân bổ nội dung:** - Diễn giải ${specs} thành "Ngôn ngữ thợ máy" (Ví dụ: Thay vì nói 'Moment xoắn cao', hãy nói 'Chấp mọi loại vít cứng đầu, không lo cháy máy').
-   - Lồng ghép mượt mà ${keywords} và các từ khóa liên quan đến địa phương/ngành hàng.
-- **Khối thông tin mua hàng:** Chèn y nguyên ${companyInfo}.
+- Phải chứa từ khóa chính và lời hứa hẹn giải quyết vấn đề của khách hàng (Để hiển thị tốt trên Google Search).
+- Lồng ghép mượt mà ${keywords} và các từ khóa liên quan đến địa phương/ngành hàng.
+- Chèn y nguyên ${companyInfo}.
 
 #### 3. Danh sách Tag YouTube (Phủ rộng 500 ký tự):
 - Tạo danh sách ngăn cách bởi dấu phẩy.

@@ -9,6 +9,10 @@ const config = {
         user: process.env.DATABASE_USER,
         password: process.env.DATABASE_PASSWORD,
         ssl_ca: process.env.DATABASE_SSL_CA
+    },
+    auth: {
+        jwtSecret: process.env.JWT_SECRET || 'please-change-this-secret',
+        jwtExpiresIn: process.env.JWT_EXPIRES_IN || '1h'
     }
 };
 

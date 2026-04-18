@@ -1,140 +1,20 @@
 const express = require('express');
-const mysql = require('mysql2');
 const cors = require('cors');
 const { v4: uuidv4 } = require('uuid');
-const bcrypt = require('bcrypt');
-const fs = require('fs');
-const path = require('path');
-const config = require('../config.cjs');
+const authRoutes = require('./routes/authRoutes.cjs');
+const db = require('./db.cjs');
 require('dotenv').config();
 
 const app = express();
 app.use(cors());
 app.use(express.json());
+app.use('/api/auth', authRoutes);
 
-
-// Cấu hình kết nối MySQL với SSL CA Certificate
-const db = mysql.createConnection({
-    host: config.database.host,
-    user: config.database.user,
-    password: config.database.password,
-    database: config.database.name,
-    port: config.database.port,
-    ssl: {
-        ca: fs.readFileSync(__dirname + '/ca.pem') || config.database.ssl_ca, // Sử dụng biến môi trường chứa nội dung chứng chỉ CA
-        rejectUnauthorized: true // Bắt buộc kiểm tra chứng chỉ hợp lệ
-    }
-});
-db.connect(err => {
-    if (err) {
-        console.error('❌ Lỗi kết nối MySQL:', err.message);
-    } else {
-        console.log('✅ Đã kết nối MySQL an toàn qua SSL!');
-    }
-});
 
 // get xin chào
 app.get('/api/hello', (req, res) => {
     res.json({ message: 'Xin chào từ server!' });
 });
-// API: Tạo người dùng và ghi log hoạt động
-app.post('/api/register', async (req, res) => {
-    try {
-        const { username, email, password, full_name, ip_address, user_agent } = req.body;
-        
-        // Validation
-        if (!username || !email || !password) {
-            return res.status(400).json({ 
-                success: false, 
-                error: 'Username, email, và password là bắt buộc' 
-            });
-        }
-
-        const userId = uuidv4();
-        const activityId = uuidv4();
-
-        // Hash password với bcrypt (salt rounds: 10)
-        const password_hash = await bcrypt.hash(password, 10);
-
-        // Sử dụng Transaction để đảm bảo cả User và Log đều được tạo thành công
-        db.beginTransaction(err => {
-            if (err) {
-                return res.status(500).json({ 
-                    success: false, 
-                    error: 'Lỗi bắt đầu transaction: ' + err.message 
-                });
-            }
-
-            // 1. Chèn vào bảng users
-            const sqlUser = `INSERT INTO users (user_id, username, email, password_hash, full_name, role, status) 
-                             VALUES (?, ?, ?, ?, ?, 'customer', 'active')`;
-            
-            db.query(sqlUser, [userId, username, email, password_hash, full_name], (err) => {
-                if (err) {
-                    return db.rollback(() => {
-                        if (err.code === 'ER_DUP_ENTRY') {
-                            return res.status(409).json({ 
-                                success: false, 
-                                error: 'Username hoặc email đã tồn tại' 
-                            });
-                        }
-                        res.status(500).json({ 
-                            success: false, 
-                            error: 'Lỗi tạo người dùng: ' + err.message 
-                        });
-                    });
-                }
-
-                // 2. Ghi log hoạt động đăng ký
-                const sqlLog = `INSERT INTO user_activities (activity_id, user_id, action, module, description, ip_address, user_agent) 
-                                VALUES (?, ?, ?, ?, ?, ?, ?)`;
-                
-                db.query(sqlLog, [
-                    activityId, 
-                    userId, 
-                    'register', 
-                    'auth', 
-                    `Người dùng ${username} đăng ký tài khoản mới`, 
-                    ip_address || null,
-                    user_agent || null
-                ], (err) => {
-                    if (err) {
-                        return db.rollback(() => {
-                            res.status(500).json({ 
-                                success: false, 
-                                error: 'Lỗi ghi log: ' + err.message 
-                            });
-                        });
-                    }
-
-                    db.commit(err => {
-                        if (err) {
-                            return db.rollback(() => {
-                                res.status(500).json({ 
-                                    success: false, 
-                                    error: 'Lỗi commit transaction: ' + err.message 
-                                });
-                            });
-                        }
-                        res.status(201).json({ 
-                            success: true, 
-                            message: 'Đăng ký thành công',
-                            userId: userId,
-                            username: username,
-                            email: email
-                        });
-                    });
-                });
-            });
-        });
-    } catch (error) {
-        res.status(500).json({ 
-            success: false, 
-            error: 'Lỗi server: ' + error.message 
-        });
-    }
-});
-
 // API: Lấy thông tin profile dựa trên user_id
 app.get('/api/users/:user_id', (req, res) => {
     try {

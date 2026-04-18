@@ -134,7 +134,6 @@ export default function AISEO() {
 
   return (
     <div className="bg-light min-vh-100 pb-5">
-      <Header />
       <div className="container">
         <HistoryDropdown history={history} onSelectHistory={handleSelectHistory} />
 
