@@ -1,4 +1,5 @@
-const API_URL = 'http://localhost:5000/api';
+const serverUrl = process.env.REACT_APP_SERVER_URL || 'http://localhost:5000';
+const API_URL = `${serverUrl}/api`;
 
 // Lấy IP và user-agent từ client
 const getClientInfo = async () => {

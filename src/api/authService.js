@@ -1,4 +1,5 @@
-const API_BASE = 'http://localhost:5000/api/auth';
+const serverUrl = process.env.REACT_APP_SERVER_URL || 'http://localhost:5000';
+const API_BASE = `${serverUrl}/api/auth`;
 
 export async function registerUser({ username, email, password, full_name }) {
     try {
