@@ -1,6 +1,8 @@
 import { BrowserRouter, Routes, Route, NavLink } from 'react-router-dom';
 import AISEO from './pages/AISEO.jsx';
 import Watermark from './pages/Watermark.jsx';
+import LoginPage from './pages/LoginPage.jsx';
+import RegisterPage from './pages/RegisterPage.jsx';
 import Footer from './components/Footer.jsx';
 import ActivitiesPage from './pages/ActivitiesPage.jsx';
 import Header from './components/Header.jsx';
@@ -44,6 +46,8 @@ export default function App() {
           <Route path="/aiseo" element={<AISEO />} />
           <Route path="/watermark" element={<Watermark />} />
           <Route path="/activities" element={<ActivitiesPage />} />
+          <Route path="/login" element={<LoginPage />} />
+          <Route path="/register" element={<RegisterPage />} />
           <Route path="*" element={<NotFoundPage />} />
         </Routes>
       </div>
