@@ -13,11 +13,10 @@ const db = mysql.createConnection({
         rejectUnauthorized: true
     }
 });
-
 db.connect(err => {
     if (err) {
         console.error('❌ Lỗi kết nối MySQL:', err.message);
-    } else {
+    } else {    
         console.log('✅ Đã kết nối MySQL an toàn qua SSL!');
     }
 });

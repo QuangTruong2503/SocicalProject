@@ -11,7 +11,7 @@ const config = {
         ssl_ca: process.env.DATABASE_SSL_CA
     },
     auth: {
-        jwtSecret: process.env.JWT_SECRET || 'please-change-this-secret',
+        jwtSecret: process.env.JWT_SECRET,
         jwtExpiresIn: process.env.JWT_EXPIRES_IN || '1h'
     }
 };

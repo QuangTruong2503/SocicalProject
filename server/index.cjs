@@ -11,10 +11,6 @@ app.use(express.json());
 app.use('/api/auth', authRoutes);
 
 
-// get xin chào
-app.get('/api/hello', (req, res) => {
-    res.json({ message: 'Xin chào từ server!' });
-});
 // API: Lấy thông tin profile dựa trên user_id
 app.get('/api/users/:user_id', (req, res) => {
     try {

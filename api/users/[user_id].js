@@ -7,7 +7,7 @@ const dbConfig = {
   user: process.env.DATABASE_USER || config.database?.user,
   password: process.env.DATABASE_PASSWORD || config.database?.password,
   database: process.env.DATABASE_NAME || config.database?.name,
-  port: process.env.DATABASE_PORT || config.database?.port || 3306,
+  port: process.env.DATABASE_PORT || config.database?.port || 18172,
 };
 
 export default async function handler(req, res) {
