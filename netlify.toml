@@ -1,3 +1,38 @@
+[build]
+  command = "npm run build"
+  publish = "dist"
+  functions = "netlify/functions"
+
+[[redirects]]
+  from = "/api/auth/register"
+  to = "/.netlify/functions/auth-register"
+  status = 200
+  methods = ["POST"]
+
+[[redirects]]
+  from = "/api/auth/login"
+  to = "/.netlify/functions/auth-login"
+  status = 200
+  methods = ["POST"]
+
+[[redirects]]
+  from = "/api/hello"
+  to = "/.netlify/functions/hello"
+  status = 200
+  methods = ["GET"]
+
+[[redirects]]
+  from = "/api/users/:user_id"
+  to = "/.netlify/functions/user-profile?user_id=:user_id"
+  status = 200
+  methods = ["GET"]
+
+[[redirects]]
+  from = "/api/users/:user_id/status"
+  to = "/.netlify/functions/user-status?user_id=:user_id"
+  status = 200
+  methods = ["PUT"]
+
 [[redirects]]
   from = "/*"
   to = "/index.html"
