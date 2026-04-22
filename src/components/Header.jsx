@@ -1,11 +1,32 @@
-import React from 'react';
-
+import React from "react";
+import { NavLink } from "react-router-dom";
 export default function Header() {
   return (
-    <header className="bg-primary text-white py-3 mb-4 shadow-sm">
-      <div className="container d-flex align-items-center">
-        <h1 className="h3 mb-0 fw-bold">🚀 SEO Content Generator</h1>
-      </div>
+    <header className="mt-5">
+      <nav className="navbar navbar-expand-lg navbar-light bg-white border-bottom">
+        <div className="container">
+          <NavLink className="navbar-brand" to="/">
+            <img
+              src="/zeplao.png"
+              alt="Logo"
+              width="128"
+              height="64"
+              className="d-inline-block align-text-top me-2 rounded-1"
+            />
+          </NavLink>
+          <div className="navbar-nav">
+            <NavLink className="nav-link" to="/">
+              Trang chủ
+            </NavLink>
+            <NavLink className="nav-link" to="/aiseo">
+              AISEO
+            </NavLink>
+            <NavLink className="nav-link" to="/watermark">
+              Watermark
+            </NavLink>
+          </div>
+        </div>
+      </nav>
     </header>
   );
 }

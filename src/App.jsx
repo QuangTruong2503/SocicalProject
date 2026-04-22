@@ -2,6 +2,8 @@ import { BrowserRouter, Routes, Route, NavLink } from 'react-router-dom';
 import AISEO from './pages/AISEO.jsx';
 import Watermark from './pages/Watermark.jsx';
 import Footer from './components/Footer.jsx';
+import Banner from './components/Banner/Banner.jsx';
+import Header from './components/Header.jsx';
 function HomePage() {
   return (
     <div className="container py-5">
@@ -35,26 +37,9 @@ function NotFoundPage() {
 export default function App() {
   return (
     <BrowserRouter>
-      <div className="bg-light min-vh-100">
-        <nav className="navbar navbar-expand-lg navbar-light bg-white border-bottom">
-          <div className="container">
-            <NavLink className="navbar-brand" to="/">
-              <img src="/zeplao.png" alt="Logo" width="128" height="64" className="d-inline-block align-text-top me-2 rounded-1" />
-            </NavLink>
-            <div className="navbar-nav">
-              <NavLink className="nav-link" to="/">
-                Trang chủ
-              </NavLink>
-              <NavLink className="nav-link" to="/aiseo">
-                AISEO
-              </NavLink>
-              <NavLink className="nav-link" to="/watermark">
-                Watermark
-              </NavLink>
-            </div>
-          </div>
-        </nav>
-
+      <div className="bg-light z-1 min-vh-100">
+        <Banner />
+        <Header />
         <Routes>
           <Route path="/" element={<HomePage />} />
           <Route path="/aiseo" element={<AISEO />} />
