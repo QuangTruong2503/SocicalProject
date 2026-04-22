@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Helmet } from 'react-helmet-async';
 import Header from '../components/Header';
 import CompanyConfig from '../components/CompanyConfig';
 import ProductForm from '../components/ProductForm';
@@ -133,16 +134,19 @@ export default function AISEO() {
   };
 
   return (
-    <div className="bg-light min-vh-100 pb-5">
-      <Header />
-      <div className="container">
-        <HistoryDropdown history={history} onSelectHistory={handleSelectHistory} />
+    <>
+      <Helmet>
+        <title>AISEO - Tạo Nội Dung Sản Phẩm</title>
+      </Helmet>
+      <div className="bg-light min-vh-100 pb-5">
+        <div className="container">
+          <HistoryDropdown history={history} onSelectHistory={handleSelectHistory} />
 
-        <div className="row mb-3">
-          <div className="col-lg-5">
-            <CompanyConfig
-              companyInfo={companyInfo}
-              setCompanyInfo={setCompanyInfo}
+          <div className="row mb-3">
+            <div className="col-lg-5">
+              <CompanyConfig
+                companyInfo={companyInfo}
+                setCompanyInfo={setCompanyInfo}
             />
           </div>
           <div className="col-lg-7">
@@ -172,5 +176,6 @@ export default function AISEO() {
         </div>
       </div>
     </div>
+    </>
   );
 }

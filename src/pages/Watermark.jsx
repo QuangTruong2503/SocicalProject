@@ -1,4 +1,5 @@
 import React, { useState, useCallback } from 'react';
+import { Helmet } from 'react-helmet-async';
 import LogoUploader from '../components/watermark/LogoUploader';
 import ImageUploader from '../components/watermark/ImageUploader';
 import WatermarkControls from '../components/watermark/WatermarkControls';
@@ -90,13 +91,17 @@ export default function Watermark() {
   const canCreate = logoUrl && images.length > 0 && !processing;
 
   return (
-    <div className="wm-page">
-      <div className="container">
+    <>
+      <Helmet>
+        <title>Watermark - Thêm Logo Vào Ảnh</title>
+      </Helmet>
+      <div className="wm-page">
+        <div className="container">
 
-        {/* ── Header ── */}
-        <div className="wm-header">
-          <h1 className="wm-headline">
-            Water<span>mark</span>
+          {/* ── Header ── */}
+          <div className="wm-header">
+            <h1 className="wm-headline">
+              Water<span>mark</span>
           </h1>
           <p className="wm-subline">
             Thêm logo bảo vệ bản quyền hàng loạt — nhanh, đẹp, chuẩn.
@@ -185,5 +190,6 @@ export default function Watermark() {
 
       </div>
     </div>
+    </>
   );
 }
