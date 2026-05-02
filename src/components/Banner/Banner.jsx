@@ -29,22 +29,20 @@ const Banner = () => {
           </div>
         ))}
       </div>
-      <div className="banner-marquee-container shadow-sm fixed-top">
+      {/* <div className="banner-marquee-container shadow-sm fixed-top">
       <div className="banner-track">
-        {/* Lặp lại nội dung 2 lần để tạo cảm giác chạy liên tục nếu cần, 
-            hoặc chỉ để 1 cụm như bên dưới */}
+
         <div className="banner-item">
           <span className="h5 mb-0">{message}</span>
           <img src={logo} alt="Icon" className="banner-img rounded" />
         </div>
         
-        {/* Thêm một cụm nữa để tránh khoảng trống lớn khi chạy */}
         <div className="banner-item">
           <span className="h5 mb-0">{message}</span>
           <img src={logo} alt="Icon" className="banner-img rounded" />
         </div>
       </div>
-    </div>
+    </div> */}
     </>
   );
 };
