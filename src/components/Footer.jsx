@@ -5,7 +5,7 @@ const Footer = () => {
   const currentYear = new Date().getFullYear();
 
   return (
-    <footer className="text-dark pt-5 pb-4 mt-auto">
+    <footer className="text-dark bg-light pt-5 pb-4 mt-auto">
       <Container>
         <Row>
           {/* Cột 1: Thông tin công ty/dự án */}

@@ -139,7 +139,7 @@ export default function AISEO() {
         <title>AISEO - Tạo Nội Dung Sản Phẩm</title>
       </Helmet>
       <div className="bg-light min-vh-100 pb-5">
-        <div className="container">
+        <div className="container py-4">
           <HistoryDropdown history={history} onSelectHistory={handleSelectHistory} />
 
           <div className="row mb-3">
