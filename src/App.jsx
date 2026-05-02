@@ -5,6 +5,7 @@ import Watermark from './pages/Watermark.jsx';
 import Footer from './components/Footer.jsx';
 import Banner from './components/Banner/Banner.jsx';
 import Header from './components/Header.jsx';
+import MemoryGame from './pages/MemoryGame.jsx';
 function HomePage() {
   return (
     <>
@@ -23,6 +24,18 @@ function HomePage() {
             </NavLink>
           </div>
         </div>
+        <div className="card shadow-sm">
+          <div className="card-body">
+            <h1 className="card-title">Chào mừng đến với Memory Game</h1>
+            <p className="card-text">
+              Đây là trang chính của ứng dụng. Bạn có thể qua trang Memory Game để chơi trò chơi ghép hình.
+            </p>
+            <NavLink to="/memory-game" className="btn btn-primary">
+              Mở Memory Game
+            </NavLink>
+          </div>
+        </div>
+
 
       </div>
     </>
@@ -57,6 +70,7 @@ export default function App() {
             <Route path="/aiseo" element={<AISEO />} />
             <Route path="/watermark" element={<Watermark />} />
             <Route path="*" element={<NotFoundPage />} />
+            <Route path="/memory-game" element={<MemoryGame />} />
           </Routes>
         </div>
         <Footer />
