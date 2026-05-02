@@ -3,7 +3,6 @@ import { HelmetProvider, Helmet } from 'react-helmet-async';
 import AISEO from './pages/AISEO.jsx';
 import Watermark from './pages/Watermark.jsx';
 import Footer from './components/Footer.jsx';
-import Banner from './components/Banner/Banner.jsx';
 import Header from './components/Header.jsx';
 import MemoryGame from './pages/MemoryGame.jsx';
 function HomePage() {
@@ -63,7 +62,6 @@ export default function App() {
     <HelmetProvider>
       <BrowserRouter>
         <div className="bg-light z-1 min-vh-100">
-          <Banner />
           <Header />
           <Routes>
             <Route path="/" element={<HomePage />} />
