@@ -1,5 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { marked } from 'marked';
+import '../styles/OutputPanel.css';
 
 export default function OutputPanel({ content }) {
   const [copied, setCopied] = useState(false);
@@ -66,31 +67,22 @@ export default function OutputPanel({ content }) {
     }
   };
 
-  if (!content) return <div className="text-muted fst-italic p-3">Chưa có nội dung. Hãy điền thông tin và bấm tạo!</div>;
+  if (!content) return <div className="output-panel-empty">Chưa có nội dung. Hãy điền thông tin và bấm tạo!</div>;
 
   return (
-    <div className="position-relative">
+    <div className="output-panel-wrapper">
       <button 
-        className={`btn btn-sm position-absolute top-0 end-0 m-2 ${copied ? 'btn-success' : 'btn-primary shadow-sm'}`}
-        style={{ zIndex: 10 }}
+        className={`output-panel-copy-btn ${copied ? 'success' : ''}`}
         onClick={handleCopy}
       >
         {copied ? '✅ Đã copy định dạng' : '📋 Copy (Giữ Format)'}
       </button>
-      
-      <div className="bg-light rounded border border-primary-subtle" style={{ height: '500px', overflow: 'hidden' }}>
-        <iframe
-          ref={iframeRef}
-          srcDoc={fullHtml}
-          title="Output Editor"
-          style={{ width: '100%', height: '100%', border: 'none' }}
-        />
-      </div>
-      
-      <small className="text-muted mt-2 d-block">
-        <i className="bi bi-pencil-square me-1"></i>
-        * Mẹo: Bạn có thể click trực tiếp vào khung trên để chỉnh sửa chữ trước khi Copy.
-      </small>
+      <iframe
+        ref={iframeRef}
+        className="output-panel-iframe"
+        srcDoc={fullHtml}
+        title="Output content"
+      ></iframe>
     </div>
   );
 }

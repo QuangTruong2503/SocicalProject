@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { predefinedCompanies } from '../utils/companyData';
+import '../styles/CompanyConfig.css';
 
 export default function CompanyConfig({ companyInfo, setCompanyInfo }) {
   // Trạng thái quản lý giá trị đang được chọn trong Dropdown
@@ -30,17 +31,17 @@ export default function CompanyConfig({ companyInfo, setCompanyInfo }) {
   };
 
   return (
-    <div className="card mb-4 border-primary shadow-sm">
-      <div className="card-header bg-primary text-white">
-        <h5 className="mb-0">🏢 Cấu hình Thông tin Công ty</h5>
+    <div className="company-config-card">
+      <div className="company-config-header">
+        <h5>🏢 Cấu hình Thông tin Công ty</h5>
       </div>
-      <div className="card-body">
+      <div className="company-config-body">
         
         {/* Dropdown chọn công ty */}
-        <div className="mb-3">
-          <label className="form-label fw-bold text-secondary">Chọn nhanh công ty:</label>
+        <div className="company-config-group">
+          <label className="company-config-label">Chọn nhanh công ty:</label>
           <select 
-            className="form-select border-primary" 
+            className="company-config-select" 
             value={selectedCompanyId} 
             onChange={handleSelectChange}
           >
@@ -54,10 +55,10 @@ export default function CompanyConfig({ companyInfo, setCompanyInfo }) {
         </div>
 
         {/* Textarea hiển thị và cho phép chỉnh sửa */}
-        <div className="mb-2">
-          <label className="form-label fw-bold text-secondary">Chi tiết thông tin (có thể chỉnh sửa):</label>
+        <div className="company-config-group">
+          <label className="company-config-label">Chi tiết thông tin (có thể chỉnh sửa):</label>
           <textarea
-            className="form-control bg-light"
+            className="company-config-textarea"
             rows="5"
             value={companyInfo}
             onChange={handleTextareaChange}
@@ -65,10 +66,10 @@ export default function CompanyConfig({ companyInfo, setCompanyInfo }) {
           ></textarea>
         </div>
         
-        <small className="text-muted d-block mt-2">
-          <i className="bi bi-info-circle me-1"></i>
-          Thông tin trong khung chữ nhật trên sẽ được tự động chèn vào nội dung Website và Facebook.
-        </small>
+        <div className="company-config-hint">
+          <span>ℹ️</span>
+          <span>Thông tin trong khung chữ nhật trên sẽ được tự động chèn vào nội dung Website và Facebook.</span>
+        </div>
       </div>
     </div>
   );

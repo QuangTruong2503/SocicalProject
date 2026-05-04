@@ -1,5 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 import { saveLogo, loadLogo, clearLogo } from '../../hooks/useIndexedDB';
+import '../../styles/LogoUploader.css';
 
 export default function LogoUploader({ logoUrl, logoName, onLogoChange }) {
   const fileRef = useRef();
@@ -11,7 +12,7 @@ export default function LogoUploader({ logoUrl, logoName, onLogoChange }) {
         if (result) onLogoChange(result.url, result.name);
       })
       .catch(() => {});
-  }, []);
+  }, [onLogoChange]);
 
   const handleFile = async (e) => {
     const file = e.target.files[0];
@@ -34,7 +35,7 @@ export default function LogoUploader({ logoUrl, logoName, onLogoChange }) {
   return (
     <div className="wm-logo-uploader">
       <div className="wm-section-label">
-        <i className="bi bi-shield-check me-2" />
+        <span className="wm-inline-icon" aria-hidden="true">◇</span>
         Logo Watermark
       </div>
 
@@ -45,29 +46,29 @@ export default function LogoUploader({ logoUrl, logoName, onLogoChange }) {
           </div>
           <div className="wm-logo-info">
             <span className="wm-logo-name" title={logoName}>
-              <i className="bi bi-check-circle-fill text-success me-1" />
+              <span className="wm-status-icon" aria-hidden="true">✓</span>
               {logoName}
             </span>
-            <small className="text-muted d-block mb-2">Đã lưu vào thiết bị</small>
-            <div className="d-flex gap-2">
+            <small className="wm-muted-text wm-block-text">Đã lưu vào thiết bị</small>
+            <div className="wm-inline-actions">
               <button
-                className="btn btn-sm wm-btn-outline"
+                className="wm-btn-outline wm-btn-small"
                 onClick={() => fileRef.current?.click()}
               >
-                <i className="bi bi-arrow-repeat me-1" />
+                <span className="wm-inline-icon" aria-hidden="true">↻</span>
                 Thay đổi
               </button>
-              <button className="btn btn-sm wm-btn-danger-ghost" onClick={handleClear}>
-                <i className="bi bi-trash3" />
+              <button className="wm-btn-danger-ghost wm-btn-small" onClick={handleClear}>
+                <span aria-hidden="true">×</span>
               </button>
             </div>
           </div>
         </div>
       ) : (
         <div className="wm-dropzone" onClick={() => fileRef.current?.click()}>
-          <i className="bi bi-image-alt wm-dropzone-icon" />
-          <p className="mb-1 fw-semibold">Chọn file logo</p>
-          <small className="text-muted">PNG, SVG, WebP – nền trong suốt tốt nhất</small>
+          <span className="wm-dropzone-icon" aria-hidden="true">▧</span>
+          <p className="wm-dropzone-title">Chọn file logo</p>
+          <small className="wm-muted-text">PNG, SVG, WebP – nền trong suốt tốt nhất</small>
         </div>
       )}
 

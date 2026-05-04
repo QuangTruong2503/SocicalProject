@@ -108,3 +108,7 @@
     opacity: 0;
   }
 }
+
+.snow-container--top {
+  z-index: 3;
+}

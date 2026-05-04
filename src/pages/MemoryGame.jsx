@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from "react";
+import { memo, useCallback, useEffect, useRef, useState } from "react";
 import cardsData from "../data/cards.json";
 import "../styles/MemoryGame.css";
 import { Helmet } from "react-helmet-async";
@@ -27,103 +27,51 @@ const getRandomCards = () => {
 };
 
 export default function MemoryGame() {
-  const [cards, setCards] = useState([]);
+  const [cards, setCards] = useState(() => getRandomCards());
   const [firstCard, setFirstCard] = useState(null);
   const [secondCard, setSecondCard] = useState(null);
   const [disabled, setDisabled] = useState(false);
   const [turns, setTurns] = useState(0);
   const [matches, setMatches] = useState(0);
   const [won, setWon] = useState(false);
-  const [bestScore, setBestScore] = useState(null);
-  const audioRef = useRef(null);
-
-  // Load best score from localStorage
-  useEffect(() => {
+  const [bestScore, setBestScore] = useState(() => {
     const saved = localStorage.getItem("memoryGameBestScore");
-    if (saved) setBestScore(parseInt(saved, 10));
-  }, []);
-
-  const startGame = () => {
-    const newCards = getRandomCards();
-    setCards(newCards);
-    setFirstCard(null);
-    setSecondCard(null);
-    setDisabled(false);
-    setTurns(0);
-    setMatches(0);
-    setWon(false);
-  };
+    return saved ? parseInt(saved, 10) : null;
+  });
+  const audioContextRef = useRef(null);
+  const resetTimerRef = useRef(null);
 
   useEffect(() => {
-    startGame();
-  }, []);
+    cards.forEach((card) => {
+      const image = new Image();
+      image.src = card.image;
+    });
+  }, [cards]);
 
-  // Handle card matching logic
   useEffect(() => {
-    if (!firstCard || !secondCard) return;
-
-    setDisabled(true);
-    const newTurns = turns + 1;
-    setTurns(newTurns);
-
-    if (firstCard.id === secondCard.id) {
-      // Match found!
-      playSound("match");
-      setCards((prev) =>
-        prev.map((card) =>
-          card.id === firstCard.id ? { ...card, matched: true } : card,
-        ),
-      );
-      setMatches((prev) => prev + 1);
-      resetTurn();
-    } else {
-      // No match - flip back after delay
-      playSound("mismatch");
-      const timer = setTimeout(resetTurn, 900);
-      return () => clearTimeout(timer);
-    }
-  }, [secondCard]);
-
-  // Check win condition
-  useEffect(() => {
-    if (cards.length === 0) return;
-
-    if (cards.every((card) => card.matched) && matches > 0) {
-      setWon(true);
-      playSound("win");
-
-      // Update best score
-      if (bestScore === null || turns < bestScore) {
-        setBestScore(turns);
-        localStorage.setItem("memoryGameBestScore", turns);
+    return () => {
+      if (resetTimerRef.current) {
+        window.clearTimeout(resetTimerRef.current);
       }
+      audioContextRef.current?.close?.();
+    };
+  }, []);
+
+  const playSound = useCallback((type) => {
+    const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+
+    if (!AudioContextClass) return;
+
+    if (!audioContextRef.current) {
+      audioContextRef.current = new AudioContextClass();
     }
-  }, [matches, cards, turns, bestScore]);
 
-  const handleChoice = (card) => {
-    if (
-      disabled ||
-      card.matched ||
-      firstCard?.uniqueId === card.uniqueId ||
-      (firstCard && secondCard)
-    ) {
-      return;
+    const audioContext = audioContextRef.current;
+
+    if (audioContext.state === "suspended") {
+      audioContext.resume();
     }
 
-    firstCard ? setSecondCard(card) : setFirstCard(card);
-  };
-
-  const resetTurn = () => {
-    setFirstCard(null);
-    setSecondCard(null);
-    setDisabled(false);
-  };
-
-  const playSound = (type) => {
-    // Simple sound using Web Audio API
-    const audioContext = new (
-      window.AudioContext || window.webkitAudioContext
-    )();
     const oscillator = audioContext.createOscillator();
     const gainNode = audioContext.createGain();
 
@@ -165,7 +113,76 @@ export default function MemoryGame() {
         osc.stop(audioContext.currentTime + idx * 0.15 + 0.3);
       });
     }
-  };
+  }, []);
+
+  const resetTurn = useCallback(() => {
+    setFirstCard(null);
+    setSecondCard(null);
+    setDisabled(false);
+  }, []);
+
+  const startGame = useCallback(() => {
+    if (resetTimerRef.current) {
+      window.clearTimeout(resetTimerRef.current);
+    }
+
+    const newCards = getRandomCards();
+    setCards(newCards);
+    setFirstCard(null);
+    setSecondCard(null);
+    setDisabled(false);
+    setTurns(0);
+    setMatches(0);
+    setWon(false);
+  }, []);
+
+  const resolveSecondChoice = useCallback((card) => {
+    setDisabled(true);
+    const newTurns = turns + 1;
+    setTurns(newTurns);
+    setSecondCard(card);
+
+    if (firstCard.id === card.id) {
+      playSound("match");
+      const nextMatches = matches + 1;
+      const isWinningMove = nextMatches === cards.length / 2;
+
+      setCards((prev) => {
+        return prev.map((item) =>
+          item.id === firstCard.id ? { ...item, matched: true } : item,
+        );
+      });
+      setMatches(nextMatches);
+
+      if (isWinningMove) {
+        setWon(true);
+        playSound("win");
+
+        if (bestScore === null || newTurns < bestScore) {
+          setBestScore(newTurns);
+          localStorage.setItem("memoryGameBestScore", String(newTurns));
+        }
+      }
+
+      resetTurn();
+    } else {
+      playSound("mismatch");
+      resetTimerRef.current = window.setTimeout(resetTurn, 720);
+    }
+  }, [bestScore, cards.length, firstCard, matches, playSound, resetTurn, turns]);
+
+  const handleChoice = useCallback((card) => {
+    if (
+      disabled ||
+      card.matched ||
+      firstCard?.uniqueId === card.uniqueId ||
+      (firstCard && secondCard)
+    ) {
+      return;
+    }
+
+    firstCard ? resolveSecondChoice(card) : setFirstCard(card);
+  }, [disabled, firstCard, resolveSecondChoice, secondCard]);
 
   const totalCards = cards.length;
   const progress =
@@ -234,37 +251,13 @@ export default function MemoryGame() {
                 card === firstCard || card === secondCard || card.matched;
 
               return (
-                <div key={card.uniqueId} className="card-wrapper">
-                  <div
-                    className={`flip-card ${flipped ? "flipped" : ""} ${
-                      card.matched ? "matched" : ""
-                    } ${disabled ? "disabled" : ""}`}
-                    onClick={() => handleChoice(card)}
-                    role="button"
-                    tabIndex={0}
-                    aria-label={`Card ${card.uniqueId}`}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter" || e.key === " ") {
-                        handleChoice(card);
-                      }
-                    }}
-                  >
-                    <div className="flip-card-inner">
-                      <div className="flip-card-front">
-                        <span className="card-emoji">✨</span>
-                      </div>
-
-                      <div className="flip-card-back">
-                        <img
-                          src={card.image}
-                          alt={card.name || "card"}
-                          className="card-image"
-                          loading="lazy"
-                        />
-                      </div>
-                    </div>
-                  </div>
-                </div>
+                <MemoryCard
+                  key={card.uniqueId}
+                  card={card}
+                  flipped={flipped}
+                  disabled={disabled}
+                  onChoice={handleChoice}
+                />
               );
             })}
           </div>
@@ -299,3 +292,53 @@ export default function MemoryGame() {
     </>
   );
 }
+
+const MemoryCard = memo(function MemoryCard({
+  card,
+  flipped,
+  disabled,
+  onChoice,
+}) {
+  const chooseCard = useCallback(() => {
+    onChoice(card);
+  }, [card, onChoice]);
+
+  const handleKeyDown = useCallback((event) => {
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      chooseCard();
+    }
+  }, [chooseCard]);
+
+  return (
+    <div className="card-wrapper">
+      <div
+        className={`flip-card ${flipped ? "flipped" : ""} ${
+          card.matched ? "matched" : ""
+        } ${disabled ? "disabled" : ""}`}
+        onClick={chooseCard}
+        role="button"
+        tabIndex={card.matched ? -1 : 0}
+        aria-label={flipped ? "Thẻ đang mở" : "Mở thẻ"}
+        aria-pressed={flipped}
+        onKeyDown={handleKeyDown}
+      >
+        <div className="flip-card-inner">
+          <div className="flip-card-front">
+            <span className="card-emoji">✨</span>
+          </div>
+
+          <div className="flip-card-back">
+            <img
+              src={card.image}
+              alt={card.name || "memory card"}
+              className="card-image"
+              loading="eager"
+              decoding="async"
+            />
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+});

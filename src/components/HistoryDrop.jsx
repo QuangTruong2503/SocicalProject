@@ -1,15 +1,17 @@
+import '../styles/HistoryDrop.css';
 
 export default function HistoryDrop({ history, onSelectHistory }) {
   if (!history || history.length === 0) return null; // Ẩn nếu chưa có lịch sử
 
   return (
-    <div className="card mb-4 shadow-sm border-info">
-      <div className="card-body py-2 d-flex flex-column flex-md-row align-items-md-center">
-        <label className="fw-bold me-3 text-info mb-2 mb-md-0 text-nowrap">
-          <i className="bi bi-clock-history me-1"></i> Lịch sử phiên:
+    <div className="history-drop">
+      <div className="history-drop-body">
+        <label className="history-drop-label">
+          <span className="history-drop-icon">⏱️</span>
+          Lịch sử phiên:
         </label>
         <select 
-          className="form-select border-info"
+          className="history-drop-select"
           onChange={(e) => onSelectHistory(e.target.value)}
           defaultValue=""
         >

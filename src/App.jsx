@@ -1,13 +1,13 @@
-import { BrowserRouter, Routes, Route, NavLink, useLocation } from 'react-router-dom';
+import { Routes, Route, NavLink, useLocation } from 'react-router-dom';
 import { HelmetProvider, Helmet } from 'react-helmet-async';
-import { useState, useEffect } from 'react';
-import AISEO from './pages/AISEO.jsx';
+import { useTheme } from './hooks/useTheme';
+// import AISEO from './pages/AISEO.jsx';
 import Watermark from './pages/Watermark.jsx';
 import Footer from './components/Footer.jsx';
 import Header from './components/Header.jsx';
+import ScrollToTopButton from './components/ScrollToTopButton.jsx';
 import MemoryGame from './pages/MemoryGame.jsx';
 import SEOKeywords from './pages/SEOKeywords.jsx';
-import './styles/App.css';
 
 // Feature Card Component - Reusable
 function FeatureCard({ icon, title, description, buttonText, link, badge, delay }) {
@@ -37,12 +37,6 @@ function FeatureCard({ icon, title, description, buttonText, link, badge, delay 
 
 // Home Page with Grid Layout
 function HomePage() {
-  const [isLoading, setIsLoading] = useState(true);
-
-  useEffect(() => {
-    setIsLoading(false);
-  }, []);
-
   const features = [
     {
       icon: '🤖',
@@ -89,7 +83,7 @@ function HomePage() {
         <meta name="description" content="Bộ công cụ AI toàn diện: SEO Generator, Memory Game, Watermark Tool" />
       </Helmet>
 
-      <div className={`home-page-wrapper ${isLoading ? 'loading' : 'loaded'}`}>
+      <div className="home-page-wrapper loaded">
         {/* Hero Section */}
         <section className="hero-section">
           <div className="hero-content">
@@ -218,17 +212,18 @@ function NotFoundPage() {
 // Main App Component
 export default function App() {
   const location = useLocation();
+  const { theme } = useTheme();
   const isHomePage = location.pathname === '/';
 
   return (
     <HelmetProvider>
-      <div className="app-container">
+      <div className={`app-container theme-${theme}`} data-theme={theme}>
         <Header />
 
         <main className={`app-main ${isHomePage ? 'home-page' : 'content-page'}`}>
           <Routes>
             <Route path="/" element={<HomePage />} />
-            <Route path="/aiseo" element={<AISEO />} />
+            {/* <Route path="/aiseo" element={<AISEO />} /> */}
             <Route path="/watermark" element={<Watermark />} />
             <Route path="/memory-game" element={<MemoryGame />} />
             <Route path="/seo-keywords" element={<SEOKeywords />} />
@@ -237,6 +232,7 @@ export default function App() {
         </main>
 
         <Footer />
+        <ScrollToTopButton />
       </div>
     </HelmetProvider>
   );

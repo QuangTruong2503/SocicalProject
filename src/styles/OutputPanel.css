@@ -1,0 +1,74 @@
+/* ==================== OUTPUT PANEL STYLES ==================== */
+
+.output-panel-wrapper {
+  position: relative;
+  width: 100%;
+}
+
+.output-panel-copy-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: absolute;
+  top: 0.75rem;
+  right: 0.75rem;
+  z-index: 10;
+  padding: 0.5rem 1rem;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: var(--primary-color);
+  color: white;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--transition-base);
+  gap: 0.5rem;
+}
+
+.output-panel-copy-btn:hover {
+  background: var(--primary-light);
+  box-shadow: var(--shadow-md);
+  transform: translateY(-2px);
+}
+
+.output-panel-copy-btn:active {
+  transform: translateY(0);
+}
+
+.output-panel-copy-btn.success {
+  background: var(--success-color);
+}
+
+.output-panel-iframe {
+  width: 100%;
+  min-height: 400px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  margin-top: 2.5rem;
+  background: var(--bg-dark);
+  color: var(--text-light);
+}
+
+.output-panel-empty {
+  padding: 2rem;
+  text-align: center;
+  color: var(--text-muted);
+  font-style: italic;
+  font-size: 0.95rem;
+}
+
+/* ==================== RESPONSIVE ==================== */
+
+@media (max-width: 768px) {
+  .output-panel-copy-btn {
+    top: 0.5rem;
+    right: 0.5rem;
+    padding: 0.4rem 0.8rem;
+    font-size: 0.8rem;
+  }
+
+  .output-panel-iframe {
+    min-height: 300px;
+    margin-top: 2rem;
+  }
+}

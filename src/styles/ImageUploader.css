@@ -1,0 +1,221 @@
+/* ==================== IMAGE UPLOADER STYLES ==================== */
+
+.image-uploader-section {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  width: 100%;
+}
+
+.image-uploader-dropzone {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  padding: 2.5rem;
+  border: 2px dashed var(--border-color);
+  border-radius: var(--radius-lg);
+  background: var(--bg-card);
+  cursor: pointer;
+  transition: all var(--transition-base);
+  min-height: 200px;
+}
+
+.image-uploader-dropzone:hover {
+  border-color: var(--primary-color);
+  background: rgba(102, 126, 234, 0.05);
+  box-shadow: var(--shadow-md);
+}
+
+.image-uploader-dropzone.active {
+  border-color: var(--primary-color);
+  background: rgba(102, 126, 234, 0.1);
+}
+
+.image-uploader-icon {
+  font-size: 2.5rem;
+  color: var(--text-muted);
+  transition: all var(--transition-base);
+}
+
+.image-uploader-dropzone:hover .image-uploader-icon {
+  color: var(--primary-color);
+  transform: scale(1.1);
+}
+
+.image-uploader-content {
+  text-align: center;
+}
+
+.image-uploader-title {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--text-light);
+  margin: 0;
+}
+
+.image-uploader-desc {
+  font-size: 0.9rem;
+  color: var(--text-muted);
+  margin: 0.5rem 0 0;
+}
+
+.image-uploader-hint {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  margin: 0.75rem 0 0;
+}
+
+.image-uploader-file-input {
+  display: none;
+}
+
+/* Gallery */
+.image-uploader-gallery {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: 1rem;
+  width: 100%;
+}
+
+.image-uploader-gallery-item {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: 0.75rem;
+  transition: all var(--transition-base);
+}
+
+.image-uploader-gallery-item:hover {
+  border-color: var(--primary-color);
+  box-shadow: var(--shadow-md);
+}
+
+.image-uploader-gallery-image {
+  width: 100%;
+  aspect-ratio: 1;
+  object-fit: cover;
+  border-radius: var(--radius-sm);
+  background: var(--bg-dark);
+}
+
+.image-uploader-gallery-name {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  text-align: center;
+  word-break: break-word;
+  white-space: normal;
+  margin: 0;
+  width: 100%;
+}
+
+.image-uploader-gallery-actions {
+  display: flex;
+  gap: 0.3rem;
+  width: 100%;
+  justify-content: center;
+}
+
+.image-uploader-gallery-btn {
+  padding: 0.4rem;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 0.75rem;
+  transition: all var(--transition-base);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+}
+
+.image-uploader-gallery-btn:hover {
+  border-color: var(--primary-color);
+  color: var(--primary-color);
+  background: rgba(102, 126, 234, 0.1);
+}
+
+.image-uploader-gallery-btn.danger:hover {
+  border-color: var(--secondary-color);
+  color: var(--secondary-color);
+  background: rgba(245, 87, 108, 0.1);
+}
+
+/* Loading state */
+.image-uploader-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  padding: 1.5rem;
+  color: var(--primary-color);
+  font-weight: 600;
+}
+
+.image-uploader-spinner {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  border: 2px solid var(--border-color);
+  border-top-color: var(--primary-color);
+  border-radius: 50%;
+  animation: spin 0.6s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Empty state */
+.image-uploader-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  padding: 2rem;
+  text-align: center;
+  color: var(--text-muted);
+}
+
+.image-uploader-empty-icon {
+  font-size: 2rem;
+  opacity: 0.5;
+}
+
+/* ==================== RESPONSIVE ==================== */
+
+@media (max-width: 768px) {
+  .image-uploader-dropzone {
+    padding: 1.5rem;
+    min-height: 150px;
+  }
+
+  .image-uploader-icon {
+    font-size: 2rem;
+  }
+
+  .image-uploader-gallery {
+    grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+    gap: 0.75rem;
+  }
+
+  .image-uploader-gallery-item {
+    padding: 0.5rem;
+  }
+
+  .image-uploader-gallery-name {
+    font-size: 0.7rem;
+  }
+}

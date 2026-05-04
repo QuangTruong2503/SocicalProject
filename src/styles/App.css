@@ -74,6 +74,53 @@
   --z-modal: 1000;
 }
 
+/* ==================== LIGHT THEME ==================== */
+
+[data-theme="light"] {
+  /* Colors - Modern gradient palette (same for both) */
+  --primary-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  --secondary-gradient: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+  --tertiary-gradient: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+  --success-gradient: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
+
+  --primary-color: #667eea;
+  --primary-light: #7c8eed;
+  --primary-dark: #5568d3;
+
+  --secondary-color: #f5576c;
+  --accent-color: #00f2fe;
+  --success-color: #43e97b;
+
+  /* Light theme background & text */
+  --bg-dark: #ffffff;
+  --bg-darker: #f8fafc;
+  --bg-card: #f1f5f9;
+  --bg-card-light: #e2e8f0;
+
+  --bg-light: #ffffff;
+  --bg-light-alt: #f8fafc;
+  --text-light: #0f172a;
+  --text-dark: #0f172a;
+
+  /* Neutral colors */
+  --text-muted: #64748b;
+  --border-color: rgba(15, 23, 42, 0.1);
+  --border-color-light: rgba(0, 0, 0, 0.05);
+
+  /* Shadows - lighter for light theme */
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.04);
+  --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.07);
+  --shadow-lg: 0 10px 25px rgba(0, 0, 0, 0.08);
+  --shadow-xl: 0 20px 50px rgba(0, 0, 0, 0.1);
+  --shadow-glow: 0 0 30px rgba(102, 126, 234, 0.15);
+}
+
+/* ==================== DARK THEME (DEFAULT) ==================== */
+
+[data-theme="dark"] {
+  /* Colors stay the same as :root */
+}
+
 /* ==================== GLOBAL STYLES ==================== */
 
 * {
@@ -85,6 +132,7 @@
 html {
   scroll-behavior: smooth;
   font-size: 16px;
+  transition: background-color var(--transition-base), color var(--transition-base);
 }
 
 body {
@@ -96,6 +144,7 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   overflow-x: hidden;
+  transition: background-color var(--transition-base), color var(--transition-base);
 }
 
 /* ==================== APP LAYOUT ==================== */
@@ -119,7 +168,7 @@ body {
 .app-main.content-page {
   background: rgba(15, 23, 42, 0.5);
   backdrop-filter: blur(10px);
-  padding: var(--spacing-xl) 0;
+  border-radius: var(--radius-lg);
 }
 
 /* ==================== HERO SECTION ==================== */
@@ -971,4 +1020,35 @@ body {
   .btn-secondary {
     border-width: 2px;
   }
+}
+
+/* ==================== EXPLICIT THEME CLASSES ==================== */
+
+:root.theme-light,
+.theme-light {
+  color-scheme: light;
+}
+
+:root.theme-dark,
+.theme-dark {
+  color-scheme: dark;
+}
+
+a {
+  color: inherit;
+}
+
+[data-theme="light"] .app-container,
+.theme-light.app-container {
+  background: linear-gradient(135deg, #ffffff 0%, #f8fafc 50%, #f1f5f9 100%);
+}
+
+[data-theme="dark"] .app-container,
+.theme-dark.app-container {
+  background: linear-gradient(135deg, var(--bg-dark) 0%, #1a1f2e 50%, var(--bg-darker) 100%);
+}
+
+[data-theme="light"] .app-main.content-page,
+.theme-light .app-main.content-page {
+  background: rgba(248, 250, 252, 0.82);
 }

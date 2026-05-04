@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Helmet } from 'react-helmet-async';
 import seoprompt from '../asset/SKPrompt.txt?raw';
 import '../styles/SEOKeywords.css';
@@ -105,7 +105,9 @@ export default function SEOKeywords() {
     setKeywords(null);
     setError('');
   };
-
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, []);
   return (
     <>
       <Helmet>

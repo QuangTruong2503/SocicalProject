@@ -1,0 +1,45 @@
+.aiseo-page {
+  min-height: 100vh;
+  padding: 2rem 0 4rem;
+  background: var(--bg-dark);
+  color: var(--text-light);
+}
+
+.aiseo-container {
+  width: min(100% - 2rem, 1200px);
+  margin: 0 auto;
+}
+
+.aiseo-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
+  gap: 1rem;
+  margin-bottom: 1rem;
+  align-items: start;
+}
+
+.aiseo-company-column,
+.aiseo-form-column,
+.aiseo-results-column {
+  min-width: 0;
+}
+
+.aiseo-results-row {
+  display: block;
+}
+
+@media (max-width: 992px) {
+  .aiseo-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 640px) {
+  .aiseo-page {
+    padding: 1rem 0 3rem;
+  }
+
+  .aiseo-container {
+    width: min(100% - 1rem, 1200px);
+  }
+}

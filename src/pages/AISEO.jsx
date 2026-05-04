@@ -8,6 +8,7 @@ import HistoryDropdown from '../components/HistoryDrop';
 import { callOpenAI, extractTextFromImage } from '../services/openaiService';
 import { generateWebsitePrompt, generateYouTubePrompt, generateFacebookPrompt, generateTiktokPrompt } from '../utils/promptTemplates';
 import { predefinedCompanies } from '../utils/companyData';
+import '../styles/AISEO.css';
 
 export default function AISEO() {
   const [productName, setProductName] = useState('');
@@ -32,6 +33,7 @@ export default function AISEO() {
   const [history, setHistory] = useState([]);
 
   useEffect(() => {
+    
     const savedHistory = sessionStorage.getItem('seo_content_history');
     if (savedHistory) {
       setHistory(JSON.parse(savedHistory));
@@ -89,7 +91,7 @@ export default function AISEO() {
       const updatedHistory = [newItem, ...history];
       setHistory(updatedHistory);
       sessionStorage.setItem('seo_content_history', JSON.stringify(updatedHistory));
-    } catch (error) {
+    } catch {
       alert('Đã xảy ra lỗi khi tạo nội dung. Vui lòng thử lại.');
     } finally {
       setIsLoading(false);
@@ -138,18 +140,18 @@ export default function AISEO() {
       <Helmet>
         <title>AISEO - Tạo Nội Dung Sản Phẩm</title>
       </Helmet>
-      <div className="bg-light min-vh-100 pb-5">
-        <div className="container py-4">
+      <div className="aiseo-page">
+        <div className="aiseo-container">
           <HistoryDropdown history={history} onSelectHistory={handleSelectHistory} />
 
-          <div className="row mb-3">
-            <div className="col-lg-5">
+          <div className="aiseo-grid">
+            <div className="aiseo-company-column">
               <CompanyConfig
                 companyInfo={companyInfo}
                 setCompanyInfo={setCompanyInfo}
             />
           </div>
-          <div className="col-lg-7">
+          <div className="aiseo-form-column">
             <ProductForm
               productName={productName}
               setProductName={setProductName}
@@ -169,8 +171,8 @@ export default function AISEO() {
           </div>
         </div>
 
-        <div className="row">
-          <div className="col-12">
+        <div className="aiseo-results-row">
+          <div className="aiseo-results-column">
             <ResultTabs results={results} />
           </div>
         </div>

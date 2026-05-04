@@ -1,4 +1,5 @@
 import React from 'react';
+import '../../styles/WatermarkControls.css';
 
 export default function WatermarkControls({ options, onChange }) {
   const { size, opacity, tiled, productName, logoPosition } = options;
@@ -10,7 +11,7 @@ export default function WatermarkControls({ options, onChange }) {
       {/* Product Name */}
       <div className="wm-control-group">
         <div className="wm-section-label">
-          <i className="bi bi-tag me-2" />
+          <span className="wm-inline-icon" aria-hidden="true">#</span>
           Tên sản phẩm
         </div>
         <input
@@ -20,7 +21,7 @@ export default function WatermarkControls({ options, onChange }) {
           value={productName}
           onChange={(e) => update('productName', e.target.value)}
         />
-        <small className="text-muted">
+        <small className="wm-muted-text">
           Nhiều ảnh sẽ được đặt tên: <code>{productName || 'image'}_01.jpg</code>,{' '}
           <code>{productName || 'image'}_02.jpg</code>…
         </small>
@@ -29,8 +30,8 @@ export default function WatermarkControls({ options, onChange }) {
       {/* Logo Size */}
       <div className="wm-control-group">
         <div className="wm-control-row">
-          <div className="wm-section-label mb-0">
-            <i className="bi bi-aspect-ratio me-2" />
+          <div className="wm-section-label wm-section-label--compact">
+            <span className="wm-inline-icon" aria-hidden="true">▭</span>
             Kích thước logo
           </div>
           <span className="wm-value-badge">{size}%</span>
@@ -52,8 +53,8 @@ export default function WatermarkControls({ options, onChange }) {
       {/* Opacity */}
       <div className="wm-control-group">
         <div className="wm-control-row">
-          <div className="wm-section-label mb-0">
-            <i className="bi bi-droplet-half me-2" />
+          <div className="wm-section-label wm-section-label--compact">
+            <span className="wm-inline-icon" aria-hidden="true">◐</span>
             Độ mờ
           </div>
           <span className="wm-value-badge">{opacity}%</span>
@@ -75,8 +76,8 @@ export default function WatermarkControls({ options, onChange }) {
       {/* Tiled Toggle */}
       <div className="wm-control-group">
         <label className="wm-toggle-label">
-          <div className="wm-section-label mb-0">
-            <i className="bi bi-grid-3x3 me-2" />
+          <div className="wm-section-label wm-section-label--compact">
+            <span className="wm-inline-icon" aria-hidden="true">▦</span>
             Lặp lại watermark
           </div>
           <div className="wm-toggle-wrap">
@@ -90,7 +91,7 @@ export default function WatermarkControls({ options, onChange }) {
             <span className="wm-toggle" />
           </div>
         </label>
-        <small className="text-muted mt-1 d-block">
+        <small className="wm-muted-text wm-block-text">
           {tiled
             ? 'Logo được lặp đều trên toàn bộ ảnh'
             : 'Logo đặt ở vị trí đã chọn'}
@@ -101,7 +102,7 @@ export default function WatermarkControls({ options, onChange }) {
       {!tiled && (
         <div className="wm-control-group">
           <div className="wm-section-label">
-            <i className="bi bi-pin-map me-2" />
+            <span className="wm-inline-icon" aria-hidden="true">⌖</span>
             Vị trí logo
           </div>
           <select

@@ -19,23 +19,25 @@
 
 /* ==================== GLOBAL ==================== */
 
-* {
+.memory-game-container,
+.memory-game-container * {
   box-sizing: border-box;
 }
 
-body {
-  margin: 0;
-  padding: 0;
-  font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
-  background: var(--dark-bg);
+.memory-game-container {
+  position: relative;
+  min-height: calc(100vh - 70px);
+  overflow: hidden;
+  isolation: isolate;
   color: var(--text-light);
-  overflow-x: hidden;
+  background: var(--dark-bg);
+  font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
 }
 
 /* ==================== BACKGROUND ANIMATION ==================== */
 
 .animated-background {
-  position: fixed;
+  position: absolute;
   inset: 0;
   z-index: -1;
   background: linear-gradient(
@@ -46,8 +48,9 @@ body {
     #1e293b 75%,
     var(--dark-bg) 100%
   );
-  background-size: 400% 400%;
-  animation: gradientShift 15s ease infinite;
+  background-size: 220% 220%;
+  animation: gradientShift 24s ease infinite;
+  will-change: background-position;
 }
 
 @keyframes gradientShift {
@@ -66,7 +69,7 @@ body {
 
 .game-header {
   text-align: center;
-  padding: 2rem 1rem;
+  padding: 2rem 1rem 1rem;
   animation: slideDown 0.6s ease-out;
 }
 
@@ -126,10 +129,12 @@ body {
   gap: 1rem;
   justify-content: center;
   flex-wrap: wrap;
-  margin: 1.5rem 0;
+  margin: 1.25rem auto 0;
+  max-width: 760px;
 }
 
 .stat-card {
+  min-width: 132px;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -141,6 +146,7 @@ body {
   border-radius: 12px;
   transition: all 0.3s ease;
   animation: fadeInUp 0.6s ease-out;
+  contain: layout paint;
 }
 
 .stat-card:hover {
@@ -185,7 +191,9 @@ body {
 /* ==================== PROGRESS ==================== */
 
 .progress-section {
-  padding: 1rem 2rem;
+  width: min(100% - 2rem, 620px);
+  padding: 0.75rem 0 0;
+  margin: 0 auto;
   text-align: center;
   animation: slideUp 0.6s ease-out;
   animation-delay: 0.2s;
@@ -231,7 +239,7 @@ body {
 /* ==================== GAME BOARD ==================== */
 
 .game-board {
-  padding: 2rem 1rem;
+  padding: 1.4rem 1rem 1rem;
   flex: 1;
   display: flex;
   align-items: center;
@@ -240,16 +248,18 @@ body {
 
 .cards-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
-  gap: 1rem;
-  max-width: 600px;
+  grid-template-columns: repeat(4, minmax(86px, 1fr));
+  gap: clamp(0.55rem, 2vw, 1rem);
+  max-width: 560px;
   width: 100%;
-  padding: 0 1rem;
+  padding: 0;
 }
 
 .card-wrapper {
   aspect-ratio: 3 / 4;
   animation: popIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+  animation-fill-mode: both;
+  contain: layout paint;
 }
 
 .card-wrapper:nth-child(1) {
@@ -295,16 +305,19 @@ body {
   cursor: pointer;
   width: 100%;
   height: 100%;
-  transition: filter 0.2s ease;
+  transition: opacity 0.2s ease;
   position: relative;
+  border-radius: 14px;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
 }
 
-.flip-card:not(.disabled):hover {
-  filter: brightness(1.1);
+.flip-card:not(.disabled):hover .flip-card-inner {
+  transform: translateY(-3px);
 }
 
-.flip-card:not(.disabled):active {
-  filter: brightness(0.95);
+.flip-card:not(.disabled):active .flip-card-inner {
+  transform: translateY(-1px) scale(0.98);
 }
 
 .flip-card.disabled {
@@ -316,11 +329,17 @@ body {
   position: relative;
   width: 100%;
   height: 100%;
-  transition: transform 0.6s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+  transition: transform 0.42s cubic-bezier(0.2, 0.8, 0.2, 1);
   transform-style: preserve-3d;
+  will-change: transform;
 }
 
 .flip-card.flipped .flip-card-inner {
+  transform: rotateY(180deg);
+}
+
+.flip-card.flipped:not(.matched):hover .flip-card-inner,
+.flip-card.flipped:not(.matched):active .flip-card-inner {
   transform: rotateY(180deg);
 }
 
@@ -328,11 +347,13 @@ body {
 .flip-card-back {
   position: absolute;
   inset: 0;
-  border-radius: 12px;
+  border-radius: 14px;
   overflow: hidden;
   backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
   box-shadow: var(--shadow-lg);
-  transition: all 0.3s ease;
+  transition: box-shadow 0.2s ease, border-color 0.2s ease;
+  contain: paint;
 }
 
 .flip-card-front {
@@ -345,6 +366,7 @@ body {
   position: relative;
   width: 100%;
   height: 100%;
+  border: 1px solid rgba(255, 255, 255, 0.18);
 }
 
 .flip-card-front::before {
@@ -360,7 +382,7 @@ body {
 }
 
 .card-emoji {
-  animation: pulse 2s ease-in-out infinite;
+  animation: pulse 2.4s ease-in-out infinite;
 }
 
 @keyframes pulse {
@@ -386,12 +408,13 @@ body {
   width: 100%;
   height: 100%;
   object-fit: cover;
-  border-radius: 8px;
+  border-radius: 10px;
+  transform: translateZ(0);
 }
 
 /* Matched cards animation */
 .flip-card.matched .flip-card-inner {
-  animation: matchAnimation 0.5s ease-out;
+  animation: matchAnimation 0.38s ease-out;
 }
 
 @keyframes matchAnimation {
@@ -408,12 +431,12 @@ body {
 
 .flip-card.matched {
   cursor: default;
-  opacity: 0.7;
-  filter: saturate(0.5);
+  opacity: 0.72;
 }
 
-.flip-card.matched:hover {
-  filter: brightness(1) saturate(0.5);
+.flip-card.matched:hover .flip-card-inner,
+.flip-card.matched:active .flip-card-inner {
+  transform: rotateY(180deg);
   cursor: default;
 }
 
@@ -427,8 +450,9 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 1000;
+  z-index: 1200;
   animation: fadeIn 0.3s ease;
+  padding: 1rem;
 }
 
 @keyframes fadeIn {
@@ -571,7 +595,7 @@ body {
 /* ==================== FOOTER ==================== */
 
 .game-footer {
-  padding: 2rem 1rem;
+  padding: 1rem 1rem 2rem;
   text-align: center;
 }
 
@@ -619,9 +643,9 @@ body {
   }
 
   .cards-grid {
-    grid-template-columns: repeat(auto-fit, minmax(90px, 1fr));
+    grid-template-columns: repeat(4, minmax(72px, 1fr));
     gap: 0.75rem;
-    max-width: 400px;
+    max-width: 430px;
   }
 
   .win-card {
@@ -652,20 +676,30 @@ body {
   }
 
   .stats-container {
-    flex-direction: column;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 0.5rem;
+    width: min(100% - 1rem, 360px);
   }
 
   .stat-card {
     width: 100%;
-    max-width: 200px;
-    margin: 0 auto;
+    min-width: 0;
+    padding: 0.7rem 0.5rem;
+  }
+
+  .stat-label {
+    font-size: 0.66rem;
+  }
+
+  .stat-value {
+    font-size: 1.25rem;
   }
 
   .cards-grid {
-    grid-template-columns: repeat(auto-fit, minmax(75px, 1fr));
+    grid-template-columns: repeat(4, minmax(64px, 1fr));
     gap: 0.5rem;
-    max-width: 320px;
+    max-width: 340px;
   }
 
   .flip-card-front {
@@ -701,9 +735,9 @@ body {
 
 /* Reduced motion for accessibility */
 @media (prefers-reduced-motion: reduce) {
-  *,
-  *::before,
-  *::after {
+  .memory-game-container *,
+  .memory-game-container *::before,
+  .memory-game-container *::after {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;

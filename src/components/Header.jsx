@@ -1,26 +1,40 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
+import { useTheme } from '../hooks/useTheme';
 import '../styles/Header.css';
 
 export default function Header() {
   const [isOpen, setIsOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
+  const [pinned, setPinned] = useState(false);
+  const [headerHeight, setHeaderHeight] = useState(70);
+  const headerRef = useRef(null);
   const location = useLocation();
+  const { theme, toggleTheme } = useTheme();
 
   // Handle scroll effect
   useEffect(() => {
-    const handleScroll = () => {
-      setScrolled(window.scrollY > 10);
+    const updateHeaderHeight = () => {
+      setHeaderHeight(headerRef.current?.offsetHeight || 70);
     };
 
-    window.addEventListener('scroll', handleScroll);
-    return () => window.removeEventListener('scroll', handleScroll);
-  }, []);
+    const handleScroll = () => {
+      const nextHeaderHeight = headerRef.current?.offsetHeight || 70;
+      setScrolled(window.scrollY > 10);
+      setPinned(window.scrollY > nextHeaderHeight);
+    };
 
-  // Close menu when route changes
-  useEffect(() => {
-    setIsOpen(false);
-  }, [location]);
+    updateHeaderHeight();
+    handleScroll();
+
+    window.addEventListener('resize', updateHeaderHeight);
+    window.addEventListener('scroll', handleScroll, { passive: true });
+
+    return () => {
+      window.removeEventListener('resize', updateHeaderHeight);
+      window.removeEventListener('scroll', handleScroll);
+    };
+  }, []);
 
   // Close menu when pressing Escape
   useEffect(() => {
@@ -49,7 +63,7 @@ export default function Header() {
     },
     {
       label: 'SEO Keywords',
-      path: '/aiseo',
+      path: '/seo-keywords',
       icon: '🔍',
     },
     {
@@ -68,7 +82,18 @@ export default function Header() {
 
   return (
     <>
-      <header className={`header ${scrolled ? 'scrolled' : ''}`}>
+      {pinned && (
+        <div
+          className="header-spacer"
+          style={{ height: `${headerHeight}px` }}
+          aria-hidden="true"
+        />
+      )}
+
+      <header
+        ref={headerRef}
+        className={`header ${scrolled ? 'scrolled' : ''} ${pinned ? 'pinned' : ''}`}
+      >
         <div className="header-container">
           {/* Logo Section */}
           <div className="header-logo">
@@ -98,6 +123,7 @@ export default function Header() {
                   key={item.path}
                   to={item.path}
                   className={`nav-item ${isActive(item.path) ? 'active' : ''}`}
+                  onClick={() => setIsOpen(false)}
                 >
                   <span className="nav-icon">{item.icon}</span>
                   <span className="nav-label">{item.label}</span>
@@ -109,13 +135,14 @@ export default function Header() {
 
           {/* Right Section - Action Buttons & Mobile Menu */}
           <div className="header-right">
-            {/* Theme Toggle Button (for future use) */}
+            {/* Theme Toggle Button */}
             <button
               className="btn-icon-header"
-              aria-label="Toggle theme"
-              title="Dark Mode"
+              onClick={toggleTheme}
+              aria-label={`Switch to ${theme === 'light' ? 'dark' : 'light'} mode`}
+              title={`Switch to ${theme === 'light' ? 'dark' : 'light'} mode`}
             >
-              🌙
+              {theme === 'light' ? '🌙' : '☀️'}
             </button>
 
             {/* Mobile Menu Button */}
@@ -153,6 +180,7 @@ export default function Header() {
                 key={item.path}
                 to={item.path}
                 className={`mobile-nav-item ${isActive(item.path) ? 'active' : ''}`}
+                onClick={() => setIsOpen(false)}
               >
                 <span className="mobile-nav-icon">{item.icon}</span>
                 <span className="mobile-nav-label">{item.label}</span>

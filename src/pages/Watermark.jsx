@@ -9,7 +9,7 @@ import '../styles/Watermark.css';
 
 const DEFAULT_OPTIONS = {
   size: 60,
-  opacity: 40,
+  opacity: 60,
   tiled: false,
   productName: '',
   logoPosition: 'center',
@@ -96,7 +96,7 @@ export default function Watermark() {
         <title>Watermark - Thêm Logo Vào Ảnh</title>
       </Helmet>
       <div className="wm-page">
-        <div className="container">
+        <div className="wm-container">
 
           {/* ── Header ── */}
           <div className="wm-header">
@@ -109,11 +109,11 @@ export default function Watermark() {
         </div>
 
         {/* ── Main Layout ── */}
-        <div className="row g-4">
+        <div className="wm-layout">
 
           {/* Left column: upload panels */}
-          <div className="col-lg-5">
-            <div className="wm-card mb-4">
+          <div className="wm-panel-column wm-panel-column--narrow">
+            <div className="wm-card wm-card--spaced">
               <LogoUploader
                 logoUrl={logoUrl}
                 logoName={logoName}
@@ -127,8 +127,8 @@ export default function Watermark() {
           </div>
 
           {/* Right column: controls */}
-          <div className="col-lg-7">
-            <div className="wm-card h-100">
+          <div className="wm-panel-column wm-panel-column--wide">
+            <div className="wm-card wm-card--full">
               <WatermarkControls options={options} onChange={setOptions} />
 
               <hr className="wm-divider" />
@@ -136,18 +136,18 @@ export default function Watermark() {
               {/* Action Bar */}
               <div className="wm-action-bar">
                 <button
-                  className="btn wm-btn-primary wm-create-btn text-light"
+                  className="wm-btn-primary wm-create-btn"
                   onClick={handleCreate}
                   disabled={!canCreate}
                 >
                   {processing ? (
                     <>
-                      <span className="spinner-border" role="status" />
+                      <span className="wm-spinner" role="status" aria-label="Đang xử lý" />
                       Đang xử lý…
                     </>
                   ) : (
                     <>
-                      <i className="bi bi-magic" />
+                      <span className="wm-inline-icon" aria-hidden="true">✨</span>
                       Tạo ảnh Watermark
                     </>
                   )}
@@ -163,14 +163,8 @@ export default function Watermark() {
 
               {/* Tip cards */}
               {!logoUrl && (
-                <div className="alert mt-3 mb-0 py-2 px-3" style={{
-                  background: 'rgba(244,163,51,0.08)',
-                  border: '1px solid rgba(244,163,51,0.25)',
-                  borderRadius: '8px',
-                  color: '#f4a333',
-                  fontSize: '0.82rem',
-                }}>
-                  <i className="bi bi-lightbulb me-2" />
+                <div className="wm-tip-alert">
+                  <span className="wm-inline-icon" aria-hidden="true">💡</span>
                   Logo sẽ được lưu tự động vào trình duyệt – lần sau mở web logo vẫn còn đó.
                 </div>
               )}

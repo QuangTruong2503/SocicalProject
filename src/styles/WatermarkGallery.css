@@ -1,0 +1,300 @@
+/* ==================== WATERMARK GALLERY STYLES ==================== */
+
+.wm-gallery-section {
+  width: 100%;
+}
+
+.wm-gallery-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+  flex-wrap: wrap;
+}
+
+.wm-gallery-header-left {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.wm-gallery-title {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--text-light);
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.wm-gallery-title i {
+  font-size: 1.3rem;
+}
+
+.wm-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--primary-color);
+  color: white;
+  border-radius: 50%;
+  width: 28px;
+  height: 28px;
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.wm-gallery-actions {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.wm-gallery-heading {
+  display: flex;
+  align-items: center;
+}
+
+.wm-download-menu {
+  position: relative;
+}
+
+.wm-download-menu-button {
+  display: inline-flex;
+  align-items: center;
+  min-height: 2.5rem;
+  padding: 0.6rem 1rem;
+  border: 0;
+  border-radius: var(--radius-md);
+  background: var(--primary-color);
+  color: #ffffff;
+  font-size: 0.9rem;
+  font-weight: 600;
+  transition: all var(--transition-base);
+}
+
+.wm-download-menu-button:hover:not(:disabled) {
+  background: var(--primary-light);
+  box-shadow: var(--shadow-md);
+  transform: translateY(-2px);
+}
+
+.wm-download-menu-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.wm-dropdown-title {
+  font-weight: 700;
+  color: var(--text-light);
+}
+
+/* Dropdown Button */
+.wm-dropdown-btn {
+  padding: 0.6rem 1rem;
+  border: none;
+  border-radius: var(--radius-md);
+  background: var(--primary-color);
+  color: white;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--transition-base);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.wm-dropdown-btn:hover:not(:disabled) {
+  background: var(--primary-light);
+  box-shadow: var(--shadow-md);
+  transform: translateY(-2px);
+}
+
+.wm-dropdown-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.wm-dropdown {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-lg);
+  min-width: 280px;
+  z-index: 1000;
+  list-style: none;
+  margin: 0.5rem 0 0;
+  padding: 0;
+}
+
+.wm-dropdown-item {
+  padding: 0.75rem 1rem;
+  background: transparent;
+  border: none;
+  color: var(--text-light);
+  cursor: pointer;
+  text-align: left;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  width: 100%;
+  transition: all var(--transition-base);
+  font-size: 0.9rem;
+}
+
+.wm-dropdown-item:hover {
+  background: rgba(102, 126, 234, 0.1);
+}
+
+.wm-dropdown-item i {
+  font-size: 1.1rem;
+  flex-shrink: 0;
+}
+
+.wm-dropdown-item-text {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.wm-dropdown-item-title {
+  font-weight: 600;
+  color: var(--text-light);
+}
+
+.wm-dropdown-item-desc {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+/* Clear All Button */
+.wm-clear-all-btn {
+  padding: 0.6rem 1rem;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--text-light);
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--transition-base);
+}
+
+.wm-clear-all-btn:hover {
+  border-color: var(--secondary-color);
+  color: var(--secondary-color);
+  background: rgba(245, 87, 108, 0.1);
+}
+
+/* Gallery Grid */
+.wm-gallery-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 1.5rem;
+  width: 100%;
+}
+
+/* Result Card */
+.wm-result-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  transition: all var(--transition-base);
+}
+
+.wm-result-card:hover {
+  border-color: var(--primary-color);
+  box-shadow: var(--shadow-lg);
+}
+
+.wm-result-image {
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  object-fit: cover;
+  background: var(--bg-dark);
+  display: block;
+}
+
+.wm-result-actions {
+  padding: 1rem;
+  display: flex;
+  gap: 0.5rem;
+}
+
+.wm-result-dl-btn {
+  flex: 1;
+  padding: 0.6rem;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: var(--primary-color);
+  color: white;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--transition-base);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+}
+
+.wm-result-dl-btn:hover {
+  background: var(--primary-light);
+}
+
+.wm-result-copy-btn {
+  flex: 1;
+  padding: 0.6rem;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-light);
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--transition-base);
+}
+
+.wm-result-copy-btn:hover {
+  border-color: var(--primary-color);
+  color: var(--primary-color);
+}
+
+/* ==================== RESPONSIVE ==================== */
+
+@media (max-width: 768px) {
+  .wm-gallery-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .wm-gallery-actions {
+    width: 100%;
+  }
+
+  .wm-dropdown-btn {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .wm-gallery-grid {
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: 1rem;
+  }
+
+  .wm-result-actions {
+    flex-direction: column;
+  }
+
+  .wm-result-dl-btn,
+  .wm-result-copy-btn {
+    width: 100%;
+  }
+}

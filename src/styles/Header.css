@@ -1,6 +1,8 @@
 /* ==================== HEADER VARIABLES ==================== */
 
 :root {
+  --header-height: 70px;
+  --header-height-mobile: 60px;
   --header-bg: rgba(255, 255, 255, 0.95);
   --header-bg-dark: rgba(15, 23, 42, 0.95);
   --header-border: rgba(0, 0, 0, 0.05);
@@ -20,7 +22,7 @@
 /* ==================== HEADER STYLES ==================== */
 
 header.header {
-  position: fixed;
+  position: relative;
   top: 0;
   left: 0;
   right: 0;
@@ -28,6 +30,27 @@ header.header {
   backdrop-filter: blur(10px);
   transition: all var(--transition-base);
   border-bottom: 1px solid transparent;
+}
+
+header.header.pinned {
+  position: fixed;
+  animation: headerPinIn 280ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.header-spacer {
+  width: 100%;
+  flex-shrink: 0;
+}
+
+@keyframes headerPinIn {
+  from {
+    opacity: 0;
+    transform: translateY(-100%);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 header.header:not(.scrolled) {
@@ -59,7 +82,7 @@ header.header.scrolled {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  height: 70px;
+  height: var(--header-height);
   padding: 0 1.5rem;
   max-width: 1400px;
   margin: 0 auto;
@@ -261,6 +284,20 @@ header.header.scrolled {
   transform: scale(0.95);
 }
 
+@keyframes rotateTheme {
+  from {
+    transform: rotate(0deg) scale(1);
+  }
+  to {
+    transform: rotate(360deg) scale(1);
+  }
+}
+
+.btn-icon-header:active {
+  animation: rotateTheme 0.4s ease-out;
+}
+
+
 /* ==================== MOBILE MENU BUTTON ==================== */
 
 .btn-mobile-menu {
@@ -317,11 +354,11 @@ header.header.scrolled {
 
 .mobile-menu {
   position: fixed;
-  top: 70px;
+  top: var(--header-height);
   right: 0;
   width: 100%;
   max-width: 320px;
-  height: calc(100vh - 70px);
+  height: calc(100vh - var(--header-height));
   background: var(--header-bg);
   box-shadow: -4px 0 20px rgba(0, 0, 0, 0.1);
   transform: translateX(100%);
@@ -480,7 +517,7 @@ header.header.scrolled {
 /* Menu Overlay */
 .menu-overlay {
   position: fixed;
-  top: 70px;
+  top: var(--header-height);
   left: 0;
   right: 0;
   bottom: 0;
@@ -516,7 +553,16 @@ header.header.scrolled {
 
   .header-container {
     padding: 0 1rem;
-    height: 60px;
+    height: var(--header-height-mobile);
+  }
+
+  .mobile-menu {
+    top: var(--header-height-mobile);
+    height: calc(100vh - var(--header-height-mobile));
+  }
+
+  .menu-overlay {
+    top: var(--header-height-mobile);
   }
 
   .logo-image {
@@ -623,10 +669,53 @@ header.header.scrolled {
     background: white;
   }
 
+  .header-spacer,
   .btn-mobile-menu,
   .mobile-menu,
   .menu-overlay,
   .btn-icon-header {
     display: none !important;
   }
+}
+
+/* ==================== EXPLICIT APP THEME OVERRIDES ==================== */
+
+[data-theme="light"] header.header:not(.scrolled),
+.theme-light header.header:not(.scrolled) {
+  background: var(--header-bg);
+  border-bottom-color: var(--header-border);
+}
+
+[data-theme="light"] header.header.scrolled,
+.theme-light header.header.scrolled {
+  background: rgba(255, 255, 255, 0.98);
+  border-bottom-color: rgba(0, 0, 0, 0.08);
+  box-shadow: 0 2px 20px rgba(0, 0, 0, 0.08);
+}
+
+[data-theme="dark"] header.header:not(.scrolled),
+.theme-dark header.header:not(.scrolled) {
+  background: var(--header-bg-dark);
+  border-bottom-color: var(--header-border-dark);
+}
+
+[data-theme="dark"] header.header.scrolled,
+.theme-dark header.header.scrolled {
+  background: rgba(15, 23, 42, 0.98);
+  border-bottom-color: rgba(148, 163, 184, 0.15);
+  box-shadow: 0 2px 20px rgba(0, 0, 0, 0.2);
+}
+
+[data-theme="light"] .logo-secondary,
+[data-theme="light"] .nav-item,
+.theme-light .logo-secondary,
+.theme-light .nav-item {
+  color: var(--nav-text);
+}
+
+[data-theme="dark"] .logo-secondary,
+[data-theme="dark"] .nav-item,
+.theme-dark .logo-secondary,
+.theme-dark .nav-item {
+  color: var(--nav-text-dark);
 }
