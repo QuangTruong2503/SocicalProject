@@ -6,6 +6,7 @@ import Watermark from './pages/Watermark.jsx';
 import Footer from './components/Footer.jsx';
 import Header from './components/Header.jsx';
 import MemoryGame from './pages/MemoryGame.jsx';
+import SEOKeywords from './pages/SEOKeywords.jsx';
 import './styles/App.css';
 
 // Feature Card Component - Reusable
@@ -51,6 +52,15 @@ function HomePage() {
       link: '/aiseo',
       badge: 'Popular',
       delay: 100,
+    },
+    {
+      icon: '🔍',
+      title: 'SEO Keywords Generator',
+      description: 'Tạo bộ từ khóa SEO toàn diện cho sản phẩm của bạn.',
+      buttonText: 'Mở Tool',
+      link: '/seo-keywords',
+      badge: 'New',
+      delay: 200,
     },
     {
       icon: '🎮',
@@ -221,6 +231,7 @@ export default function App() {
             <Route path="/aiseo" element={<AISEO />} />
             <Route path="/watermark" element={<Watermark />} />
             <Route path="/memory-game" element={<MemoryGame />} />
+            <Route path="/seo-keywords" element={<SEOKeywords />} />
             <Route path="*" element={<NotFoundPage />} />
           </Routes>
         </main>
