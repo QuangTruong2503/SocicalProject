@@ -31,8 +31,8 @@ Bao gồm:
 - tên sản phẩm
 - thương hiệu
 - mã sản phẩm
+- riêng mã sản phẩm
 - danh mục sản phẩm
-
 Yêu cầu:
 5–12 từ khóa
 
