@@ -3,6 +3,17 @@ import { supabase } from '../utils/supabase.js';
 
 export const AuthContext = createContext(null);
 
+function buildProfilePayload(user) {
+  const fallbackUsername = user.email?.split('@')[0] || 'user';
+
+  return {
+    id: user.id,
+    username: user.user_metadata?.username || fallbackUsername,
+    email: user.email || '',
+    created_at: user.created_at || new Date().toISOString(),
+  };
+}
+
 export function AuthProvider({ children }) {
   const [session, setSession] = useState(null);
   const [user, setUser] = useState(null);
@@ -48,7 +59,7 @@ export function AuthProvider({ children }) {
   useEffect(() => {
     let isMounted = true;
 
-    async function loadProfile() {
+    async function syncProfile() {
       if (!user?.id) {
         setProfile(null);
         return;
@@ -69,10 +80,31 @@ export function AuthProvider({ children }) {
         return;
       }
 
-      setProfile(data ?? null);
+      if (data) {
+        setProfile(data);
+        return;
+      }
+
+      const profilePayload = buildProfilePayload(user);
+      const { data: insertedProfile, error: upsertError } = await supabase
+        .from('profiles')
+        .upsert(profilePayload)
+        .select('id, username, email, created_at')
+        .single();
+
+      if (!isMounted) {
+        return;
+      }
+
+      if (upsertError) {
+        setProfile(null);
+        return;
+      }
+
+      setProfile(insertedProfile ?? profilePayload);
     }
 
-    loadProfile();
+    syncProfile();
 
     return () => {
       isMounted = false;
@@ -101,8 +133,24 @@ export function AuthProvider({ children }) {
         return null;
       }
 
-      setProfile(data ?? null);
-      return data ?? null;
+      if (data) {
+        setProfile(data);
+        return data;
+      }
+
+      const profilePayload = buildProfilePayload(user);
+      const { data: insertedProfile, error: upsertError } = await supabase
+        .from('profiles')
+        .upsert(profilePayload)
+        .select('id, username, email, created_at')
+        .single();
+
+      if (upsertError) {
+        return null;
+      }
+
+      setProfile(insertedProfile ?? profilePayload);
+      return insertedProfile ?? profilePayload;
     },
   }), [loading, profile, session, user]);
 

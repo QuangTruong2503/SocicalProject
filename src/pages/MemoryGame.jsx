@@ -1,7 +1,7 @@
 import { memo, useCallback, useEffect, useRef, useState } from "react";
-import cardsData from "../data/cards.json";
 import "../styles/MemoryGame.css";
 import { Helmet } from "react-helmet-async";
+import { supabase } from "../utils/supabase.js";
 
 // Fisher-Yates shuffle algorithm (optimal)
 const shuffleArray = (array) => {
@@ -13,9 +13,9 @@ const shuffleArray = (array) => {
   return shuffled;
 };
 
-const getRandomCards = () => {
-  const shuffled = shuffleArray(cardsData);
-  const selected = shuffled.slice(0, 4);
+const createGameCards = (sourceCards) => {
+  const shuffled = shuffleArray(sourceCards);
+  const selected = shuffled.slice(0, Math.min(4, shuffled.length));
 
   return shuffleArray(
     [...selected, ...selected].map((card) => ({
@@ -27,7 +27,8 @@ const getRandomCards = () => {
 };
 
 export default function MemoryGame() {
-  const [cards, setCards] = useState(() => getRandomCards());
+  const [cards, setCards] = useState([]);
+  const [cardPool, setCardPool] = useState([]);
   const [firstCard, setFirstCard] = useState(null);
   const [secondCard, setSecondCard] = useState(null);
   const [disabled, setDisabled] = useState(false);
@@ -38,8 +39,47 @@ export default function MemoryGame() {
     const saved = localStorage.getItem("memoryGameBestScore");
     return saved ? parseInt(saved, 10) : null;
   });
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState("");
   const audioContextRef = useRef(null);
   const resetTimerRef = useRef(null);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    async function fetchCards() {
+      setLoading(true);
+      setLoadError("");
+
+      const { data, error } = await supabase
+        .from("memory_cards")
+        .select("id, image, created_at")
+        .order("created_at", { ascending: true });
+
+      if (!isMounted) {
+        return;
+      }
+
+      if (error) {
+        setLoadError(error.message || "Khong the tai du lieu the bai.");
+        setCardPool([]);
+        setCards([]);
+        setLoading(false);
+        return;
+      }
+
+      const normalizedCards = (data ?? []).filter((card) => card.image);
+      setCardPool(normalizedCards);
+      setCards(createGameCards(normalizedCards));
+      setLoading(false);
+    }
+
+    fetchCards();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   useEffect(() => {
     cards.forEach((card) => {
@@ -126,7 +166,12 @@ export default function MemoryGame() {
       window.clearTimeout(resetTimerRef.current);
     }
 
-    const newCards = getRandomCards();
+    if (cardPool.length === 0) {
+      setCards([]);
+      return;
+    }
+
+    const newCards = createGameCards(cardPool);
     setCards(newCards);
     setFirstCard(null);
     setSecondCard(null);
@@ -134,7 +179,7 @@ export default function MemoryGame() {
     setTurns(0);
     setMatches(0);
     setWon(false);
-  }, []);
+  }, [cardPool]);
 
   const resolveSecondChoice = useCallback((card) => {
     setDisabled(true);
@@ -187,6 +232,7 @@ export default function MemoryGame() {
   const totalCards = cards.length;
   const progress =
     totalCards > 0 ? Math.round((matches / (totalCards / 2)) * 100) : 0;
+  const hasEnoughCards = cardPool.length >= 2;
 
   return (
     <>
@@ -231,7 +277,7 @@ export default function MemoryGame() {
         </header>
 
         {/* Progress bar */}
-        {!won && totalCards > 0 && (
+        {!loading && !won && totalCards > 0 && (
           <div className="progress-section">
             <div className="progress-bar-container">
               <div
@@ -245,22 +291,32 @@ export default function MemoryGame() {
 
         {/* Game Board */}
         <main className="game-board">
-          <div className="cards-grid">
-            {cards.map((card) => {
-              const flipped =
-                card === firstCard || card === secondCard || card.matched;
+          {loading ? (
+            <p className="progress-text">Dang tai the bai tu Supabase...</p>
+          ) : loadError ? (
+            <p className="progress-text">Khong the tai du lieu: {loadError}</p>
+          ) : !hasEnoughCards ? (
+            <p className="progress-text">
+              Can it nhat 2 anh trong bang <strong>memory_cards</strong> de choi game.
+            </p>
+          ) : (
+            <div className="cards-grid">
+              {cards.map((card) => {
+                const flipped =
+                  card === firstCard || card === secondCard || card.matched;
 
-              return (
-                <MemoryCard
-                  key={card.uniqueId}
-                  card={card}
-                  flipped={flipped}
-                  disabled={disabled}
-                  onChoice={handleChoice}
-                />
-              );
-            })}
-          </div>
+                return (
+                  <MemoryCard
+                    key={card.uniqueId}
+                    card={card}
+                    flipped={flipped}
+                    disabled={disabled}
+                    onChoice={handleChoice}
+                  />
+                );
+              })}
+            </div>
+          )}
         </main>
 
         {/* Win Screen */}
@@ -284,7 +340,11 @@ export default function MemoryGame() {
 
         {/* New Game Button (always visible) */}
         <footer className="game-footer">
-          <button className="btn-new-game" onClick={startGame}>
+          <button
+            className="btn-new-game"
+            onClick={startGame}
+            disabled={loading || !hasEnoughCards}
+          >
             ↻ Ván chơi mới
           </button>
         </footer>

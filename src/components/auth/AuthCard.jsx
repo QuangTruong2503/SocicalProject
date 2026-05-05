@@ -199,30 +199,14 @@ export default function AuthCard() {
       return;
     }
 
-    const userId = data.user?.id;
-
-    if (userId) {
-      const { error: profileError } = await supabase.from('profiles').upsert({
-        id: userId,
-        username: normalizedUsername,
-        email: normalizedEmail,
-        created_at: new Date().toISOString(),
-      });
-
-      if (profileError) {
-        setIsSubmitting(false);
-        setErrors({ global: profileError.message });
-        triggerShake();
-        return;
-      }
-    }
-
-    setSuccessMessage('Tao tai khoan thanh cong');
+    setSuccessMessage('Dang ky thanh cong');
     setShowSuccess(true);
     setToast({
       type: 'success',
       title: 'Dang ky thanh cong',
-      message: 'Tai khoan da duoc tao. Hay dang nhap de tiep tuc.',
+      message: data.session
+        ? 'Tai khoan da duoc tao. Ban co the dang nhap ngay.'
+        : 'Tai khoan da duoc tao. Vui long kiem tra email de xac thuc truoc khi dang nhap.',
     });
 
     window.setTimeout(() => {
@@ -309,9 +293,9 @@ export default function AuthCard() {
         </div>
 
         <div className="auth-card-header">
-          <span className="auth-chip">Supabase Auth</span>
-          <h1>Welcome back</h1>
-          <p>Dang nhap hoac tao tai khoan de truy cap dashboard cua ban.</p>
+          <span className="auth-chip">ZepLao</span>
+          <h1>Chào mừng bạn trở lại</h1>
+          <p>Đăng nhập hoặc tạo tài khoản để truy cập dashboard của bạn.</p>
         </div>
 
         <div className="auth-tabs" role="tablist" aria-label="Authentication tabs">
@@ -320,14 +304,14 @@ export default function AuthCard() {
             className={`auth-tab ${activeTab === 'login' ? 'active' : ''}`}
             onClick={() => clearStateForTab('login')}
           >
-            Dang nhap
+            Đăng nhập
           </button>
           <button
             type="button"
             className={`auth-tab ${activeTab === 'register' ? 'active' : ''}`}
             onClick={() => clearStateForTab('register')}
           >
-            Dang ky
+            Đăng ký
           </button>
           <div className={`auth-tab-indicator ${activeTab === 'register' ? 'register' : 'login'}`}></div>
         </div>
@@ -368,10 +352,10 @@ export default function AuthCard() {
                   {isSubmitting ? (
                     <>
                       <span className="auth-spinner"></span>
-                      Dang xu ly...
+                      Đang xử lý...
                     </>
                   ) : (
-                    'Dang nhap'
+                    'Đăng nhập'
                   )}
                 </button>
 
@@ -382,7 +366,7 @@ export default function AuthCard() {
                   disabled={isSubmitting}
                 >
                   <span className="auth-oauth-icon">G</span>
-                  Dang nhap bang Google
+                  Đăng nhập bằng Google
                 </button>
               </form>
             </section>
@@ -410,10 +394,10 @@ export default function AuthCard() {
                   {isSubmitting ? (
                     <>
                       <span className="auth-spinner"></span>
-                      Dang xu ly...
+                      Đang xử lý...
                     </>
                   ) : (
-                    'Tao tai khoan'
+                    'Tạo tài khoản'
                   )}
                 </button>
               </form>
