@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
 import { useTheme } from '../hooks/useTheme';
+import { useAuth } from '../hooks/useAuth';
+import { supabase } from '../utils/supabase.js';
 import '../styles/Header.css';
 
 export default function Header() {
@@ -11,6 +13,7 @@ export default function Header() {
   const headerRef = useRef(null);
   const location = useLocation();
   const { theme, toggleTheme } = useTheme();
+  const { user } = useAuth();
 
   // Handle scroll effect
   useEffect(() => {
@@ -76,9 +79,19 @@ export default function Header() {
       path: '/memory-game',
       icon: '🎮',
     },
+    {
+      label: user ? 'Dashboard' : 'Auth',
+      path: user ? '/dashboard' : '/auth',
+      icon: user ? '📊' : '🔐',
+    },
   ];
 
   const isActive = (path) => location.pathname === path;
+
+  async function handleLogout() {
+    await supabase.auth.signOut();
+    setIsOpen(false);
+  }
 
   return (
     <>
@@ -135,6 +148,17 @@ export default function Header() {
 
           {/* Right Section - Action Buttons & Mobile Menu */}
           <div className="header-right">
+            {user && (
+              <button
+                className="btn-icon-header"
+                onClick={handleLogout}
+                aria-label="Logout"
+                title="Logout"
+              >
+                ↩
+              </button>
+            )}
+
             {/* Theme Toggle Button */}
             <button
               className="btn-icon-header"

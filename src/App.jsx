@@ -1,15 +1,21 @@
-import { Routes, Route, NavLink, useLocation } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { Routes, Route, NavLink, useLocation, Navigate } from 'react-router-dom';
 import { HelmetProvider, Helmet } from 'react-helmet-async';
 import { useTheme } from './hooks/useTheme';
-// import AISEO from './pages/AISEO.jsx';
+import { useAuth } from './hooks/useAuth';
+import { supabase } from './utils/supabase.js';
+import './styles/auth.css';
 import Watermark from './pages/Watermark.jsx';
 import Footer from './components/Footer.jsx';
 import Header from './components/Header.jsx';
 import ScrollToTopButton from './components/ScrollToTopButton.jsx';
 import MemoryGame from './pages/MemoryGame.jsx';
 import SEOKeywords from './pages/SEOKeywords.jsx';
+import AuthPage from './pages/AuthPage.jsx';
+import DashboardPage from './pages/DashboardPage.jsx';
+import ProtectedRoute from './components/ProtectedRoute.jsx';
+import PublicRoute from './components/PublicRoute.jsx';
 
-// Feature Card Component - Reusable
 function FeatureCard({ icon, title, description, buttonText, link, badge, delay }) {
   return (
     <NavLink to={link} className="feature-card-link">
@@ -35,8 +41,42 @@ function FeatureCard({ icon, title, description, buttonText, link, badge, delay 
   );
 }
 
-// Home Page with Grid Layout
 function HomePage() {
+  const [todos, setTodos] = useState([]);
+  const [todosLoading, setTodosLoading] = useState(true);
+  const [todosError, setTodosError] = useState('');
+
+  useEffect(() => {
+    let isMounted = true;
+
+    async function getTodos() {
+      const { data, error } = await supabase
+        .from('todos')
+        .select('id, name')
+        .order('id', { ascending: true });
+
+      if (!isMounted) {
+        return;
+      }
+
+      if (error) {
+        setTodosError(error.message);
+        setTodos([]);
+      } else {
+        setTodos(data ?? []);
+        setTodosError('');
+      }
+
+      setTodosLoading(false);
+    }
+
+    getTodos();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
   const features = [
     {
       icon: '🤖',
@@ -46,6 +86,15 @@ function HomePage() {
       link: '/aiseo',
       badge: 'Popular',
       delay: 100,
+    },
+    {
+      icon: '🔐',
+      title: 'Authentication',
+      description: 'Đăng ký, đăng nhập và quản lý phiên người dùng với Supabase Authentication.',
+      buttonText: 'Mở Auth',
+      link: '/auth',
+      badge: 'New',
+      delay: 150,
     },
     {
       icon: '🔍',
@@ -63,7 +112,7 @@ function HomePage() {
       buttonText: 'Chơi Ngay',
       link: '/memory-game',
       badge: 'New',
-      delay: 200,
+      delay: 250,
     },
     {
       icon: '🎨',
@@ -80,11 +129,10 @@ function HomePage() {
     <>
       <Helmet>
         <title>Trang Chủ - AISEO Tools Suite</title>
-        <meta name="description" content="Bộ công cụ AI toàn diện: SEO Generator, Memory Game, Watermark Tool" />
+        <meta name="description" content="Bộ công cụ AI toàn diện: SEO Generator, Authentication, Memory Game, Watermark Tool" />
       </Helmet>
 
       <div className="home-page-wrapper loaded">
-        {/* Hero Section */}
         <section className="hero-section">
           <div className="hero-content">
             <div className="hero-badge">✨ Welcome to AISEO Suite</div>
@@ -101,7 +149,7 @@ function HomePage() {
 
             <div className="hero-stats">
               <div className="stat-item">
-                <span className="stat-number">3+</span>
+                <span className="stat-number">4+</span>
                 <span className="stat-label">Tools</span>
               </div>
               <div className="stat-item">
@@ -121,13 +169,12 @@ function HomePage() {
             <div className="hero-blob-3"></div>
             <div className="hero-emoji-grid">
               <span>🤖</span>
+              <span>🔐</span>
               <span>🎮</span>
-              <span>🎨</span>
             </div>
           </div>
         </section>
 
-        {/* Features Section */}
         <section className="features-section">
           <div className="section-header">
             <h2 className="section-title">Các Công Cụ Của Chúng Tôi</h2>
@@ -152,7 +199,6 @@ function HomePage() {
           </div>
         </section>
 
-        {/* CTA Section */}
         <section className="cta-section">
           <div className="cta-content">
             <h2 className="cta-title">Sẵn Sàng Bắt Đầu?</h2>
@@ -161,8 +207,8 @@ function HomePage() {
             </p>
 
             <div className="cta-buttons">
-              <NavLink to="/aiseo" className="btn-primary">
-                Khám Phá AISEO
+              <NavLink to="/auth" className="btn-primary">
+                Vào Màn Hình Auth
               </NavLink>
               <NavLink to="/memory-game" className="btn-secondary">
                 Chơi Game
@@ -175,12 +221,34 @@ function HomePage() {
             <div className="gradient-ball-2"></div>
           </div>
         </section>
+
+        <section className="features-section">
+          <div className="section-header">
+            <h2 className="section-title">Supabase Todos</h2>
+            <p className="section-subtitle">
+              Danh sach du lieu duoc tai truc tiep tu bang <code>todos</code> trong Supabase.
+            </p>
+          </div>
+
+          {todosLoading ? (
+            <p className="feature-description">Dang tai todos...</p>
+          ) : todosError ? (
+            <p className="feature-description">Khong the tai todos: {todosError}</p>
+          ) : todos.length === 0 ? (
+            <p className="feature-description">Chua co todo nao trong Supabase.</p>
+          ) : (
+            <ul className="feature-description">
+              {todos.map((todo) => (
+                <li key={todo.id}>{todo.name}</li>
+              ))}
+            </ul>
+          )}
+        </section>
       </div>
     </>
   );
 }
 
-// Not Found Page
 function NotFoundPage() {
   return (
     <>
@@ -209,30 +277,51 @@ function NotFoundPage() {
   );
 }
 
-// Main App Component
+function AISEOFallbackPage() {
+  return <Navigate to="/" replace />;
+}
+
 export default function App() {
   const location = useLocation();
   const { theme } = useTheme();
+  const { user } = useAuth();
   const isHomePage = location.pathname === '/';
+  const isAuthPage = location.pathname === '/auth';
 
   return (
     <HelmetProvider>
       <div className={`app-container theme-${theme}`} data-theme={theme}>
-        <Header />
+        {!isAuthPage && <Header />}
 
-        <main className={`app-main ${isHomePage ? 'home-page' : 'content-page'}`}>
+        <main className={`app-main ${isHomePage ? 'home-page' : 'content-page'} ${isAuthPage ? 'auth-page-shell' : ''}`}>
           <Routes>
             <Route path="/" element={<HomePage />} />
-            {/* <Route path="/aiseo" element={<AISEO />} /> */}
+            <Route path="/aiseo" element={<AISEOFallbackPage />} />
             <Route path="/watermark" element={<Watermark />} />
             <Route path="/memory-game" element={<MemoryGame />} />
             <Route path="/seo-keywords" element={<SEOKeywords />} />
+            <Route
+              path="/auth"
+              element={(
+                <PublicRoute user={user}>
+                  <AuthPage />
+                </PublicRoute>
+              )}
+            />
+            <Route
+              path="/dashboard"
+              element={(
+                <ProtectedRoute user={user}>
+                  <DashboardPage />
+                </ProtectedRoute>
+              )}
+            />
             <Route path="*" element={<NotFoundPage />} />
           </Routes>
         </main>
 
-        <Footer />
-        <ScrollToTopButton />
+        {!isAuthPage && <Footer />}
+        {!isAuthPage && <ScrollToTopButton />}
       </div>
     </HelmetProvider>
   );
