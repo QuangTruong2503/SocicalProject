@@ -293,9 +293,13 @@ export default function AuthCard() {
         </div>
 
         <div className="auth-card-header">
-          <span className="auth-chip">ZepLao</span>
-          <h1>Chào mừng bạn trở lại</h1>
-          <p>Đăng nhập hoặc tạo tài khoản để truy cập dashboard của bạn.</p>
+          <span className="auth-chip">ZepLao Account</span>
+          <h1>{activeTab === 'login' ? 'Chào mừng bạn trở lại' : 'Tạo tài khoản mới'}</h1>
+          <p>
+            {activeTab === 'login'
+              ? 'Đăng nhập để tiếp tục làm việc với dashboard và các công cụ của bạn.'
+              : 'Đăng ký tài khoản để đồng bộ dữ liệu và bắt đầu sử dụng hệ thống.'}
+          </p>
         </div>
 
         <div className="auth-tabs" role="tablist" aria-label="Authentication tabs">
@@ -368,6 +372,10 @@ export default function AuthCard() {
                   <span className="auth-oauth-icon">G</span>
                   Đăng nhập bằng Google
                 </button>
+
+                <p className="auth-footnote">
+                  Bằng việc tiếp tục, bạn đồng ý với quy trình xác thực và bảo mật của hệ thống.
+                </p>
               </form>
             </section>
 
@@ -400,6 +408,10 @@ export default function AuthCard() {
                     'Tạo tài khoản'
                   )}
                 </button>
+
+                <p className="auth-footnote">
+                  Sau khi đăng ký, bạn có thể cần xác thực email trước khi đăng nhập.
+                </p>
               </form>
             </section>
           </div>
