@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth.js';
 import AuthField from './AuthField.jsx';
 import AuthToast from './AuthToast.jsx';
 import SuccessOverlay from './SuccessOverlay.jsx';
+import { normalizeLocalPath } from '../../utils/authRedirect.js';
 
 const initialLoginState = {
   email: '',
@@ -23,6 +24,7 @@ function validateEmail(email) {
 
 export default function AuthCard() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { login, signup, loginWithGoogle } = useAuth();
   const [activeTab, setActiveTab] = useState('login');
   const [loginForm, setLoginForm] = useState(initialLoginState);
@@ -36,6 +38,7 @@ export default function AuthCard() {
   const [showLoginPassword, setShowLoginPassword] = useState(false);
   const [showRegisterPassword, setShowRegisterPassword] = useState(false);
   const [showRegisterConfirmPassword, setShowRegisterConfirmPassword] = useState(false);
+  const returnTarget = normalizeLocalPath(location.state?.from, '/dashboard');
 
   useEffect(() => {
     if (!toast) {
@@ -197,7 +200,7 @@ export default function AuthCard() {
       type: 'success',
       title: 'Đăng ký thành công',
       message: result.data?.requiresEmailConfirmation
-        ? 'Tài khoản đã được tạo. Vui lòng kiểm tra email để xác thực trước khi đăng nhập.'
+        ? 'Đăng ký thành công. Thông báo kích hoạt đã được gửi tới email.'
         : 'Tài khoản đã được tạo và phiên đăng nhập đã sẵn sàng.',
     });
 
@@ -206,6 +209,10 @@ export default function AuthCard() {
       setRegisterForm(initialRegisterState);
       clearStateForTab('login');
       setIsSubmitting(false);
+
+      if (!result.data?.requiresEmailConfirmation && result.data?.session) {
+        navigate(returnTarget, { replace: true });
+      }
     }, 1100);
   }
 
@@ -242,7 +249,7 @@ export default function AuthCard() {
     window.setTimeout(() => {
       setShowSuccess(false);
       setIsSubmitting(false);
-      navigate('/dashboard', { replace: true });
+      navigate(returnTarget, { replace: true });
     }, 900);
   }
 
@@ -250,7 +257,7 @@ export default function AuthCard() {
     setIsSubmitting(true);
     setErrors({});
 
-    const result = await loginWithGoogle();
+    const result = await loginWithGoogle(returnTarget);
 
     if (result.error) {
       setIsSubmitting(false);

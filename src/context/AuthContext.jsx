@@ -270,9 +270,12 @@ export function AuthProvider({ children }) {
     return result;
   }
 
-  async function loginWithGoogle() {
+  async function loginWithGoogle(redirectPath = '/dashboard') {
     setAuthError(null);
-    const result = await signInWithGoogle(`${window.location.origin}/dashboard`);
+    const redirectUrl = new URL('/auth/callback', window.location.origin);
+    redirectUrl.searchParams.set('next', redirectPath);
+
+    const result = await signInWithGoogle(redirectUrl.toString());
 
     if (result.error) {
       setAuthError(result.error);

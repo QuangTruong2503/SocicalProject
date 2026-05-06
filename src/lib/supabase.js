@@ -3,8 +3,7 @@ import { createClient } from '@supabase/supabase-js';
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 const supabasePublishableKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
 const supabaseUploadBucket = import.meta.env.VITE_SUPABASE_UPLOAD_BUCKET || 'user-images';
-const supabaseAuthCookieKey = 'socicalproject.auth.token';
-const supabaseAuthCookieDays = 7;
+const supabaseAuthStorageKey = 'socicalproject.auth.token';
 
 if (!supabaseUrl) {
   throw new Error('[supabase] Missing VITE_SUPABASE_URL.');
@@ -17,48 +16,50 @@ if (!supabasePublishableKey) {
 console.debug('[supabase] Initializing browser client', {
   url: supabaseUrl,
   uploadBucket: supabaseUploadBucket,
-  storageKey: supabaseAuthCookieKey,
+  storageKey: supabaseAuthStorageKey,
 });
 
-function getCookieValue(name) {
+function getStorageValue(key) {
   if (typeof document === 'undefined') {
     return null;
   }
 
-  const encodedName = `${encodeURIComponent(name)}=`;
-  const parts = document.cookie ? document.cookie.split('; ') : [];
-
-  for (const part of parts) {
-    if (part.startsWith(encodedName)) {
-      return decodeURIComponent(part.slice(encodedName.length));
-    }
+  try {
+    return window.localStorage.getItem(key);
+  } catch (error) {
+    console.warn('[supabase] Unable to read auth storage value', { key, error });
+    return null;
   }
-
-  return null;
 }
 
-function setCookieValue(name, value, days) {
+function setStorageValue(key, value) {
   if (typeof document === 'undefined') {
     return;
   }
 
-  const expires = new Date(Date.now() + days * 24 * 60 * 60 * 1000).toUTCString();
-  const secureFlag = window.location.protocol === 'https:' ? '; Secure' : '';
-  document.cookie = `${encodeURIComponent(name)}=${encodeURIComponent(value)}; Expires=${expires}; Path=/; SameSite=Lax${secureFlag}`;
+  try {
+    window.localStorage.setItem(key, value);
+  } catch (error) {
+    console.error('[supabase] Unable to write auth storage value', { key, error });
+  }
 }
 
-function removeCookieValue(name) {
+function removeStorageValue(key) {
   if (typeof document === 'undefined') {
     return;
   }
 
-  document.cookie = `${encodeURIComponent(name)}=; Expires=Thu, 01 Jan 1970 00:00:00 GMT; Path=/; SameSite=Lax`;
+  try {
+    window.localStorage.removeItem(key);
+  } catch (error) {
+    console.error('[supabase] Unable to remove auth storage value', { key, error });
+  }
 }
 
-const cookieStorage = {
-  getItem: (key) => getCookieValue(key),
-  setItem: (key, value) => setCookieValue(key, value, supabaseAuthCookieDays),
-  removeItem: (key) => removeCookieValue(key),
+const localStorageStorage = {
+  getItem: (key) => getStorageValue(key),
+  setItem: (key, value) => setStorageValue(key, value),
+  removeItem: (key) => removeStorageValue(key),
 };
 
 export const supabase = createClient(supabaseUrl, supabasePublishableKey, {
@@ -67,8 +68,8 @@ export const supabase = createClient(supabaseUrl, supabasePublishableKey, {
     persistSession: true,
     detectSessionInUrl: true,
     flowType: 'pkce',
-    storage: cookieStorage,
-    storageKey: supabaseAuthCookieKey,
+    storage: localStorageStorage,
+    storageKey: supabaseAuthStorageKey,
   },
 });
 
