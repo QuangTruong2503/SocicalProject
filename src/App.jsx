@@ -79,7 +79,7 @@ function HomePage() {
     {
       icon: '🤖',
       title: 'AI SEO Generator',
-      description: 'Tao noi dung SEO-optimized tu dong cho san pham, bai viet, va quang cao cua ban.',
+      description: 'Tạo nội dung SEO-optimized tự động cho sản phẩm, bài viết, và quảng cáo của bạn.',
       buttonText: 'Mo AISEO',
       link: '/aiseo',
       badge: 'Popular',
@@ -88,7 +88,7 @@ function HomePage() {
     {
       icon: '🔐',
       title: 'Authentication',
-      description: 'Dang ky, dang nhap va quan ly phien nguoi dung voi Supabase Authentication.',
+      description: 'Đăng ký, đăng nhập và quản lý phiên người dùng với Supabase Authentication.',
       buttonText: 'Mo Auth',
       link: '/auth',
       badge: 'New',
@@ -97,7 +97,7 @@ function HomePage() {
     {
       icon: '🔍',
       title: 'SEO Keywords Generator',
-      description: 'Tao bo tu khoa SEO toan dien cho san pham cua ban.',
+      description: 'Tạo bộ từ khóa SEO toàn diện cho sản phẩm của bạn.',
       buttonText: 'Mo Tool',
       link: '/seo-keywords',
       badge: 'New',
@@ -106,7 +106,7 @@ function HomePage() {
     {
       icon: '🎮',
       title: 'Memory Match Game',
-      description: 'Choi tro choi ghep hinh thu vi, test tri nho cua ban voi giao dien hien dai.',
+      description: 'Chơi trò chơi ghép hình thú vị, test trí nhớ của bạn với giao diện hiện đại.',
       buttonText: 'Choi Ngay',
       link: '/memory-game',
       badge: 'New',
@@ -115,7 +115,7 @@ function HomePage() {
     {
       icon: '🎨',
       title: 'Watermark Tool',
-      description: 'Them watermark vao anh cua ban de bao ve quyen so huu tri tue.',
+      description: 'Thêm watermark vào ảnh của bạn để bảo vệ quyền sở hữu trí tuệ.',
       buttonText: 'Mo Tool',
       link: '/watermark',
       badge: null,
@@ -126,8 +126,8 @@ function HomePage() {
   return (
     <>
       <Helmet>
-        <title>Trang Chu - AISEO Tools Suite</title>
-        <meta name="description" content="Bo cong cu AI toan dien: SEO Generator, Authentication, Memory Game, Watermark Tool" />
+        <title>Trang Chủ - AISEO Tools Suite</title>
+        <meta name="description" content="Bộ công cụ AI toàn diện: SEO Generator, Authentication, Memory Game, Watermark Tool" />
       </Helmet>
 
       <div className="home-page-wrapper loaded">
@@ -136,13 +136,13 @@ function HomePage() {
             <div className="hero-badge">✨ Welcome to AISEO Suite</div>
 
             <h1 className="hero-title">
-              <span className="gradient-text">Cong Cu AI</span>
+              <span className="gradient-text">Công Cụ AI</span>
               <br />
-              Toan Dien Cho Ban
+              Toàn Diện Cho Bạn
             </h1>
 
             <p className="hero-subtitle">
-              Nang cao hieu suat lam viec voi bo cong cu AI duoc thiet ke than thien, manh me va de su dung.
+              Nâng cao hiệu suất làm việc với bộ công cụ AI được thiết kế thân thiện, mạnh mẽ và dễ sử dụng.
             </p>
 
             <div className="hero-stats">
@@ -175,9 +175,9 @@ function HomePage() {
 
         <section className="features-section">
           <div className="section-header">
-            <h2 className="section-title">Cac Cong Cu Cua Chung Toi</h2>
+            <h2 className="section-title">Các Công Cụ Của Chúng Tôi</h2>
             <p className="section-subtitle">
-              Kham pha bo suu tap day du cac cong cu duoc cung cap boi AI
+              Khám phá bộ sưu tập đầy đủ các công cụ được cung cấp bởi AI
             </p>
           </div>
 
@@ -199,17 +199,17 @@ function HomePage() {
 
         <section className="cta-section">
           <div className="cta-content">
-            <h2 className="cta-title">San Sang Bat Dau?</h2>
+            <h2 className="cta-title">Sẵn Sàng Bắt Đầu?</h2>
             <p className="cta-description">
-              Chon cong cu ban muon su dung va bat dau ngay hom nay - hoan toan mien phi!
+              Chọn công cụ bạn muốn sử dụng và bắt đầu ngay hôm nay - hoàn toàn miễn phí!
             </p>
 
             <div className="cta-buttons">
               <NavLink to="/auth" className="btn-primary">
-                Vao Man Hinh Auth
+                Vào Màn Hình Auth
               </NavLink>
               <NavLink to="/memory-game" className="btn-secondary">
-                Choi Game
+                Chơi Game
               </NavLink>
             </div>
           </div>
@@ -222,18 +222,18 @@ function HomePage() {
 
         <section className="features-section">
           <div className="section-header">
-            <h2 className="section-title">Memory Cards Cong Khai</h2>
+            <h2 className="section-title">Memory Cards Công Khai</h2>
             <p className="section-subtitle">
-              Danh sach nay duoc tai tu service layer moi cua bang <code>memory_cards</code>.
+              Danh sách này được tải từ service layer mới của bảng <code>memory_cards</code>.
             </p>
           </div>
 
           {cardsLoading ? (
-            <p className="feature-description">Dang tai memory cards...</p>
+            <p className="feature-description">Đang tải memory cards...</p>
           ) : cardsError ? (
-            <p className="feature-description">Khong the tai memory cards: {cardsError}</p>
+            <p className="feature-description">Không thể tải memory cards: {cardsError}</p>
           ) : publicCards.length === 0 ? (
-            <p className="feature-description">Chua co memory card nao trong Supabase.</p>
+            <p className="feature-description">Chưa có memory card nào trong Supabase.</p>
           ) : (
             <ul className="feature-description">
               {publicCards.slice(0, 6).map((card) => (
@@ -253,19 +253,19 @@ function NotFoundPage() {
   return (
     <>
       <Helmet>
-        <title>404 - Trang Khong Ton Tai</title>
+        <title>404 - Trang Không Tồn Tại</title>
       </Helmet>
 
       <div className="error-page-wrapper">
         <div className="error-content">
           <div className="error-code">404</div>
-          <h1 className="error-title">Trang Khong Ton Tai</h1>
+          <h1 className="error-title">Trang Không Tồn Tại</h1>
           <p className="error-description">
-            Rat tiec, trang ban dang tim kiem khong duoc tim thay. Co the no da bi xoa hoac URL khong chinh xac.
+            Rất tiếc, trang bạn đang tìm kiếm không được tìm thấy. Có thể nó đã bị xóa hoặc URL không chính xác.
           </p>
 
           <NavLink to="/" className="error-button">
-            ← Quay ve Trang Chu
+            ← Quay về Trang Chủ
           </NavLink>
 
           <div className="error-visual">

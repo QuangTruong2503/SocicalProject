@@ -122,19 +122,19 @@ export default function AuthCard() {
     const nextErrors = {};
 
     if (registerForm.username.trim().length < 3) {
-      nextErrors.username = 'Username phai co it nhat 3 ky tu.';
+      nextErrors.username = 'Username phải có ít nhất 3 ký tự.';
     }
 
     if (!validateEmail(registerForm.email)) {
-      nextErrors.email = 'Email khong dung dinh dang.';
+      nextErrors.email = 'Email không đúng định dạng.';
     }
 
     if (registerForm.password.length < 6) {
-      nextErrors.password = 'Password phai co it nhat 6 ky tu.';
+      nextErrors.password = 'Password phải có ít nhất 6 ký tự.';
     }
 
     if (registerForm.confirmPassword !== registerForm.password) {
-      nextErrors.confirmPassword = 'Confirm password khong khop.';
+      nextErrors.confirmPassword = 'Confirm password không khớp.';
     }
 
     setErrors(nextErrors);
@@ -197,8 +197,8 @@ export default function AuthCard() {
       type: 'success',
       title: 'Đăng ký thành công',
       message: result.data?.requiresEmailConfirmation
-        ? 'Tai khoan da duoc tao. Vui long kiem tra email de xac thuc truoc khi dang nhap.'
-        : 'Tai khoan da duoc tao va phien dang nhap da san sang.',
+        ? 'Tài khoản đã được tạo. Vui lòng kiểm tra email để xác thực trước khi đăng nhập.'
+        : 'Tài khoản đã được tạo và phiên đăng nhập đã sẵn sàng.',
     });
 
     window.setTimeout(() => {
@@ -290,14 +290,14 @@ export default function AuthCard() {
             className={`auth-tab ${activeTab === 'login' ? 'active' : ''}`}
             onClick={() => clearStateForTab('login')}
           >
-            Dang nhap
+            Đăng nhập
           </button>
           <button
             type="button"
             className={`auth-tab ${activeTab === 'register' ? 'active' : ''}`}
             onClick={() => clearStateForTab('register')}
           >
-            Dang ky
+            Đăng ký
           </button>
           <div className={`auth-tab-indicator ${activeTab === 'register' ? 'register' : 'login'}`}></div>
         </div>
