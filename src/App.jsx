@@ -1,4 +1,3 @@
-import { useEffect, useState } from 'react';
 import { Routes, Route, NavLink, useLocation, Navigate } from 'react-router-dom';
 import { HelmetProvider, Helmet } from 'react-helmet-async';
 import { useTheme } from './hooks/useTheme';
@@ -10,10 +9,10 @@ import ScrollToTopButton from './components/ScrollToTopButton.jsx';
 import MemoryGame from './pages/MemoryGame.jsx';
 import SEOKeywords from './pages/SEOKeywords.jsx';
 import AuthPage from './pages/AuthPage.jsx';
+import AuthCallbackPage from './pages/AuthCallbackPage.jsx';
 import DashboardPage from './pages/DashboardPage.jsx';
 import ProtectedRoute from './components/ProtectedRoute.jsx';
 import PublicRoute from './components/PublicRoute.jsx';
-import { fetchPublicMemoryCards } from './services/memoryCardService.js';
 
 function FeatureCard({ icon, title, description, buttonText, link, badge, delay }) {
   return (
@@ -41,40 +40,6 @@ function FeatureCard({ icon, title, description, buttonText, link, badge, delay 
 }
 
 function HomePage() {
-  const [publicCards, setPublicCards] = useState([]);
-  const [cardsLoading, setCardsLoading] = useState(true);
-  const [cardsError, setCardsError] = useState('');
-
-  useEffect(() => {
-    let isMounted = true;
-
-    async function loadPublicCards() {
-      setCardsLoading(true);
-
-      const result = await fetchPublicMemoryCards();
-
-      if (!isMounted) {
-        return;
-      }
-
-      if (result.error) {
-        setCardsError(result.error);
-        setPublicCards([]);
-      } else {
-        setPublicCards(result.data ?? []);
-        setCardsError('');
-      }
-
-      setCardsLoading(false);
-    }
-
-    loadPublicCards();
-
-    return () => {
-      isMounted = false;
-    };
-  }, []);
-
   const features = [
     {
       icon: '🤖',
@@ -219,31 +184,6 @@ function HomePage() {
             <div className="gradient-ball-2"></div>
           </div>
         </section>
-
-        <section className="features-section">
-          <div className="section-header">
-            <h2 className="section-title">Memory Cards Công Khai</h2>
-            <p className="section-subtitle">
-              Danh sách này được tải từ service layer mới của bảng <code>memory_cards</code>.
-            </p>
-          </div>
-
-          {cardsLoading ? (
-            <p className="feature-description">Đang tải memory cards...</p>
-          ) : cardsError ? (
-            <p className="feature-description">Không thể tải memory cards: {cardsError}</p>
-          ) : publicCards.length === 0 ? (
-            <p className="feature-description">Chưa có memory card nào trong Supabase.</p>
-          ) : (
-            <ul className="feature-description">
-              {publicCards.slice(0, 6).map((card) => (
-                <li key={card.id}>
-                  Card #{card.id} - {card.image}
-                </li>
-              ))}
-            </ul>
-          )}
-        </section>
       </div>
     </>
   );
@@ -281,11 +221,62 @@ function AISEOFallbackPage() {
   return <Navigate to="/" replace />;
 }
 
+const protectedRouteConfigs = [
+  {
+    path: '/dashboard',
+    element: <DashboardPage />,
+    title: 'Dashboard cần đăng nhập để tiếp tục.',
+    description: 'Trang dashboard chứa thông tin phiên, hồ sơ cá nhân và dữ liệu tải lên nên chỉ mở cho người dùng đã xác thực.',
+    details: [
+      'Quản lý hồ sơ và avatar',
+      'Xem ảnh đã tải lên gần đây',
+      'Theo dõi trạng thái phiên đăng nhập',
+    ],
+    loginLabel: 'Đăng nhập để vào dashboard',
+  },
+  {
+    path: '/seo-keywords',
+    element: <SEOKeywords />,
+    title: 'SEO Keywords cần tài khoản để lưu và đồng bộ dữ liệu.',
+    description: 'Công cụ này có thể tạo nội dung gắn với lịch sử sử dụng, nên mình yêu cầu đăng nhập để giữ trải nghiệm nhất quán.',
+    details: [
+      'Lưu lịch sử kết quả',
+      'Đồng bộ dữ liệu cá nhân',
+      'Truy cập tài nguyên đầy đủ',
+    ],
+    loginLabel: 'Đăng nhập để dùng SEO Keywords',
+  },
+  // {
+  //   path: '/watermark',
+  //   element: <Watermark />,
+  //   title: 'Watermark Tool cần đăng nhập để lưu trạng thái làm việc.',
+  //   description: 'Trang này có thể xử lý dữ liệu người dùng và cần phiên đăng nhập để đồng bộ thao tác an toàn hơn.',
+  //   details: [
+  //     'Bảo toàn lịch sử thao tác',
+  //     'Đồng bộ dữ liệu cá nhân',
+  //     'Giữ phiên làm việc ổn định',
+  //   ],
+  //   loginLabel: 'Đăng nhập để mở Watermark',
+  // },
+  {
+    path: '/memory-game',
+    element: <MemoryGame />,
+    title: 'Memory Game cần đăng nhập để theo dõi tiến trình.',
+    description: 'Mình yêu cầu xác thực để giữ điểm số, trạng thái và lịch sử chơi của bạn đồng bộ giữa các phiên.',
+    details: [
+      'Lưu điểm số tốt nhất',
+      'Theo dõi tiến trình chơi',
+      'Đồng bộ qua nhiều phiên',
+    ],
+    loginLabel: 'Đăng nhập để chơi tiếp',
+  },
+];
+
 export default function App() {
   const location = useLocation();
   const { theme } = useTheme();
   const isHomePage = location.pathname === '/';
-  const isAuthPage = location.pathname === '/auth';
+  const isAuthPage = location.pathname.startsWith('/auth');
 
   return (
     <HelmetProvider>
@@ -297,8 +288,6 @@ export default function App() {
             <Route path="/" element={<HomePage />} />
             <Route path="/aiseo" element={<AISEOFallbackPage />} />
             <Route path="/watermark" element={<Watermark />} />
-            <Route path="/memory-game" element={<MemoryGame />} />
-            <Route path="/seo-keywords" element={<SEOKeywords />} />
             <Route
               path="/auth"
               element={(
@@ -307,14 +296,23 @@ export default function App() {
                 </PublicRoute>
               )}
             />
-            <Route
-              path="/dashboard"
-              element={(
-                <ProtectedRoute>
-                  <DashboardPage />
-                </ProtectedRoute>
-              )}
-            />
+            <Route path="/auth/callback" element={<AuthCallbackPage />} />
+            {protectedRouteConfigs.map((route) => (
+              <Route
+                key={route.path}
+                path={route.path}
+                element={(
+                  <ProtectedRoute
+                    title={route.title}
+                    description={route.description}
+                    details={route.details}
+                    loginLabel={route.loginLabel}
+                  >
+                    {route.element}
+                  </ProtectedRoute>
+                )}
+              />
+            ))}
             <Route path="*" element={<NotFoundPage />} />
           </Routes>
         </main>
