@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { supabase } from '../../utils/supabase.js';
 import { useAuth } from '../../hooks/useAuth.js';
 import AuthField from './AuthField.jsx';
 import AuthToast from './AuthToast.jsx';
@@ -24,7 +23,7 @@ function validateEmail(email) {
 
 export default function AuthCard() {
   const navigate = useNavigate();
-  const { refreshProfile } = useAuth();
+  const { login, signup, loginWithGoogle } = useAuth();
   const [activeTab, setActiveTab] = useState('login');
   const [loginForm, setLoginForm] = useState(initialLoginState);
   const [registerForm, setRegisterForm] = useState(initialRegisterState);
@@ -152,11 +151,11 @@ export default function AuthCard() {
     const nextErrors = {};
 
     if (!validateEmail(loginForm.email)) {
-      nextErrors.email = 'Email khong dung dinh dang.';
+      nextErrors.email = 'Email không đúng định dạng.';
     }
 
     if (loginForm.password.length < 6) {
-      nextErrors.password = 'Password phai co it nhat 6 ky tu.';
+      nextErrors.password = 'Password phải có ít nhất 6 ký tự.';
     }
 
     setErrors(nextErrors);
@@ -179,34 +178,27 @@ export default function AuthCard() {
     setIsSubmitting(true);
     setErrors({});
 
-    const normalizedUsername = registerForm.username.trim();
-    const normalizedEmail = registerForm.email.trim().toLowerCase();
-
-    const { data, error } = await supabase.auth.signUp({
-      email: normalizedEmail,
+    const result = await signup({
+      email: registerForm.email.trim().toLowerCase(),
       password: registerForm.password,
-      options: {
-        data: {
-          username: normalizedUsername,
-        },
-      },
+      username: registerForm.username.trim(),
     });
 
-    if (error) {
+    if (result.error) {
       setIsSubmitting(false);
-      setErrors({ global: error.message });
+      setErrors({ global: result.error });
       triggerShake();
       return;
     }
 
-    setSuccessMessage('Dang ky thanh cong');
+    setSuccessMessage('Đăng ký thành công');
     setShowSuccess(true);
     setToast({
       type: 'success',
-      title: 'Dang ky thanh cong',
-      message: data.session
-        ? 'Tai khoan da duoc tao. Ban co the dang nhap ngay.'
-        : 'Tai khoan da duoc tao. Vui long kiem tra email de xac thuc truoc khi dang nhap.',
+      title: 'Đăng ký thành công',
+      message: result.data?.requiresEmailConfirmation
+        ? 'Tai khoan da duoc tao. Vui long kiem tra email de xac thuc truoc khi dang nhap.'
+        : 'Tai khoan da duoc tao va phien dang nhap da san sang.',
     });
 
     window.setTimeout(() => {
@@ -227,52 +219,42 @@ export default function AuthCard() {
     setIsSubmitting(true);
     setErrors({});
 
-    const { error } = await supabase.auth.signInWithPassword({
+    const result = await login({
       email: loginForm.email.trim().toLowerCase(),
       password: loginForm.password,
     });
 
-    if (error) {
-      window.sessionStorage.removeItem('auth-success-pending');
+    if (result.error) {
       setIsSubmitting(false);
-      setErrors({ global: error.message });
+      setErrors({ global: result.error });
       triggerShake();
       return;
     }
 
-    await refreshProfile();
-    window.sessionStorage.setItem('auth-success-pending', 'true');
-
-    setSuccessMessage('Dang nhap thanh cong');
+    setSuccessMessage('Đăng nhập thành công');
     setShowSuccess(true);
     setToast({
       type: 'success',
-      title: 'Xin chao',
-      message: 'Ban da dang nhap thanh cong.',
+      title: 'Xin chào!',
+      message: 'Bạn đã đăng nhập thành công.',
     });
 
     window.setTimeout(() => {
-      window.sessionStorage.removeItem('auth-success-pending');
       setShowSuccess(false);
       setIsSubmitting(false);
       navigate('/dashboard', { replace: true });
-    }, 1000);
+    }, 900);
   }
 
   async function handleGoogleLogin() {
     setIsSubmitting(true);
     setErrors({});
 
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider: 'google',
-      options: {
-        redirectTo: `${window.location.origin}/dashboard`,
-      },
-    });
+    const result = await loginWithGoogle();
 
-    if (error) {
+    if (result.error) {
       setIsSubmitting(false);
-      setErrors({ global: error.message });
+      setErrors({ global: result.error });
       triggerShake();
     }
   }
@@ -308,14 +290,14 @@ export default function AuthCard() {
             className={`auth-tab ${activeTab === 'login' ? 'active' : ''}`}
             onClick={() => clearStateForTab('login')}
           >
-            Đăng nhập
+            Dang nhap
           </button>
           <button
             type="button"
             className={`auth-tab ${activeTab === 'register' ? 'active' : ''}`}
             onClick={() => clearStateForTab('register')}
           >
-            Đăng ký
+            Dang ky
           </button>
           <div className={`auth-tab-indicator ${activeTab === 'register' ? 'register' : 'login'}`}></div>
         </div>

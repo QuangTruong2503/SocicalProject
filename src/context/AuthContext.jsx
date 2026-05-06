@@ -1,161 +1,379 @@
-import { createContext, useEffect, useMemo, useState } from 'react';
-import { supabase } from '../utils/supabase.js';
-
-export const AuthContext = createContext(null);
-
-function buildProfilePayload(user) {
-  const fallbackUsername = user.email?.split('@')[0] || 'user';
-
-  return {
-    id: user.id,
-    username: user.user_metadata?.username || fallbackUsername,
-    email: user.email || '',
-    created_at: user.created_at || new Date().toISOString(),
-  };
-}
+import {
+  useCallback,
+  startTransition,
+  useEffect,
+  useRef,
+  useState,
+} from 'react';
+import {
+  getSessionSnapshot,
+  signIn,
+  signInWithGoogle,
+  signOut,
+  signUp,
+  subscribeToAuthChanges,
+} from '../services/authService.js';
+import {
+  ensureProfile,
+  updateProfile as updateProfileService,
+} from '../services/profileService.js';
+import { fetchLatestUserUpload } from '../services/uploadService.js';
+import { createServiceResult } from '../services/serviceHelpers.js';
+import { AuthContext } from './authContext.js';
 
 export function AuthProvider({ children }) {
   const [session, setSession] = useState(null);
   const [user, setUser] = useState(null);
   const [profile, setProfile] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [latestUpload, setLatestUpload] = useState(null);
+  const [authError, setAuthError] = useState(null);
+  const [profileError, setProfileError] = useState(null);
+  const [uploadError, setUploadError] = useState(null);
+  const [isInitializing, setIsInitializing] = useState(true);
+  const [isProfileLoading, setIsProfileLoading] = useState(false);
+  const [isAvatarLoading, setIsAvatarLoading] = useState(false);
+  const [lastAuthEvent, setLastAuthEvent] = useState('INITIALIZING');
+  const profileRequestIdRef = useRef(0);
+  const avatarRequestIdRef = useRef(0);
+
+  const syncProfile = useCallback(async (nextUser, source) => {
+    const requestId = ++profileRequestIdRef.current;
+
+    if (!nextUser?.id) {
+      setProfile(null);
+      setProfileError(null);
+      setIsProfileLoading(false);
+      return createServiceResult(null);
+    }
+
+    console.debug('[AuthContext] syncProfile start', {
+      source,
+      userId: nextUser.id,
+      email: nextUser.email ?? null,
+    });
+
+    setIsProfileLoading(true);
+    setProfileError(null);
+
+    const result = await ensureProfile(nextUser);
+
+    if (profileRequestIdRef.current !== requestId) {
+      console.debug('[AuthContext] syncProfile ignored stale result', {
+        source,
+        userId: nextUser.id,
+        requestId,
+      });
+      return result;
+    }
+
+    if (result.error) {
+      console.error('[AuthContext] syncProfile failed', {
+        source,
+        userId: nextUser.id,
+        error: result.error,
+      });
+      setProfile(null);
+      setProfileError(result.error);
+      setIsProfileLoading(false);
+      return result;
+    }
+
+    console.debug('[AuthContext] syncProfile success', {
+      source,
+      userId: nextUser.id,
+      hasProfile: Boolean(result.data),
+    });
+
+    setProfile(result.data);
+    setProfileError(result.warning ?? null);
+    setIsProfileLoading(false);
+    return result;
+  }, []);
+
+  const syncLatestUpload = useCallback(async (nextUser, source) => {
+    const requestId = ++avatarRequestIdRef.current;
+
+    if (!nextUser?.id) {
+      setLatestUpload(null);
+      setUploadError(null);
+      setIsAvatarLoading(false);
+      return createServiceResult(null);
+    }
+
+    console.debug('[AuthContext] syncLatestUpload start', {
+      source,
+      userId: nextUser.id,
+    });
+
+    setIsAvatarLoading(true);
+    setUploadError(null);
+
+    const result = await fetchLatestUserUpload(nextUser.id);
+
+    if (avatarRequestIdRef.current !== requestId) {
+      console.debug('[AuthContext] syncLatestUpload ignored stale result', {
+        source,
+        userId: nextUser.id,
+        requestId,
+      });
+      return result;
+    }
+
+    if (result.error) {
+      console.error('[AuthContext] syncLatestUpload failed', {
+        source,
+        userId: nextUser.id,
+        error: result.error,
+      });
+      setLatestUpload(null);
+      setUploadError(result.error);
+      setIsAvatarLoading(false);
+      return result;
+    }
+
+    console.debug('[AuthContext] syncLatestUpload success', {
+      source,
+      userId: nextUser.id,
+      hasUpload: Boolean(result.data),
+    });
+
+    setLatestUpload(result.data);
+    setUploadError(result.warning ?? null);
+    setIsAvatarLoading(false);
+    return result;
+  }, []);
+
+  const applySessionState = useCallback(async ({ nextSession, event, source }) => {
+    const nextUser = nextSession?.user ?? null;
+
+    console.debug('[AuthContext] applySessionState', {
+      source,
+      event,
+      userId: nextUser?.id ?? null,
+      email: nextUser?.email ?? null,
+      expiresAt: nextSession?.expires_at ?? null,
+    });
+
+    startTransition(() => {
+      setSession(nextSession ?? null);
+      setUser(nextUser);
+      setLastAuthEvent(event);
+      setAuthError(null);
+    });
+
+    if (!nextUser) {
+      profileRequestIdRef.current += 1;
+      avatarRequestIdRef.current += 1;
+      setProfile(null);
+      setLatestUpload(null);
+      setProfileError(null);
+      setUploadError(null);
+      setIsProfileLoading(false);
+      setIsAvatarLoading(false);
+      setIsInitializing(false);
+      return;
+    }
+
+    await syncProfile(nextUser, source);
+    await syncLatestUpload(nextUser, source);
+    setIsInitializing(false);
+  }, [syncLatestUpload, syncProfile]);
 
   useEffect(() => {
-    let isMounted = true;
+    let isActive = true;
 
-    async function bootstrapAuth() {
-      const { data, error } = await supabase.auth.getSession();
+    async function initializeAuth() {
+      setIsInitializing(true);
 
-      if (!isMounted) {
+      const snapshotResult = await getSessionSnapshot();
+
+      if (!isActive) {
         return;
       }
 
-      if (error) {
-        setSession(null);
-        setUser(null);
-        setProfile(null);
-      } else {
-        setSession(data.session ?? null);
-        setUser(data.session?.user ?? null);
+      if (snapshotResult.error) {
+        setAuthError(snapshotResult.error);
+        await applySessionState({
+          nextSession: null,
+          event: 'INITIAL_SESSION_ERROR',
+          source: 'bootstrap-error',
+        });
+        return;
       }
 
-      setLoading(false);
+      await applySessionState({
+        nextSession: snapshotResult.data?.session ?? null,
+        event: 'INITIAL_SESSION',
+        source: 'bootstrap',
+      });
     }
 
-    bootstrapAuth();
+    initializeAuth();
 
-    const { data: listener } = supabase.auth.onAuthStateChange((_event, nextSession) => {
-      setSession(nextSession ?? null);
-      setUser(nextSession?.user ?? null);
-      setLoading(false);
+    const subscription = subscribeToAuthChanges(({ event, session: nextSession }) => {
+      window.setTimeout(() => {
+        if (!isActive) {
+          return;
+        }
+
+        applySessionState({
+          nextSession,
+          event,
+          source: event === 'TOKEN_REFRESHED' ? 'token-refresh' : 'listener',
+        });
+      }, 0);
     });
 
     return () => {
-      isMounted = false;
-      listener.subscription.unsubscribe();
+      isActive = false;
+      subscription.unsubscribe();
     };
-  }, []);
+  }, [applySessionState]);
 
-  useEffect(() => {
-    let isMounted = true;
+  async function login({ email, password }) {
+    setAuthError(null);
+    const result = await signIn({ email, password });
 
-    async function syncProfile() {
-      if (!user?.id) {
-        setProfile(null);
-        return;
-      }
-
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('id, username, email, created_at')
-        .eq('id', user.id)
-        .maybeSingle();
-
-      if (!isMounted) {
-        return;
-      }
-
-      if (error) {
-        setProfile(null);
-        return;
-      }
-
-      if (data) {
-        setProfile(data);
-        return;
-      }
-
-      const profilePayload = buildProfilePayload(user);
-      const { data: insertedProfile, error: upsertError } = await supabase
-        .from('profiles')
-        .upsert(profilePayload)
-        .select('id, username, email, created_at')
-        .single();
-
-      if (!isMounted) {
-        return;
-      }
-
-      if (upsertError) {
-        setProfile(null);
-        return;
-      }
-
-      setProfile(insertedProfile ?? profilePayload);
+    if (result.error) {
+      setAuthError(result.error);
+      return result;
     }
 
-    syncProfile();
+    if (result.data?.session) {
+      await applySessionState({
+        nextSession: result.data.session,
+        event: 'SIGNED_IN_REQUEST',
+        source: 'login-action',
+      });
+    }
 
-    return () => {
-      isMounted = false;
-    };
-  }, [user?.id]);
+    return result;
+  }
 
-  const value = useMemo(() => ({
-    session,
-    user,
-    profile,
-    loading,
-    isAuthenticated: Boolean(user),
-    refreshProfile: async () => {
-      if (!user?.id) {
-        setProfile(null);
-        return null;
-      }
+  async function signup({ email, password, username }) {
+    setAuthError(null);
+    const result = await signUp({ email, password, username });
 
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('id, username, email, created_at')
-        .eq('id', user.id)
-        .maybeSingle();
+    if (result.error) {
+      setAuthError(result.error);
+      return result;
+    }
 
-      if (error) {
-        return null;
-      }
+    if (result.data?.session) {
+      await applySessionState({
+        nextSession: result.data.session,
+        event: 'SIGNED_UP_REQUEST',
+        source: 'signup-action',
+      });
+    }
 
-      if (data) {
-        setProfile(data);
-        return data;
-      }
+    return result;
+  }
 
-      const profilePayload = buildProfilePayload(user);
-      const { data: insertedProfile, error: upsertError } = await supabase
-        .from('profiles')
-        .upsert(profilePayload)
-        .select('id, username, email, created_at')
-        .single();
+  async function loginWithGoogle() {
+    setAuthError(null);
+    const result = await signInWithGoogle(`${window.location.origin}/dashboard`);
 
-      if (upsertError) {
-        return null;
-      }
+    if (result.error) {
+      setAuthError(result.error);
+    }
 
-      setProfile(insertedProfile ?? profilePayload);
-      return insertedProfile ?? profilePayload;
-    },
-  }), [loading, profile, session, user]);
+    return result;
+  }
+
+  async function logout() {
+    const result = await signOut();
+
+    if (result.error) {
+      setAuthError(result.error);
+    }
+
+    return result;
+  }
+
+  async function refreshSession() {
+    const snapshotResult = await getSessionSnapshot();
+
+    if (snapshotResult.error) {
+      setAuthError(snapshotResult.error);
+      return snapshotResult;
+    }
+
+    await applySessionState({
+      nextSession: snapshotResult.data?.session ?? null,
+      event: 'SESSION_REFRESH_REQUEST',
+      source: 'manual-refresh',
+    });
+
+    return snapshotResult;
+  }
+
+  async function refreshProfile() {
+    if (!user?.id) {
+      const result = createServiceResult(null, 'A signed-in user is required to refresh the profile.');
+      setProfile(null);
+      setProfileError(result.error);
+      return result;
+    }
+
+    return syncProfile(user, 'refresh-profile');
+  }
+
+  async function refreshAvatar() {
+    if (!user?.id) {
+      const result = createServiceResult(null, 'A signed-in user is required to refresh the avatar.');
+      setLatestUpload(null);
+      setUploadError(result.error);
+      return result;
+    }
+
+    return syncLatestUpload(user, 'refresh-avatar');
+  }
+
+  async function updateProfile(updates) {
+    if (!user?.id) {
+      const result = createServiceResult(null, 'A signed-in user is required to update the profile.');
+      setProfileError(result.error);
+      return result;
+    }
+
+    const result = await updateProfileService(user.id, updates);
+
+    if (result.error) {
+      setProfileError(result.error);
+      return result;
+    }
+
+    setProfile(result.data);
+    setProfileError(result.warning ?? null);
+    return result;
+  }
 
   return (
-    <AuthContext.Provider value={value}>
+    <AuthContext.Provider
+      value={{
+        session,
+        user,
+        profile,
+        latestUpload,
+        authError,
+        profileError,
+        uploadError,
+        isInitializing,
+        isProfileLoading,
+        isAvatarLoading,
+        isAuthenticated: Boolean(user),
+        lastAuthEvent,
+        login,
+        signup,
+        loginWithGoogle,
+        logout,
+        refreshSession,
+        refreshProfile,
+        refreshAvatar,
+        updateProfile,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );

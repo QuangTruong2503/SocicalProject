@@ -1,12 +1,15 @@
-import { memo, useCallback, useEffect, useRef, useState } from "react";
-import "../styles/MemoryGame.css";
-import { Helmet } from "react-helmet-async";
-import { supabase } from "../utils/supabase.js";
+import { memo, useCallback, useEffect, useRef, useState } from 'react';
+import '../styles/MemoryGame.css';
+import { Helmet } from 'react-helmet-async';
+import fallbackCards from '../data/cards.json';
+import {
+  fetchPublicMemoryCards,
+  normalizeMemoryCards,
+} from '../services/memoryCardService.js';
 
-// Fisher-Yates shuffle algorithm (optimal)
 const shuffleArray = (array) => {
   const shuffled = [...array];
-  for (let i = shuffled.length - 1; i > 0; i--) {
+  for (let i = shuffled.length - 1; i > 0; i -= 1) {
     const j = Math.floor(Math.random() * (i + 1));
     [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
   }
@@ -35,46 +38,71 @@ export default function MemoryGame() {
   const [turns, setTurns] = useState(0);
   const [matches, setMatches] = useState(0);
   const [won, setWon] = useState(false);
+  const [dataSource, setDataSource] = useState('supabase');
   const [bestScore, setBestScore] = useState(() => {
-    const saved = localStorage.getItem("memoryGameBestScore");
+    const saved = localStorage.getItem('memoryGameBestScore');
     return saved ? parseInt(saved, 10) : null;
   });
   const [loading, setLoading] = useState(true);
-  const [loadError, setLoadError] = useState("");
+  const [loadError, setLoadError] = useState('');
   const audioContextRef = useRef(null);
   const resetTimerRef = useRef(null);
 
   useEffect(() => {
     let isMounted = true;
 
-    async function fetchCards() {
+    async function loadCards() {
       setLoading(true);
-      setLoadError("");
+      setLoadError('');
 
-      const { data, error } = await supabase
-        .from("memory_cards")
-        .select("id, image, created_at")
-        .order("created_at", { ascending: true });
+      const localCards = normalizeMemoryCards(fallbackCards);
+
+      if (localCards.length > 0) {
+        setCardPool(localCards);
+        setCards(createGameCards(localCards));
+        setDataSource('fallback');
+        setLoading(false);
+      }
+
+      const result = await fetchPublicMemoryCards();
 
       if (!isMounted) {
         return;
       }
 
-      if (error) {
-        setLoadError(error.message || "Khong the tai du lieu the bai.");
-        setCardPool([]);
-        setCards([]);
-        setLoading(false);
+      if (result.error) {
+        console.error('[MemoryGame] fetchPublicMemoryCards failed', result.error);
+
+        if (localCards.length === 0) {
+          setLoadError(result.error);
+          setCardPool([]);
+          setCards([]);
+          setLoading(false);
+        }
+
         return;
       }
 
-      const normalizedCards = (data ?? []).filter((card) => card.image);
-      setCardPool(normalizedCards);
-      setCards(createGameCards(normalizedCards));
+      const remoteCards = result.data ?? [];
+
+      if (remoteCards.length === 0) {
+        if (localCards.length === 0) {
+          setLoadError('Khong co anh nao de tai.');
+          setCardPool([]);
+          setCards([]);
+          setLoading(false);
+        }
+
+        return;
+      }
+
+      setCardPool(remoteCards);
+      setCards(createGameCards(remoteCards));
+      setDataSource('supabase');
       setLoading(false);
     }
 
-    fetchCards();
+    loadCards();
 
     return () => {
       isMounted = false;
@@ -88,13 +116,12 @@ export default function MemoryGame() {
     });
   }, [cards]);
 
-  useEffect(() => {
-    return () => {
-      if (resetTimerRef.current) {
-        window.clearTimeout(resetTimerRef.current);
-      }
-      audioContextRef.current?.close?.();
-    };
+  useEffect(() => () => {
+    if (resetTimerRef.current) {
+      window.clearTimeout(resetTimerRef.current);
+    }
+
+    audioContextRef.current?.close?.();
   }, []);
 
   const playSound = useCallback((type) => {
@@ -108,7 +135,7 @@ export default function MemoryGame() {
 
     const audioContext = audioContextRef.current;
 
-    if (audioContext.state === "suspended") {
+    if (audioContext.state === 'suspended') {
       audioContext.resume();
     }
 
@@ -118,7 +145,7 @@ export default function MemoryGame() {
     oscillator.connect(gainNode);
     gainNode.connect(audioContext.destination);
 
-    if (type === "match") {
+    if (type === 'match') {
       oscillator.frequency.value = 800;
       gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
       gainNode.gain.exponentialRampToValueAtTime(
@@ -127,7 +154,7 @@ export default function MemoryGame() {
       );
       oscillator.start(audioContext.currentTime);
       oscillator.stop(audioContext.currentTime + 0.2);
-    } else if (type === "mismatch") {
+    } else if (type === 'mismatch') {
       oscillator.frequency.value = 300;
       gainNode.gain.setValueAtTime(0.2, audioContext.currentTime);
       gainNode.gain.exponentialRampToValueAtTime(
@@ -136,8 +163,8 @@ export default function MemoryGame() {
       );
       oscillator.start(audioContext.currentTime);
       oscillator.stop(audioContext.currentTime + 0.15);
-    } else if (type === "win") {
-      const notes = [523.25, 659.25, 783.99]; // C, E, G
+    } else if (type === 'win') {
+      const notes = [523.25, 659.25, 783.99];
       notes.forEach((freq, idx) => {
         const osc = audioContext.createOscillator();
         const gain = audioContext.createGain();
@@ -188,30 +215,28 @@ export default function MemoryGame() {
     setSecondCard(card);
 
     if (firstCard.id === card.id) {
-      playSound("match");
+      playSound('match');
       const nextMatches = matches + 1;
       const isWinningMove = nextMatches === cards.length / 2;
 
-      setCards((prev) => {
-        return prev.map((item) =>
-          item.id === firstCard.id ? { ...item, matched: true } : item,
-        );
-      });
+      setCards((prev) => prev.map((item) => (
+        item.id === firstCard.id ? { ...item, matched: true } : item
+      )));
       setMatches(nextMatches);
 
       if (isWinningMove) {
         setWon(true);
-        playSound("win");
+        playSound('win');
 
         if (bestScore === null || newTurns < bestScore) {
           setBestScore(newTurns);
-          localStorage.setItem("memoryGameBestScore", String(newTurns));
+          localStorage.setItem('memoryGameBestScore', String(newTurns));
         }
       }
 
       resetTurn();
     } else {
-      playSound("mismatch");
+      playSound('mismatch');
       resetTimerRef.current = window.setTimeout(resetTurn, 720);
     }
   }, [bestScore, cards.length, firstCard, matches, playSound, resetTurn, turns]);
@@ -226,12 +251,16 @@ export default function MemoryGame() {
       return;
     }
 
-    firstCard ? resolveSecondChoice(card) : setFirstCard(card);
+    if (firstCard) {
+      resolveSecondChoice(card);
+      return;
+    }
+
+    setFirstCard(card);
   }, [disabled, firstCard, resolveSecondChoice, secondCard]);
 
   const totalCards = cards.length;
-  const progress =
-    totalCards > 0 ? Math.round((matches / (totalCards / 2)) * 100) : 0;
+  const progress = totalCards > 0 ? Math.round((matches / (totalCards / 2)) * 100) : 0;
   const hasEnoughCards = cardPool.length >= 2;
 
   return (
@@ -244,10 +273,8 @@ export default function MemoryGame() {
         />
       </Helmet>
       <div className="memory-game-container">
-        {/* Background with animated gradient */}
         <div className="animated-background"></div>
 
-        {/* Header */}
         <header className="game-header">
           <div className="header-content">
             <h1 className="game-title">
@@ -257,26 +284,24 @@ export default function MemoryGame() {
             <p className="game-subtitle">Test your memory skills</p>
           </div>
 
-          {/* Stats */}
           <div className="stats-container">
             <div className="stat-card">
-              <span className="stat-label">Lượt chơi</span>
+              <span className="stat-label">Luot choi</span>
               <span className="stat-value">{turns}</span>
             </div>
             <div className="stat-card">
-              <span className="stat-label">Cặp tìm được</span>
+              <span className="stat-label">Cap tim duoc</span>
               <span className="stat-value">{matches}</span>
             </div>
             {bestScore !== null && (
               <div className="stat-card best-score">
-                <span className="stat-label">🏆 Tốt nhất</span>
+                <span className="stat-label">🏆 Tot nhat</span>
                 <span className="stat-value">{bestScore}</span>
               </div>
             )}
           </div>
         </header>
 
-        {/* Progress bar */}
         {!loading && !won && totalCards > 0 && (
           <div className="progress-section">
             <div className="progress-bar-container">
@@ -285,11 +310,10 @@ export default function MemoryGame() {
                 style={{ width: `${progress}%` }}
               ></div>
             </div>
-            <p className="progress-text">{progress}% hoàn thành</p>
+            <p className="progress-text">{progress}% hoan thanh</p>
           </div>
         )}
 
-        {/* Game Board */}
         <main className="game-board">
           {loading ? (
             <p className="progress-text">Dang tai the bai tu Supabase...</p>
@@ -302,8 +326,7 @@ export default function MemoryGame() {
           ) : (
             <div className="cards-grid">
               {cards.map((card) => {
-                const flipped =
-                  card === firstCard || card === secondCard || card.matched;
+                const flipped = card === firstCard || card === secondCard || card.matched;
 
                 return (
                   <MemoryCard
@@ -317,35 +340,39 @@ export default function MemoryGame() {
               })}
             </div>
           )}
+
+          {!loading && !loadError && cardPool.length > 0 && dataSource === 'fallback' && (
+            <p className="progress-text">
+              Dang dung bo anh du phong de game van choi duoc ngay ca khi bang <strong>memory_cards</strong> chua truy cap duoc.
+            </p>
+          )}
         </main>
 
-        {/* Win Screen */}
         {won && (
           <div className="win-overlay">
             <div className="win-card animate-pop-in">
               <div className="confetti"></div>
-              <h2 className="win-title">🎉 Chúc mừng! 🎉</h2>
+              <h2 className="win-title">🎉 Chuc mung! 🎉</h2>
               <p className="win-message">
-                Bạn thắng sau <strong>{turns}</strong> lượt chơi
+                Ban thang sau <strong>{turns}</strong> luot choi
               </p>
               {bestScore === turns && (
-                <p className="win-record">🏆 Đây là kỷ lục mới!</p>
+                <p className="win-record">🏆 Day la ky luc moi!</p>
               )}
               <button className="btn-play-again" onClick={startGame}>
-                Chơi lại
+                Choi lai
               </button>
             </div>
           </div>
         )}
 
-        {/* New Game Button (always visible) */}
         <footer className="game-footer">
           <button
             className="btn-new-game"
             onClick={startGame}
             disabled={loading || !hasEnoughCards}
           >
-            ↻ Ván chơi mới
+            ↻ Van choi moi
           </button>
         </footer>
       </div>
@@ -364,7 +391,7 @@ const MemoryCard = memo(function MemoryCard({
   }, [card, onChoice]);
 
   const handleKeyDown = useCallback((event) => {
-    if (event.key === "Enter" || event.key === " ") {
+    if (event.key === 'Enter' || event.key === ' ') {
       event.preventDefault();
       chooseCard();
     }
@@ -373,13 +400,13 @@ const MemoryCard = memo(function MemoryCard({
   return (
     <div className="card-wrapper">
       <div
-        className={`flip-card ${flipped ? "flipped" : ""} ${
-          card.matched ? "matched" : ""
-        } ${disabled ? "disabled" : ""}`}
+        className={`flip-card ${flipped ? 'flipped' : ''} ${
+          card.matched ? 'matched' : ''
+        } ${disabled ? 'disabled' : ''}`}
         onClick={chooseCard}
         role="button"
         tabIndex={card.matched ? -1 : 0}
-        aria-label={flipped ? "Thẻ đang mở" : "Mở thẻ"}
+        aria-label={flipped ? 'The dang mo' : 'Mo the'}
         aria-pressed={flipped}
         onKeyDown={handleKeyDown}
       >
@@ -391,7 +418,7 @@ const MemoryCard = memo(function MemoryCard({
           <div className="flip-card-back">
             <img
               src={card.image}
-              alt={card.name || "memory card"}
+              alt={card.name || 'memory card'}
               className="card-image"
               loading="eager"
               decoding="async"

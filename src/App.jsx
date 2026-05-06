@@ -2,8 +2,6 @@ import { useEffect, useState } from 'react';
 import { Routes, Route, NavLink, useLocation, Navigate } from 'react-router-dom';
 import { HelmetProvider, Helmet } from 'react-helmet-async';
 import { useTheme } from './hooks/useTheme';
-import { useAuth } from './hooks/useAuth';
-import { supabase } from './utils/supabase.js';
 import './styles/auth.css';
 import Watermark from './pages/Watermark.jsx';
 import Footer from './components/Footer.jsx';
@@ -15,6 +13,7 @@ import AuthPage from './pages/AuthPage.jsx';
 import DashboardPage from './pages/DashboardPage.jsx';
 import ProtectedRoute from './components/ProtectedRoute.jsx';
 import PublicRoute from './components/PublicRoute.jsx';
+import { fetchPublicMemoryCards } from './services/memoryCardService.js';
 
 function FeatureCard({ icon, title, description, buttonText, link, badge, delay }) {
   return (
@@ -42,35 +41,34 @@ function FeatureCard({ icon, title, description, buttonText, link, badge, delay 
 }
 
 function HomePage() {
-  const [todos, setTodos] = useState([]);
-  const [todosLoading, setTodosLoading] = useState(true);
-  const [todosError, setTodosError] = useState('');
+  const [publicCards, setPublicCards] = useState([]);
+  const [cardsLoading, setCardsLoading] = useState(true);
+  const [cardsError, setCardsError] = useState('');
 
   useEffect(() => {
     let isMounted = true;
 
-    async function getTodos() {
-      const { data, error } = await supabase
-        .from('todos')
-        .select('id, name')
-        .order('id', { ascending: true });
+    async function loadPublicCards() {
+      setCardsLoading(true);
+
+      const result = await fetchPublicMemoryCards();
 
       if (!isMounted) {
         return;
       }
 
-      if (error) {
-        setTodosError(error.message);
-        setTodos([]);
+      if (result.error) {
+        setCardsError(result.error);
+        setPublicCards([]);
       } else {
-        setTodos(data ?? []);
-        setTodosError('');
+        setPublicCards(result.data ?? []);
+        setCardsError('');
       }
 
-      setTodosLoading(false);
+      setCardsLoading(false);
     }
 
-    getTodos();
+    loadPublicCards();
 
     return () => {
       isMounted = false;
@@ -81,8 +79,8 @@ function HomePage() {
     {
       icon: '🤖',
       title: 'AI SEO Generator',
-      description: 'Tạo nội dung SEO-optimized tự động cho sản phẩm, bài viết, và quảng cáo của bạn.',
-      buttonText: 'Mở AISEO',
+      description: 'Tao noi dung SEO-optimized tu dong cho san pham, bai viet, va quang cao cua ban.',
+      buttonText: 'Mo AISEO',
       link: '/aiseo',
       badge: 'Popular',
       delay: 100,
@@ -90,8 +88,8 @@ function HomePage() {
     {
       icon: '🔐',
       title: 'Authentication',
-      description: 'Đăng ký, đăng nhập và quản lý phiên người dùng với Supabase Authentication.',
-      buttonText: 'Mở Auth',
+      description: 'Dang ky, dang nhap va quan ly phien nguoi dung voi Supabase Authentication.',
+      buttonText: 'Mo Auth',
       link: '/auth',
       badge: 'New',
       delay: 150,
@@ -99,8 +97,8 @@ function HomePage() {
     {
       icon: '🔍',
       title: 'SEO Keywords Generator',
-      description: 'Tạo bộ từ khóa SEO toàn diện cho sản phẩm của bạn.',
-      buttonText: 'Mở Tool',
+      description: 'Tao bo tu khoa SEO toan dien cho san pham cua ban.',
+      buttonText: 'Mo Tool',
       link: '/seo-keywords',
       badge: 'New',
       delay: 200,
@@ -108,8 +106,8 @@ function HomePage() {
     {
       icon: '🎮',
       title: 'Memory Match Game',
-      description: 'Chơi trò chơi ghép hình thú vị, test trí nhớ của bạn với giao diện hiện đại.',
-      buttonText: 'Chơi Ngay',
+      description: 'Choi tro choi ghep hinh thu vi, test tri nho cua ban voi giao dien hien dai.',
+      buttonText: 'Choi Ngay',
       link: '/memory-game',
       badge: 'New',
       delay: 250,
@@ -117,8 +115,8 @@ function HomePage() {
     {
       icon: '🎨',
       title: 'Watermark Tool',
-      description: 'Thêm watermark vào ảnh của bạn để bảo vệ quyền sở hữu trí tuệ.',
-      buttonText: 'Mở Tool',
+      description: 'Them watermark vao anh cua ban de bao ve quyen so huu tri tue.',
+      buttonText: 'Mo Tool',
       link: '/watermark',
       badge: null,
       delay: 300,
@@ -128,8 +126,8 @@ function HomePage() {
   return (
     <>
       <Helmet>
-        <title>Trang Chủ - AISEO Tools Suite</title>
-        <meta name="description" content="Bộ công cụ AI toàn diện: SEO Generator, Authentication, Memory Game, Watermark Tool" />
+        <title>Trang Chu - AISEO Tools Suite</title>
+        <meta name="description" content="Bo cong cu AI toan dien: SEO Generator, Authentication, Memory Game, Watermark Tool" />
       </Helmet>
 
       <div className="home-page-wrapper loaded">
@@ -138,13 +136,13 @@ function HomePage() {
             <div className="hero-badge">✨ Welcome to AISEO Suite</div>
 
             <h1 className="hero-title">
-              <span className="gradient-text">Công Cụ AI</span>
+              <span className="gradient-text">Cong Cu AI</span>
               <br />
-              Toàn Diện Cho Bạn
+              Toan Dien Cho Ban
             </h1>
 
             <p className="hero-subtitle">
-              Nâng cao hiệu suất làm việc với bộ công cụ AI được thiết kế thân thiện, mạnh mẽ và dễ sử dụng.
+              Nang cao hieu suat lam viec voi bo cong cu AI duoc thiet ke than thien, manh me va de su dung.
             </p>
 
             <div className="hero-stats">
@@ -177,9 +175,9 @@ function HomePage() {
 
         <section className="features-section">
           <div className="section-header">
-            <h2 className="section-title">Các Công Cụ Của Chúng Tôi</h2>
+            <h2 className="section-title">Cac Cong Cu Cua Chung Toi</h2>
             <p className="section-subtitle">
-              Khám phá bộ sưu tập đầy đủ các công cụ được cung cấp bởi AI
+              Kham pha bo suu tap day du cac cong cu duoc cung cap boi AI
             </p>
           </div>
 
@@ -201,17 +199,17 @@ function HomePage() {
 
         <section className="cta-section">
           <div className="cta-content">
-            <h2 className="cta-title">Sẵn Sàng Bắt Đầu?</h2>
+            <h2 className="cta-title">San Sang Bat Dau?</h2>
             <p className="cta-description">
-              Chọn công cụ bạn muốn sử dụng và bắt đầu ngay hôm nay - hoàn toàn miễn phí!
+              Chon cong cu ban muon su dung va bat dau ngay hom nay - hoan toan mien phi!
             </p>
 
             <div className="cta-buttons">
               <NavLink to="/auth" className="btn-primary">
-                Vào Màn Hình Auth
+                Vao Man Hinh Auth
               </NavLink>
               <NavLink to="/memory-game" className="btn-secondary">
-                Chơi Game
+                Choi Game
               </NavLink>
             </div>
           </div>
@@ -224,22 +222,24 @@ function HomePage() {
 
         <section className="features-section">
           <div className="section-header">
-            <h2 className="section-title">Supabase Todos</h2>
+            <h2 className="section-title">Memory Cards Cong Khai</h2>
             <p className="section-subtitle">
-              Danh sach du lieu duoc tai truc tiep tu bang <code>todos</code> trong Supabase.
+              Danh sach nay duoc tai tu service layer moi cua bang <code>memory_cards</code>.
             </p>
           </div>
 
-          {todosLoading ? (
-            <p className="feature-description">Dang tai todos...</p>
-          ) : todosError ? (
-            <p className="feature-description">Khong the tai todos: {todosError}</p>
-          ) : todos.length === 0 ? (
-            <p className="feature-description">Chua co todo nao trong Supabase.</p>
+          {cardsLoading ? (
+            <p className="feature-description">Dang tai memory cards...</p>
+          ) : cardsError ? (
+            <p className="feature-description">Khong the tai memory cards: {cardsError}</p>
+          ) : publicCards.length === 0 ? (
+            <p className="feature-description">Chua co memory card nao trong Supabase.</p>
           ) : (
             <ul className="feature-description">
-              {todos.map((todo) => (
-                <li key={todo.id}>{todo.name}</li>
+              {publicCards.slice(0, 6).map((card) => (
+                <li key={card.id}>
+                  Card #{card.id} - {card.image}
+                </li>
               ))}
             </ul>
           )}
@@ -253,19 +253,19 @@ function NotFoundPage() {
   return (
     <>
       <Helmet>
-        <title>404 - Trang Không Tồn Tại</title>
+        <title>404 - Trang Khong Ton Tai</title>
       </Helmet>
 
       <div className="error-page-wrapper">
         <div className="error-content">
           <div className="error-code">404</div>
-          <h1 className="error-title">Trang Không Tồn Tại</h1>
+          <h1 className="error-title">Trang Khong Ton Tai</h1>
           <p className="error-description">
-            Rất tiếc, trang bạn đang tìm kiếm không được tìm thấy. Có thể nó đã bị xóa hoặc URL không chính xác.
+            Rat tiec, trang ban dang tim kiem khong duoc tim thay. Co the no da bi xoa hoac URL khong chinh xac.
           </p>
 
           <NavLink to="/" className="error-button">
-            ← Quay về Trang Chủ
+            ← Quay ve Trang Chu
           </NavLink>
 
           <div className="error-visual">
@@ -284,7 +284,6 @@ function AISEOFallbackPage() {
 export default function App() {
   const location = useLocation();
   const { theme } = useTheme();
-  const { user } = useAuth();
   const isHomePage = location.pathname === '/';
   const isAuthPage = location.pathname === '/auth';
 
@@ -303,7 +302,7 @@ export default function App() {
             <Route
               path="/auth"
               element={(
-                <PublicRoute user={user}>
+                <PublicRoute>
                   <AuthPage />
                 </PublicRoute>
               )}
@@ -311,7 +310,7 @@ export default function App() {
             <Route
               path="/dashboard"
               element={(
-                <ProtectedRoute user={user}>
+                <ProtectedRoute>
                   <DashboardPage />
                 </ProtectedRoute>
               )}

@@ -8,7 +8,7 @@ export default function AuthPage() {
     <>
       <Helmet>
         <title>Authentication - AISEO Tools Suite</title>
-        <meta name="description" content="Dang ky va dang nhap voi Supabase Authentication." />
+        <meta name="description" content="Đăng ký và đăng nhập với Supabase Authentication." />
       </Helmet>
 
       <div className="auth-page">

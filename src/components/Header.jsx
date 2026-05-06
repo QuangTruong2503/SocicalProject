@@ -1,21 +1,26 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { NavLink, useLocation } from 'react-router-dom';
+import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { useTheme } from '../hooks/useTheme';
 import { useAuth } from '../hooks/useAuth';
-import { supabase } from '../utils/supabase.js';
+import { getUserAvatarUrl, getUserDisplayName, getUserInitials } from '../utils/userProfile.js';
 import '../styles/Header.css';
 
 export default function Header() {
   const [isOpen, setIsOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const [pinned, setPinned] = useState(false);
+  const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [headerHeight, setHeaderHeight] = useState(70);
   const headerRef = useRef(null);
+  const userMenuRef = useRef(null);
   const location = useLocation();
+  const navigate = useNavigate();
   const { theme, toggleTheme } = useTheme();
-  const { user } = useAuth();
+  const { user, profile, latestUpload, logout } = useAuth();
+  const userDisplayName = getUserDisplayName(user, profile);
+  const userAvatarUrl = getUserAvatarUrl(user, profile, latestUpload);
+  const userInitials = getUserInitials(user, profile);
 
-  // Handle scroll effect
   useEffect(() => {
     const updateHeaderHeight = () => {
       setHeaderHeight(headerRef.current?.offsetHeight || 70);
@@ -39,11 +44,11 @@ export default function Header() {
     };
   }, []);
 
-  // Close menu when pressing Escape
   useEffect(() => {
     const handleEscape = (e) => {
       if (e.key === 'Escape') {
         setIsOpen(false);
+        setUserMenuOpen(false);
       }
     };
 
@@ -58,9 +63,27 @@ export default function Header() {
     };
   }, [isOpen]);
 
+  useEffect(() => {
+    const handlePointerDown = (event) => {
+      if (userMenuRef.current && !userMenuRef.current.contains(event.target)) {
+        setUserMenuOpen(false);
+      }
+    };
+
+    if (userMenuOpen) {
+      document.addEventListener('mousedown', handlePointerDown);
+      document.addEventListener('touchstart', handlePointerDown, { passive: true });
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handlePointerDown);
+      document.removeEventListener('touchstart', handlePointerDown);
+    };
+  }, [userMenuOpen]);
+
   const navItems = [
     {
-      label: 'Trang Chủ',
+      label: 'Trang Chu',
       path: '/',
       icon: '🏠',
     },
@@ -89,8 +112,22 @@ export default function Header() {
   const isActive = (path) => location.pathname === path;
 
   async function handleLogout() {
-    await supabase.auth.signOut();
+    const result = await logout();
+
+    if (result.error) {
+      console.error('Logout failed:', result.error);
+      return;
+    }
+
     setIsOpen(false);
+    setUserMenuOpen(false);
+    navigate('/auth', { replace: true });
+  }
+
+  function handleDashboardClick() {
+    setUserMenuOpen(false);
+    setIsOpen(false);
+    navigate('/dashboard');
   }
 
   return (
@@ -108,7 +145,6 @@ export default function Header() {
         className={`header ${scrolled ? 'scrolled' : ''} ${pinned ? 'pinned' : ''}`}
       >
         <div className="header-container">
-          {/* Logo Section */}
           <div className="header-logo">
             <NavLink to="/" className="logo-link" aria-label="Home">
               <div className="logo-wrapper">
@@ -128,7 +164,6 @@ export default function Header() {
             </NavLink>
           </div>
 
-          {/* Navigation Items - Desktop */}
           <nav className="header-nav">
             <div className="nav-items">
               {navItems.map((item) => (
@@ -146,20 +181,61 @@ export default function Header() {
             </div>
           </nav>
 
-          {/* Right Section - Action Buttons & Mobile Menu */}
           <div className="header-right">
-            {user && (
+            {user ? (
+              <div className="user-menu" ref={userMenuRef}>
+                <button
+                  type="button"
+                  className="user-menu-trigger"
+                  onClick={() => setUserMenuOpen((prev) => !prev)}
+                  aria-label={`Open account menu for ${userDisplayName}`}
+                  aria-haspopup="menu"
+                  aria-expanded={userMenuOpen}
+                >
+                  <span className="user-avatar-ring" aria-hidden="true">
+                    {userAvatarUrl ? (
+                      <img src={userAvatarUrl} alt={userDisplayName} className="user-avatar-image" />
+                    ) : (
+                      <span className="user-avatar-fallback">{userInitials}</span>
+                    )}
+                  </span>
+                  <span className="user-menu-meta">
+                    <strong>{userDisplayName}</strong>
+                    <span>{profile?.email || user.email || 'Account'}</span>
+                  </span>
+                  <span className={`user-menu-caret ${userMenuOpen ? 'open' : ''}`}>⌄</span>
+                </button>
+
+                {userMenuOpen && (
+                  <div className="user-menu-dropdown" role="menu" aria-label="Account menu">
+                    <button type="button" className="user-menu-item" onClick={handleDashboardClick} role="menuitem">
+                      <span className="user-menu-item-icon">📊</span>
+                      <span>
+                        <strong>Dashboard</strong>
+                        <small>Quản lý ảnh và hồ sơ</small>
+                      </span>
+                    </button>
+                    <button type="button" className="user-menu-item danger" onClick={handleLogout} role="menuitem">
+                      <span className="user-menu-item-icon">↩</span>
+                      <span>
+                        <strong>Logout</strong>
+                        <small>Thoát phiên đăng nhập</small>
+                      </span>
+                    </button>
+                  </div>
+                )}
+              </div>
+            ) : (
               <button
-                className="btn-icon-header"
-                onClick={handleLogout}
-                aria-label="Logout"
-                title="Logout"
+                className="btn-auth-link"
+                onClick={() => navigate('/auth')}
+                aria-label="Go to authentication"
+                title="Auth"
               >
-                ↩
+                Auth
               </button>
             )}
 
-            {/* Theme Toggle Button */}
             <button
               className="btn-icon-header"
               onClick={toggleTheme}
@@ -169,7 +245,6 @@ export default function Header() {
               {theme === 'light' ? '🌙' : '☀️'}
             </button>
 
-            {/* Mobile Menu Button */}
             <button
               className={`btn-mobile-menu ${isOpen ? 'active' : ''}`}
               onClick={() => setIsOpen(!isOpen)}
@@ -184,7 +259,6 @@ export default function Header() {
         </div>
       </header>
 
-      {/* Mobile Menu */}
       <div className={`mobile-menu ${isOpen ? 'open' : ''}`}>
         <div className="mobile-menu-content">
           <div className="mobile-menu-header">
@@ -219,7 +293,6 @@ export default function Header() {
         </div>
       </div>
 
-      {/* Menu Overlay */}
       {isOpen && (
         <div
           className="menu-overlay"
