@@ -1,344 +1,486 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Helmet } from 'react-helmet-async';
-import seoprompt from '../asset/SKPrompt.txt?raw';
+import { useAuth } from '../hooks/useAuth.js';
+import { useDebouncedValue } from '../hooks/useDebouncedValue.js';
+import { createSeoHistory, deleteSeoHistory, getSeoHistories } from '../services/seoService.js';
 import '../styles/SEOKeywords.css';
+import seoprompt from '../asset/SKPrompt.txt?raw';
+import SEOGenerator from '../components/seo/SEOGenerator.jsx';
+import SEOHistory from '../components/seo/SEOHistory.jsx';
+
+const OPENAI_MODEL = 'gpt-5.4-mini';
+const HISTORY_LOAD_LIMIT = 100;
+
+function normalizeText(value) {
+  return typeof value === 'string' ? value.trim() : '';
+}
+
+function dedupeKeywords(keywords) {
+  const seen = new Set();
+  const output = [];
+
+  for (const keyword of keywords) {
+    const normalized = normalizeText(keyword)
+      .replace(/^[-–—\d.\s]+/, '')
+      .replace(/^["'`]+|["'`]+$/g, '')
+      .replace(/\s+/g, ' ');
+
+    if (!normalized) {
+      continue;
+    }
+
+    const key = normalized.toLowerCase();
+    if (!seen.has(key)) {
+      seen.add(key);
+      output.push(normalized);
+    }
+  }
+
+  return output;
+}
+
+function parseKeywordResponse(content) {
+  if (!content) {
+    return [];
+  }
+
+  const normalized = content
+    .replace(/\r\n/g, '\n')
+    .replace(/[•·]/g, ',')
+    .replace(/\n+/g, ',')
+    .replace(/^\s*\d+[).:-]\s*/gm, '')
+    .replace(/\s{2,}/g, ' ')
+    .trim();
+
+  const tokens = normalized
+    .split(/[,;|]/)
+    .map((token) => token.trim())
+    .filter(Boolean);
+
+  return dedupeKeywords(tokens);
+}
+
+function buildPrompt({ title, details, historyTags }) {
+  return seoprompt
+    .replace(/\$\{title\}/g, title)
+    .replace(/\$\{details\}/g, details || 'Không có mô tả bổ sung.')
+    .replace(/\$\{historyTags\}/g, historyTags || 'Không có lịch sử tham chiếu.');
+}
+
+async function requestSeoKeywords({ title, details, historyTags }) {
+  const apiKey = import.meta.env.VITE_OPENAI_API_KEY;
+
+  if (!apiKey) {
+    throw new Error('Thiếu VITE_OPENAI_API_KEY trong file .env.');
+  }
+
+  const prompt = buildPrompt({ title, details, historyTags });
+
+  console.debug('[SEOKeywords] Requesting SEO keywords', {
+    model: OPENAI_MODEL,
+    title,
+    hasDetails: Boolean(details),
+    hasHistoryTags: Boolean(historyTags),
+  });
+
+  const response = await fetch('https://api.openai.com/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${apiKey}`,
+    },
+    body: JSON.stringify({
+      model: OPENAI_MODEL,
+      messages: [{ role: 'user', content: prompt }],
+      temperature: 0.35,
+    }),
+  });
+
+  if (!response.ok) {
+    const payload = await response.json().catch(() => null);
+    throw new Error(payload?.error?.message || 'Không thể tạo SEO keywords.');
+  }
+
+  const payload = await response.json();
+  const content = payload?.choices?.[0]?.message?.content?.trim() || '';
+
+  if (!content) {
+    throw new Error('AI không trả về nội dung hợp lệ.');
+  }
+
+  return content;
+}
+
+function normalizeDraft(draft) {
+  return {
+    title: normalizeText(draft?.title),
+    details: normalizeText(draft?.details),
+  };
+}
 
 export default function SEOKeywords() {
-  const [productName, setProductName] = useState('');
-  const [specs, setSpecs] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [keywords, setKeywords] = useState(null);
-  const [error, setError] = useState('');
-  const [copied, setCopied] = useState(false);
+  const { user } = useAuth();
+  const [draft, setDraft] = useState({ title: '', details: '' });
+  const [lastGeneratedDraft, setLastGeneratedDraft] = useState(null);
+  const [seoResult, setSeoResult] = useState(null);
+  const [historyItems, setHistoryItems] = useState([]);
+  const [historyLoading, setHistoryLoading] = useState(true);
+  const [generatorLoading, setGeneratorLoading] = useState(false);
+  const [historySaving, setHistorySaving] = useState(false);
+  const [pageError, setPageError] = useState('');
+  const [historyError, setHistoryError] = useState('');
+  const [expandedHistoryId, setExpandedHistoryId] = useState(null);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [copiedKey, setCopiedKey] = useState('');
+  const copyResetTimerRef = useRef(null);
 
-  const generateKeywords = async (e) => {
-    e.preventDefault();
+  const debouncedSearchTerm = useDebouncedValue(searchTerm, 180);
 
-    if (!productName.trim() || !specs.trim()) {
-      setError('Vui lòng nhập tên sản phẩm và thông số kỹ thuật');
+  const loadHistories = useCallback(async () => {
+    if (!user?.id) {
+      setHistoryItems([]);
+      setHistoryLoading(false);
       return;
     }
 
-    setLoading(true);
-    setError('');
-    setKeywords(null);
+    setHistoryLoading(true);
+    setHistoryError('');
+
+    const result = await getSeoHistories({
+      userId: user.id,
+      limit: HISTORY_LOAD_LIMIT,
+    });
+
+    if (result.error) {
+      console.error('[SEOKeywords] loadHistories failed', {
+        userId: user.id,
+        error: result.error,
+      });
+      setHistoryError(result.error);
+      setHistoryItems([]);
+      setHistoryLoading(false);
+      return;
+    }
+
+    const nextItems = result.data || [];
+    setHistoryItems(nextItems);
+    setExpandedHistoryId((current) => {
+      if (current && nextItems.some((item) => item.id === current)) {
+        return current;
+      }
+
+      return nextItems[0]?.id || null;
+    });
+    setHistoryLoading(false);
+  }, [user?.id]);
+
+  useEffect(() => {
+    void loadHistories();
+  }, [loadHistories]);
+
+  useEffect(() => {
+    return () => {
+      if (copyResetTimerRef.current) {
+        window.clearTimeout(copyResetTimerRef.current);
+      }
+    };
+  }, []);
+
+  const filteredHistoryItems = useMemo(() => {
+    const query = debouncedSearchTerm.toLowerCase().trim();
+
+    if (!query) {
+      return historyItems;
+    }
+
+    return historyItems.filter((item) => {
+      const haystack = [
+        item.title,
+        item.seo_count,
+        ...(item.seo_tags || []),
+        item.created_at,
+      ]
+        .filter(Boolean)
+        .join(' ')
+        .toLowerCase();
+
+      return haystack.includes(query);
+    });
+  }, [debouncedSearchTerm, historyItems]);
+
+  const historyStats = useMemo(() => {
+    return {
+      total: historyItems.length,
+      visible: filteredHistoryItems.length,
+      latestTitle: historyItems[0]?.title || 'Chưa có dữ liệu',
+    };
+  }, [filteredHistoryItems.length, historyItems]);
+
+  const copyToClipboard = useCallback(async (text, copiedValue) => {
+    if (!text) {
+      return false;
+    }
 
     try {
-      const apiKey = import.meta.env.VITE_OPENAI_API_KEY;
+      await navigator.clipboard.writeText(text);
+      setCopiedKey(copiedValue || text);
 
-      if (!apiKey) {
-        throw new Error('API key không được cấu hình. Vui lòng kiểm tra file .env');
-      }
-      
-        
-
-      const prompt = seoprompt
-        .replace(/\$\{productName\}/g, productName.trim())
-        .replace(/\$\{specs\}/g, specs.trim());
-
-      const response = await fetch('https://api.openai.com/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${apiKey}`,
-        },
-        body: JSON.stringify({
-          model: 'gpt-5.4-mini',
-          messages: [
-            {
-              role: 'user',
-              content: prompt,
-            },
-          ],
-          temperature: 0.3,
-        }),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error?.message || 'Lỗi khi gọi OpenAI API');
+      if (copyResetTimerRef.current) {
+        window.clearTimeout(copyResetTimerRef.current);
       }
 
-      const data = await response.json();
-      const keywordString = data.choices[0].message.content.trim();
+      copyResetTimerRef.current = window.setTimeout(() => {
+        setCopiedKey('');
+      }, 1600);
 
-      // Parse keywords
-      const keywordList = keywordString
-        .split(',')
-        .map((k) => k.trim())
-        .filter((k) => k.length > 0);
-
-      setKeywords({
-        raw: keywordString,
-        list: keywordList,
-        count: keywordList.length,
-      });
-    } catch (err) {
-      setError(err.message || 'Đã xảy ra lỗi. Vui lòng thử lại.');
-      console.error('Error:', err);
-    } finally {
-      setLoading(false);
+      return true;
+    } catch (error) {
+      console.error('[SEOKeywords] copyToClipboard failed', { error });
+      setPageError('Không thể sao chép vào clipboard ở trình duyệt này.');
+      return false;
     }
-  };
-
-  const copyToClipboard = (text) => {
-    navigator.clipboard.writeText(text);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
-
-  const downloadKeywords = () => {
-    if (!keywords) return;
-
-    const element = document.createElement('a');
-    const file = new Blob([keywords.raw], { type: 'text/plain' });
-    element.href = URL.createObjectURL(file);
-    element.download = `keywords-${productName.replace(/\s+/g, '-').toLowerCase()}.txt`;
-    document.body.appendChild(element);
-    element.click();
-    document.body.removeChild(element);
-  };
-
-  const clearForm = () => {
-    setProductName('');
-    setSpecs('');
-    setKeywords(null);
-    setError('');
-  };
-  useEffect(() => {
-    window.scrollTo(0, 0);
   }, []);
+
+  const persistHistory = useCallback(async (payload) => {
+    if (!user?.id) {
+      throw new Error('Bạn cần đăng nhập để lưu lịch sử SEO.');
+    }
+
+    setHistorySaving(true);
+    setHistoryError('');
+
+    const result = await createSeoHistory({
+      userId: user.id,
+      title: payload.title,
+      seoCount: payload.seoTags.length,
+      seoTags: payload.seoTags,
+    });
+
+    if (result.error) {
+      setHistoryError(result.error);
+      console.error('[SEOKeywords] persistHistory failed', {
+        userId: user.id,
+        title: payload.title,
+        error: result.error,
+      });
+      setHistorySaving(false);
+      return null;
+    }
+
+    if (result.data) {
+      setHistoryItems((current) => [
+        result.data,
+        ...current.filter((item) => item.id !== result.data.id),
+      ]);
+      setExpandedHistoryId(result.data.id);
+    }
+
+    setHistorySaving(false);
+    return result.data;
+  }, [user?.id]);
+
+  const generateSeoKeywords = useCallback(async (inputDraft, historyTags = '') => {
+    const normalizedDraft = normalizeDraft(inputDraft);
+
+    if (!normalizedDraft.title) {
+      setPageError('Vui lòng nhập title, product hoặc topic để tạo SEO keywords.');
+      return null;
+    }
+
+    setPageError('');
+    setGeneratorLoading(true);
+
+    try {
+      const rawKeywords = await requestSeoKeywords({
+        title: normalizedDraft.title,
+        details: normalizedDraft.details,
+        historyTags,
+      });
+      const seoTags = parseKeywordResponse(rawKeywords);
+
+      if (!seoTags.length) {
+        throw new Error('AI không tạo ra danh sách keyword hợp lệ.');
+      }
+
+      const nextResult = {
+        title: normalizedDraft.title,
+        details: normalizedDraft.details,
+        raw: seoTags.join(', '),
+        seoTags,
+        seoCount: seoTags.length,
+        generatedAt: new Date().toISOString(),
+      };
+
+      setSeoResult(nextResult);
+      setLastGeneratedDraft({
+        title: normalizedDraft.title,
+        details: normalizedDraft.details,
+      });
+      setGeneratorLoading(false);
+
+      const savedHistory = await persistHistory(nextResult);
+
+      if (savedHistory) {
+        setHistoryError('');
+      }
+
+      return nextResult;
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Đã xảy ra lỗi khi tạo SEO keywords.';
+      console.error('[SEOKeywords] generateSeoKeywords failed', {
+        error: message,
+        draft: normalizedDraft,
+      });
+      setPageError(message);
+      setGeneratorLoading(false);
+      return null;
+    }
+  }, [persistHistory]);
+
+  const handleGenerate = useCallback(async (event) => {
+    event.preventDefault();
+    await generateSeoKeywords(draft);
+  }, [draft, generateSeoKeywords]);
+
+  const handleRegenerate = useCallback(async () => {
+    const sourceDraft = lastGeneratedDraft || draft;
+    await generateSeoKeywords(sourceDraft, seoResult?.seoTags?.join(', ') || '');
+  }, [draft, generateSeoKeywords, lastGeneratedDraft, seoResult?.seoTags]);
+
+  const handleReuseHistory = useCallback(async (item) => {
+    const nextDraft = {
+      title: item.title,
+      details: item.seo_tags?.join(', ') || '',
+    };
+
+    setDraft(nextDraft);
+    setExpandedHistoryId(item.id);
+    await generateSeoKeywords(nextDraft, item.seo_tags?.join(', ') || '');
+  }, [generateSeoKeywords]);
+
+  const handleDeleteHistory = useCallback(async (item) => {
+    const confirmed = window.confirm(`Xoá lịch sử SEO "${item.title}"?`);
+    if (!confirmed) {
+      return;
+    }
+
+    const result = await deleteSeoHistory({
+      historyId: item.id,
+      userId: user.id,
+    });
+
+    if (result.error) {
+      setHistoryError(result.error);
+      return;
+    }
+
+    setHistoryItems((current) => {
+      const nextItems = current.filter((history) => history.id !== item.id);
+
+      if (expandedHistoryId === item.id) {
+        setExpandedHistoryId(nextItems[0]?.id || null);
+      }
+
+      return nextItems;
+    });
+  }, [expandedHistoryId, user?.id]);
+
+  const handleCopyCurrentTags = useCallback(async () => {
+    if (!seoResult?.raw) {
+      return;
+    }
+
+    await copyToClipboard(seoResult.raw, seoResult.raw);
+  }, [copyToClipboard, seoResult?.raw]);
+
+  const handleCopyHistoryTags = useCallback(async (item) => {
+    const joined = (item.seo_tags || []).join(', ');
+    await copyToClipboard(joined, `history-${item.id}`);
+  }, [copyToClipboard]);
+
+  const handleCopySingleTag = useCallback(async (tag) => {
+    await copyToClipboard(tag, tag);
+  }, [copyToClipboard]);
+
+  const clearDraft = useCallback(() => {
+    setDraft({ title: '', details: '' });
+    setSeoResult(null);
+    setPageError('');
+  }, []);
+
+  const workspaceSubtitle = useMemo(() => {
+    if (historyStats.total > 0) {
+      return `Workspace của bạn đã lưu ${historyStats.total} lần tạo SEO. Lần gần nhất: ${historyStats.latestTitle}.`;
+    }
+
+    return 'Tạo SEO keywords, lưu lịch sử tự động và tái sử dụng kết quả trong một workspace duy nhất.';
+  }, [historyStats.latestTitle, historyStats.total]);
+
   return (
     <>
       <Helmet>
-        <title>SEO Keywords Generator - AISEO</title>
-        <meta name="description" content="Tạo từ khóa SEO tối ưu cho sản phẩm của bạn bằng AI" />
+        <title>SEO Keywords Workspace - AISEO</title>
+        <meta
+          name="description"
+          content="Workspace SEO keywords với lịch sử Supabase, tìm kiếm nhanh, sao chép tag và tái sử dụng kết quả."
+        />
       </Helmet>
 
-      <div className="seo-container">
-        {/* Background decoration */}
-        <div className="seo-bg-decoration">
-          <div className="decoration-blob-1"></div>
-          <div className="decoration-blob-2"></div>
-          <div className="decoration-grid"></div>
-        </div>
+      <div className="seo-workspace">
+        <div className="seo-workspace__bg seo-workspace__bg--grid" />
+        <div className="seo-workspace__bg seo-workspace__bg--orb seo-workspace__bg--orb-a" />
+        <div className="seo-workspace__bg seo-workspace__bg--orb seo-workspace__bg--orb-b" />
 
-        {/* Header */}
-        <section className="seo-header">
-          <div className="seo-header-content">
-            <div className="seo-icon-wrapper">🔍</div>
-            <h1 className="seo-title">SEO Keywords Generator</h1>
-            <p className="seo-subtitle">
-              Tạo từ khóa SEO toàn diện cho sản phẩm của bạn bằng AI
-            </p>
+        <section className="seo-workspace__hero">
+          <div className="seo-workspace__eyebrow">SEO Workspace</div>
+          <p>{workspaceSubtitle}</p>
+
+          <div className="seo-workspace__stats">
+            <div className="seo-stat-card">
+              <span>Đã tạo</span>
+              <strong>{seoResult?.seoCount || 0}</strong>
+            </div>
+            <div className="seo-stat-card">
+              <span>Lịch sử</span>
+              <strong>{historyStats.total}</strong>
+            </div>
+            <div className="seo-stat-card">
+              <span>Hiển thị</span>
+              <strong>{historyStats.visible}</strong>
+            </div>
           </div>
         </section>
 
-        {/* Main Content */}
-        <section className="seo-content">
-          <div className="seo-grid">
-            {/* Form Section */}
-            <div className="seo-form-section">
-              <div className="form-wrapper">
-                <h2 className="form-title">Nhập Thông Tin Sản Phẩm</h2>
+        <section className="seo-workspace__layout">
+          <SEOGenerator
+            draft={draft}
+            seoResult={seoResult}
+            isGenerating={generatorLoading}
+            isSavingHistory={historySaving}
+            error={pageError}
+            copiedKey={copiedKey}
+            onDraftChange={setDraft}
+            onGenerate={handleGenerate}
+            onRegenerate={handleRegenerate}
+            onClear={clearDraft}
+            onCopyAll={handleCopyCurrentTags}
+            onCopyTag={handleCopySingleTag}
+          />
 
-                <form onSubmit={generateKeywords} className="seo-form">
-                  {/* Product Name Input */}
-                  <div className="form-group">
-                    <label htmlFor="productName" className="form-label">
-                      <span className="label-text">Tên Sản Phẩm</span>
-                      <span className="label-required">*</span>
-                    </label>
-                    <input
-                      id="productName"
-                      type="text"
-                      value={productName}
-                      onChange={(e) => setProductName(e.target.value)}
-                      placeholder="Ví dụ: Laptop Dell XPS 13"
-                      className="form-input"
-                      disabled={loading}
-                    />
-                    <p className="form-hint">
-                      Nhập tên sản phẩm, mã sản phẩm hoặc nhãn hiệu
-                    </p>
-                  </div>
-
-                  {/* Specs Input */}
-                  <div className="form-group">
-                    <label htmlFor="specs" className="form-label">
-                      <span className="label-text">Thông Số Kỹ Thuật</span>
-                      <span className="label-required">*</span>
-                    </label>
-                    <textarea
-                      id="specs"
-                      value={specs}
-                      onChange={(e) => setSpecs(e.target.value)}
-                      placeholder="Ví dụ: Intel Core i7, 16GB RAM, 512GB SSD, Màn hình 13.3 inch FHD"
-                      className="form-textarea"
-                      rows="5"
-                      disabled={loading}
-                    />
-                    <p className="form-hint">
-                      Nhập chi tiết kỹ thuật, đặc điểm, lợi ích của sản phẩm
-                    </p>
-                  </div>
-
-                  {/* Error Message */}
-                  {error && (
-                    <div className="error-message">
-                      <span className="error-icon">⚠️</span>
-                      <span>{error}</span>
-                    </div>
-                  )}
-
-                  {/* Action Buttons */}
-                  <div className="form-actions">
-                    <button
-                      type="submit"
-                      className="btn-generate"
-                      disabled={loading || !productName.trim() || !specs.trim()}
-                    >
-                      {loading ? (
-                        <>
-                          <span className="spinner"></span>
-                          Đang xử lý...
-                        </>
-                      ) : (
-                        <>
-                          <span className="btn-icon">✨</span>
-                          Tạo Từ Khóa
-                        </>
-                      )}
-                    </button>
-
-                    {(productName || specs) && (
-                      <button
-                        type="button"
-                        onClick={clearForm}
-                        className="btn-clear"
-                        disabled={loading}
-                      >
-                        Xóa
-                      </button>
-                    )}
-                  </div>
-                </form>
-
-                {/* Info Box */}
-                <div className="info-box">
-                  <div className="info-icon">ℹ️</div>
-                  <div className="info-content">
-                    <h4>Mẹo Sử Dụng</h4>
-                    <ul className="info-list">
-                      <li>Cung cấp tên sản phẩm chính xác nhất</li>
-                      <li>Liệt kê tất cả các thông số kỹ thuật quan trọng</li>
-                      <li>Nêu rõ lợi ích và ứng dụng của sản phẩm</li>
-                      <li>Từ khóa sẽ được phân loại thành 3 nhóm</li>
-                    </ul>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Results Section */}
-            {keywords && (
-              <div className="seo-results-section">
-                <div className="results-wrapper">
-                  <div className="results-header">
-                    <h2 className="results-title">Từ Khóa SEO</h2>
-                    <div className="results-stats">
-                      <div className="stat">
-                        <span className="stat-label">Tổng cộng</span>
-                        <span className="stat-value">{keywords.count}</span>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Keywords Display */}
-                  <div className="keywords-display">
-                    <div className="keywords-box">
-                      <div className="keywords-text">{keywords.raw}</div>
-                      <button
-                        onClick={() => copyToClipboard(keywords.raw)}
-                        className="btn-copy"
-                        title="Copy to clipboard"
-                      >
-                        {copied ? '✓ Đã sao chép' : '📋 Sao chép'}
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Keywords List */}
-                  <div className="keywords-list-section">
-                    <h3 className="keywords-list-title">Danh Sách Chi Tiết</h3>
-                    <div className="keywords-list">
-                      {keywords.list.map((keyword, index) => (
-                        <div key={index} className="keyword-item">
-                          <span className="keyword-number">{index + 1}</span>
-                          <span className="keyword-text">{keyword}</span>
-                          <button
-                            onClick={() => copyToClipboard(keyword)}
-                            className="keyword-copy-btn"
-                            title="Copy keyword"
-                          >
-                            📋
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Action Buttons */}
-                  <div className="results-actions">
-                    <button
-                      onClick={downloadKeywords}
-                      className="btn-download"
-                    >
-                      <span className="btn-icon">📥</span>
-                      Tải Xuống
-                    </button>
-                    <button
-                      onClick={() => {
-                        clearForm();
-                        window.scrollTo({ top: 0, behavior: 'smooth' });
-                      }}
-                      className="btn-new"
-                    >
-                      <span className="btn-icon">➕</span>
-                      Tạo Mới
-                    </button>
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
+          <SEOHistory
+            histories={filteredHistoryItems}
+            isLoading={historyLoading}
+            error={historyError}
+            searchTerm={searchTerm}
+            onSearchTermChange={setSearchTerm}
+            expandedHistoryId={expandedHistoryId}
+            onToggleHistory={setExpandedHistoryId}
+            onDeleteHistory={handleDeleteHistory}
+            onCopyTags={handleCopyHistoryTags}
+            onReuseHistory={handleReuseHistory}
+            copiedKey={copiedKey}
+          />
         </section>
-
-        {/* Empty State */}
-        {!keywords && !loading && (
-          <section className="seo-empty-state">
-            <div className="empty-state-content">
-              <div className="empty-state-icon">🎯</div>
-              <h3>Chưa có từ khóa</h3>
-              <p>Nhập thông tin sản phẩm và nhấn "Tạo Từ Khóa" để bắt đầu</p>
-            </div>
-          </section>
-        )}
-
-        {/* Loading State */}
-        {loading && (
-          <section className="seo-loading-state">
-            <div className="loading-content">
-              <div className="loading-animation">
-                <div className="loading-circle"></div>
-                <div className="loading-circle"></div>
-                <div className="loading-circle"></div>
-              </div>
-              <h3>Đang tạo từ khóa...</h3>
-              <p>AI đang phân tích thông tin sản phẩm của bạn</p>
-            </div>
-          </section>
-        )}
       </div>
     </>
   );

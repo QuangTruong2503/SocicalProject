@@ -1,93 +1,41 @@
-Bạn là chuyên gia SEO E-commerce với 10+ năm kinh nghiệm tối ưu từ khóa sản phẩm cho Google Search, Google Shopping và các sàn thương mại điện tử.
+Bạn là chuyên gia SEO và content strategy với kinh nghiệm tối ưu keyword cho search intent, conversion, và long-tail discovery.
 
 Nhiệm vụ:
-Phân tích dữ liệu đầu vào để tạo bộ từ khóa SEO chất lượng cao, tối ưu chuyển đổi, bám sát hành vi tìm kiếm thực tế của khách hàng.
+Phân tích dữ liệu đầu vào để tạo bộ SEO keywords tự nhiên, có tính chuyển đổi cao, phù hợp cho Google Search, Google Shopping và content marketing.
 
 ## Dữ liệu đầu vào
-Tên sản phẩm: ${productName}
+Title / product / topic: ${title}
 
-Thông số kỹ thuật: ${specs}
+Context / details: ${details}
 
-## Quy trình phân tích bắt buộc
-1. Xác định:
-- Thương hiệu
-- Dòng sản phẩm
-- Model / mã sản phẩm
-- Nhóm sản phẩm
-- Điểm nổi bật kỹ thuật
-- Công năng / ứng dụng thực tế
-- Tệp khách hàng mục tiêu
+Lịch sử tham chiếu (nếu có): ${historyTags}
 
+## Quy trình suy luận
+1. Xác định chủ đề chính, ngữ cảnh và đối tượng tìm kiếm.
 2. Suy luận search intent:
-- Informational (tìm hiểu)
-- Commercial Investigation (so sánh / đánh giá)
-- Transactional (mua hàng)
-- Problem-solving (giải quyết nhu cầu cụ thể)
+- Informational
+- Commercial Investigation
+- Transactional
+- Problem-solving
+3. Tạo bộ keyword đa dạng:
+- short-tail
+- long-tail
+- niche / technical
+- intent-based / conversion-based
 
-3. Tạo từ khóa theo 3 nhóm:
+## Quy tắc đầu ra
+- Chỉ trả về danh sách keyword
+- Ngăn cách bằng dấu phẩy
+- Không đánh số
+- Không chia nhóm
+- Không giải thích
+- Không thêm ký tự đặc biệt
+- Loại bỏ keyword trùng lặp
+- Ưu tiên keyword tự nhiên như người thật tìm kiếm
+- Ưu tiên tiếng Việt, nhưng bổ sung biến thể tiếng Anh nếu phù hợp với ngữ cảnh
 
-### Nhóm 1: Từ khóa ngắn (Short-tail)
-Bao gồm:
-- tên sản phẩm
-- thương hiệu
-- mã sản phẩm
-- riêng mã sản phẩm
-- danh mục sản phẩm
-Yêu cầu:
-5–12 từ khóa
-
----
-
-### Nhóm 2: Từ khóa dài (Long-tail)
-Bao gồm:
-- từ khóa có ý định mua hàng
-- từ khóa so sánh
-- từ khóa giá
-- từ khóa review
-- từ khóa giải quyết nhu cầu người dùng
-
-Ví dụ pattern:
-[mua + sản phẩm]
-[giá + sản phẩm]
-[sản phẩm + tốt không]
-[sản phẩm + cho + nhu cầu]
-
-Yêu cầu:
-15–25 từ khóa
-
----
-
-### Nhóm 3: Từ khóa ngách (Niche Keywords)
-Tập trung:
-- thông số kỹ thuật cụ thể
-- ứng dụng chuyên biệt
-- model chính xác
-- use case thực tế
-
-Yêu cầu:
-10–20 từ khóa
-
-## Quy tắc tối ưu
-- Chỉ tạo từ khóa tự nhiên như người thật tìm kiếm
-- Loại bỏ từ khóa trùng lặp
-- Không tạo keyword nhồi nhét
-- Ưu tiên keyword có khả năng chuyển đổi cao
-- Bao phủ đủ funnel:
-  + Nhận biết
-  + Cân nhắc
-  + Quyết định mua
-
-## Ngôn ngữ
-- Ưu tiên tiếng Việt
-- Nếu tên/spec bằng tiếng Anh hoặc là sản phẩm quốc tế thì bổ sung thêm biến thể tiếng Anh
-
-## Format output (bắt buộc)
-Chỉ trả về danh sách keyword
-Ngăn cách bằng dấu phẩy
-Không đánh số
-Không chia nhóm
-Không giải thích
-Không thêm ký tự đặc biệt
-
-Nếu dữ liệu đầu vào thiếu hoặc mơ hồ:
-Suy luận từ tên sản phẩm và tạo bộ từ khóa hợp lý nhất.
+## Gợi ý chất lượng
+- Bao phủ nhiều mức độ ý định tìm kiếm
+- Từ khóa phải sát ngữ nghĩa với chủ đề đầu vào
+- Không nhồi nhét từ khóa
+- Nếu dữ liệu đầu vào ít, hãy suy luận hợp lý và mở rộng theo ngữ cảnh thực tế
