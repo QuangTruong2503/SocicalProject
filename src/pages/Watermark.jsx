@@ -5,6 +5,7 @@ import ImageUploader from '../components/watermark/ImageUploader';
 import WatermarkControls from '../components/watermark/WatermarkControls';
 import WatermarkGallery from '../components/watermark/WatermarkGallery';
 import { processWatermark, resizeBlob, buildFileName, compressAndResizeBlob } from '../hooks/useWatermarkProcessor';
+import NotificationModal from '../components/NotificationModal';
 import '../styles/Watermark.css';
 
 const DEFAULT_OPTIONS = {
@@ -14,6 +15,24 @@ const DEFAULT_OPTIONS = {
   productName: '',
   logoPosition: 'center',
 };
+const notification = {
+  id: 'watermark-update-110526',
+  title: 'Cập nhật mới',
+  content: 'Đã thêm tính năng mới cho trang watermark.',
+  imageUrl: 'https://psqfbcgkgafqtsmrgjqu.supabase.co/storage/v1/object/public/ZepLao/asset/notify.png',
+};
+
+function normalizeFileName(fileName, fallbackBase = 'image') {
+  const trimmed = (fileName || '').trim();
+  const baseName = trimmed ? trimmed.replace(/\.[^.]+$/, '') : fallbackBase;
+  return `${baseName || fallbackBase}.jpg`;
+}
+
+function getDownloadFileName(fileName, suffix = '') {
+  const normalized = normalizeFileName(fileName);
+  const baseName = normalized.replace(/\.jpg$/i, '');
+  return `${baseName}${suffix}.jpg`;
+}
 
 export default function Watermark() {
   const [logoUrl, setLogoUrl]   = useState(null);
@@ -60,17 +79,17 @@ export default function Watermark() {
   const handleDownloadAll = useCallback(async (mode) => {
     for (const r of results) {
       let blob = r.blob;
-      let fileName = r.fileName;
+      let fileName = getDownloadFileName(r.fileName);
 
       if (mode === '800x600') {
         try {
           blob = await resizeBlob(blob, 800, 600);
-          fileName = fileName.replace('.jpg', '_800x600.jpg');
+          fileName = getDownloadFileName(r.fileName, '-800x600');
         } catch { /* use original */ }
       } else if (mode === 'ImageCompress') {
         try {
           blob = await compressAndResizeBlob(blob, 800, 600, 100);
-          fileName = fileName.replace('.jpg', '_compressed.jpg');
+          fileName = getDownloadFileName(r.fileName, '_compressed');
         } catch { /* use original */ }
       }
 
@@ -87,6 +106,12 @@ export default function Watermark() {
     results.forEach((r) => URL.revokeObjectURL(r.url));
     setResults([]);
   }, [results]);
+
+  const handleRenameResult = useCallback((index, nextName) => {
+    setResults((prev) => prev.map((result, i) => (
+      i === index ? { ...result, fileName: nextName } : result
+    )));
+  }, []);
 
   const canCreate = logoUrl && images.length > 0 && !processing;
 
@@ -178,12 +203,16 @@ export default function Watermark() {
             results={results}
             onClear={handleClear}
             onDownloadAll={handleDownloadAll}
+            onRenameFile={handleRenameResult}
             isProcessing={processing}
           />
         </div>
 
       </div>
     </div>
+    <NotificationModal
+      notification={notification}
+    />
     </>
   );
 }
