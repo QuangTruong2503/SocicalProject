@@ -2,7 +2,19 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import '../../styles/WatermarkGallery.css';
 
-export default function WatermarkGallery({ results, onClear, onDownloadAll, isProcessing }) {
+function normalizeDownloadName(fileName) {
+  const trimmed = (fileName || '').trim();
+  const baseName = trimmed ? trimmed.replace(/\.[^.]+$/, '') : 'image';
+  return `${baseName || 'image'}.jpg`;
+}
+
+export default function WatermarkGallery({
+  results,
+  onClear,
+  onDownloadAll,
+  onRenameFile,
+  isProcessing,
+}) {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [previewResult, setPreviewResult] = useState(null);
   const [isPreviewClosing, setIsPreviewClosing] = useState(false);
@@ -180,6 +192,7 @@ export default function WatermarkGallery({ results, onClear, onDownloadAll, isPr
             key={i}
             result={r}
             index={i}
+            onRenameFile={onRenameFile}
             onPreview={() => openPreview(r, i)}
           />
         ))}
@@ -196,11 +209,11 @@ export default function WatermarkGallery({ results, onClear, onDownloadAll, isPr
   );
 }
 
-function ResultCard({ result, index, onPreview }) {
+function ResultCard({ result, index, onPreview, onRenameFile }) {
   const handleDownload = () => {
     const a = document.createElement('a');
     a.href = result.url;
-    a.download = result.fileName;
+    a.download = normalizeDownloadName(result.fileName);
     a.click();
   };
 
@@ -238,10 +251,22 @@ function ResultCard({ result, index, onPreview }) {
         </div>
       </div>
       <div className="wm-result-meta">
-        <span className="wm-result-name" title={result.fileName}>
-          {result.fileName}
-        </span>
-        <span className="wm-result-num">#{index + 1}</span>
+        <div className="wm-result-meta-row">
+          <span className="wm-result-name" title={result.fileName}>
+            {result.fileName}
+          </span>
+          <span className="wm-result-num">#{index + 1}</span>
+        </div>
+        <label className="wm-result-rename">
+          <span className="wm-result-rename-label">Đổi tên file</span>
+          <input
+            className="wm-result-name-input"
+            type="text"
+            value={result.fileName}
+            onChange={(event) => onRenameFile?.(index, event.target.value)}
+            placeholder="Nhập tên file mới"
+          />
+        </label>
       </div>
     </div>
   );

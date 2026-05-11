@@ -8,6 +8,7 @@ import Header from './components/Header.jsx';
 import ScrollToTopButton from './components/ScrollToTopButton.jsx';
 import MemoryGame from './pages/MemoryGame.jsx';
 import SEOKeywords from './pages/SEOKeywords.jsx';
+import SeoExcelGenerator from './pages/SeoExcelGenerator.jsx';
 import AuthPage from './pages/AuthPage.jsx';
 import AuthCallbackPage from './pages/AuthCallbackPage.jsx';
 import DashboardPage from './pages/DashboardPage.jsx';
@@ -69,6 +70,15 @@ function HomePage() {
       delay: 200,
     },
     {
+      icon: '📊',
+      title: 'SEO Excel Generator',
+      description: 'Upload Excel, tạo tag SEO bằng AI và lưu tiến độ realtime để không mất dữ liệu.',
+      buttonText: 'Mo Tool',
+      link: '/seo-excel-generator',
+      badge: 'New',
+      delay: 225,
+    },
+    {
       icon: '🎮',
       title: 'Memory Match Game',
       description: 'Chơi trò chơi ghép hình thú vị, test trí nhớ của bạn với giao diện hiện đại.',
@@ -112,7 +122,7 @@ function HomePage() {
 
             <div className="hero-stats">
               <div className="stat-item">
-                <span className="stat-number">4+</span>
+                <span className="stat-number">6+</span>
                 <span className="stat-label">Tools</span>
               </div>
               <div className="stat-item">
@@ -288,6 +298,7 @@ export default function App() {
             <Route path="/" element={<HomePage />} />
             <Route path="/aiseo" element={<AISEOFallbackPage />} />
             <Route path="/watermark" element={<Watermark />} />
+            <Route path="/seo-excel-generator" element={<SeoExcelGenerator />} />
             <Route
               path="/auth"
               element={(
