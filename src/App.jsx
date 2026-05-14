@@ -246,6 +246,18 @@ const protectedRouteConfigs = [
     loginLabel: 'Đăng nhập để vào dashboard',
   },
   {
+    path: '/dashboard/:section',
+    element: <DashboardPage />,
+    title: 'Dashboard cần đăng nhập để tiếp tục.',
+    description: 'Trang dashboard chứa thông tin phiên, hồ sơ cá nhân và dữ liệu tải lên nên chỉ mở cho người dùng đã xác thực.',
+    details: [
+      'Quản lý hồ sơ và avatar',
+      'Đổi mật khẩu và bảo mật tài khoản',
+      'Xem ảnh đã tải lên gần đây',
+    ],
+    loginLabel: 'Đăng nhập để vào dashboard',
+  },
+  {
     path: '/seo-keywords',
     element: <SEOKeywords />,
     title: 'SEO Keywords cần tài khoản để lưu và đồng bộ dữ liệu.',

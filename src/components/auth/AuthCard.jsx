@@ -30,7 +30,7 @@ export default function AuthCard() {
   const [loginForm, setLoginForm] = useState(initialLoginState);
   const [registerForm, setRegisterForm] = useState(initialRegisterState);
   const [errors, setErrors] = useState({});
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [pendingAction, setPendingAction] = useState(null);
   const [toast, setToast] = useState(null);
   const [showSuccess, setShowSuccess] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
@@ -39,6 +39,7 @@ export default function AuthCard() {
   const [showRegisterPassword, setShowRegisterPassword] = useState(false);
   const [showRegisterConfirmPassword, setShowRegisterConfirmPassword] = useState(false);
   const returnTarget = normalizeLocalPath(location.state?.from, '/dashboard');
+  const isSubmitting = Boolean(pendingAction);
 
   useEffect(() => {
     if (!toast) {
@@ -121,6 +122,19 @@ export default function AuthCard() {
     setShowSuccess(false);
   }
 
+  function getSubmitLabel(action, fallback) {
+    if (pendingAction === action) {
+      return (
+        <>
+          <span className="auth-spinner"></span>
+          Đang xử lý...
+        </>
+      );
+    }
+
+    return fallback;
+  }
+
   function validateRegisterForm() {
     const nextErrors = {};
 
@@ -178,7 +192,7 @@ export default function AuthCard() {
       return;
     }
 
-    setIsSubmitting(true);
+    setPendingAction('register');
     setErrors({});
 
     const result = await signup({
@@ -188,7 +202,7 @@ export default function AuthCard() {
     });
 
     if (result.error) {
-      setIsSubmitting(false);
+      setPendingAction(null);
       setErrors({ global: result.error });
       triggerShake();
       return;
@@ -208,7 +222,7 @@ export default function AuthCard() {
       setShowSuccess(false);
       setRegisterForm(initialRegisterState);
       clearStateForTab('login');
-      setIsSubmitting(false);
+      setPendingAction(null);
 
       if (!result.data?.requiresEmailConfirmation && result.data?.session) {
         navigate(returnTarget, { replace: true });
@@ -223,7 +237,7 @@ export default function AuthCard() {
       return;
     }
 
-    setIsSubmitting(true);
+    setPendingAction('login');
     setErrors({});
 
     const result = await login({
@@ -232,7 +246,7 @@ export default function AuthCard() {
     });
 
     if (result.error) {
-      setIsSubmitting(false);
+      setPendingAction(null);
       setErrors({ global: result.error });
       triggerShake();
       return;
@@ -248,22 +262,45 @@ export default function AuthCard() {
 
     window.setTimeout(() => {
       setShowSuccess(false);
-      setIsSubmitting(false);
+      setPendingAction(null);
       navigate(returnTarget, { replace: true });
     }, 900);
   }
 
   async function handleGoogleLogin() {
-    setIsSubmitting(true);
+    setPendingAction('google');
     setErrors({});
 
     const result = await loginWithGoogle(returnTarget);
 
     if (result.error) {
-      setIsSubmitting(false);
+      setPendingAction(null);
       setErrors({ global: result.error });
       triggerShake();
     }
+  }
+
+  function renderGoogleButton() {
+    return (
+      <button
+        type="button"
+        className="auth-oauth-btn"
+        onClick={handleGoogleLogin}
+        disabled={isSubmitting}
+      >
+        <span className="auth-google-mark" aria-hidden="true">
+          <span className="auth-google-mark-blue">G</span>
+        </span>
+        {pendingAction === 'google' ? (
+          <>
+            <span className="auth-spinner auth-spinner-dark"></span>
+            Đang mở Google...
+          </>
+        ) : (
+          'Continue with Google'
+        )}
+      </button>
+    );
   }
 
   return (
@@ -271,23 +308,13 @@ export default function AuthCard() {
       <AuthToast toast={toast} />
 
       <div className={`auth-card auth-appear ${isShaking ? 'auth-shake' : ''}`}>
-        <div className="auth-card-glow"></div>
-        <div className="auth-particles" aria-hidden="true">
-          <span></span>
-          <span></span>
-          <span></span>
-          <span></span>
-          <span></span>
-          <span></span>
-        </div>
-
         <div className="auth-card-header">
           <span className="auth-chip">ZepLao Account</span>
-          <h1>{activeTab === 'login' ? 'Chào mừng bạn trở lại' : 'Tạo tài khoản mới'}</h1>
+          <h1>{activeTab === 'login' ? 'Chào mừng trở lại' : 'Tạo tài khoản'}</h1>
           <p>
             {activeTab === 'login'
-              ? 'Đăng nhập để tiếp tục làm việc với dashboard và các công cụ của bạn.'
-              : 'Đăng ký tài khoản để đồng bộ dữ liệu và bắt đầu sử dụng hệ thống.'}
+              ? 'Tiếp tục vào dashboard và các công cụ cá nhân của bạn.'
+              : 'Bắt đầu đồng bộ dữ liệu, hồ sơ và phiên làm việc an toàn.'}
           </p>
         </div>
 
@@ -317,6 +344,12 @@ export default function AuthCard() {
           <div className="auth-form-track">
             <section className="auth-form-panel">
               <form className="auth-form" onSubmit={handleLoginSubmit}>
+                {renderGoogleButton()}
+
+                <div className="auth-divider">
+                  <span>or continue with email</span>
+                </div>
+
                 <AuthField
                   id="login-email"
                   label="Email"
@@ -342,24 +375,7 @@ export default function AuthCard() {
                 />
 
                 <button type="submit" className="auth-submit-btn" disabled={isSubmitting}>
-                  {isSubmitting ? (
-                    <>
-                      <span className="auth-spinner"></span>
-                      Đang xử lý...
-                    </>
-                  ) : (
-                    'Đăng nhập'
-                  )}
-                </button>
-
-                <button
-                  type="button"
-                  className="auth-oauth-btn"
-                  onClick={handleGoogleLogin}
-                  disabled={isSubmitting}
-                >
-                  <span className="auth-oauth-icon">G</span>
-                  Đăng nhập bằng Google
+                  {getSubmitLabel('login', 'Đăng nhập')}
                 </button>
 
                 <p className="auth-footnote">
@@ -370,6 +386,12 @@ export default function AuthCard() {
 
             <section className="auth-form-panel">
               <form className="auth-form" onSubmit={handleRegisterSubmit}>
+                {renderGoogleButton()}
+
+                <div className="auth-divider">
+                  <span>or continue with email</span>
+                </div>
+
                 {registerFields.map((field) => (
                   <AuthField
                     key={field.id}
@@ -388,14 +410,7 @@ export default function AuthCard() {
                 ))}
 
                 <button type="submit" className="auth-submit-btn" disabled={isSubmitting}>
-                  {isSubmitting ? (
-                    <>
-                      <span className="auth-spinner"></span>
-                      Đang xử lý...
-                    </>
-                  ) : (
-                    'Tạo tài khoản'
-                  )}
+                  {getSubmitLabel('register', 'Tạo tài khoản')}
                 </button>
 
                 <p className="auth-footnote">

@@ -12,6 +12,7 @@ import {
   signOut,
   signUp,
   subscribeToAuthChanges,
+  updatePassword as updatePasswordService,
 } from '../services/authService.js';
 import {
   ensureProfile,
@@ -352,6 +353,25 @@ export function AuthProvider({ children }) {
     return result;
   }
 
+  async function updatePassword(payload) {
+    if (!user?.id) {
+      const result = createServiceResult(null, 'Bạn cần đăng nhập để đổi mật khẩu.');
+      setAuthError(result.error);
+      return result;
+    }
+
+    setAuthError(null);
+    const result = await updatePasswordService(payload);
+
+    if (result.error) {
+      setAuthError(result.error);
+      return result;
+    }
+
+    await refreshSession();
+    return result;
+  }
+
   return (
     <AuthContext.Provider
       value={{
@@ -375,6 +395,7 @@ export function AuthProvider({ children }) {
         refreshProfile,
         refreshAvatar,
         updateProfile,
+        updatePassword,
       }}
     >
       {children}

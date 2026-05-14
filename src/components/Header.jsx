@@ -104,12 +104,16 @@ export default function Header() {
     },
     {
       label: user ? 'Dashboard' : 'Auth',
-      path: user ? '/dashboard' : '/auth',
+      path: user ? '/dashboard/overview' : '/auth',
       icon: user ? '📊' : '🔐',
     },
   ];
 
-  const isActive = (path) => location.pathname === path;
+  const isActive = (path) => (
+    path.startsWith('/dashboard')
+      ? location.pathname.startsWith('/dashboard')
+      : location.pathname === path
+  );
 
   async function handleLogout() {
     const result = await logout();
@@ -127,7 +131,7 @@ export default function Header() {
   function handleDashboardClick() {
     setUserMenuOpen(false);
     setIsOpen(false);
-    navigate('/dashboard');
+    navigate('/dashboard/overview');
   }
 
   return (
