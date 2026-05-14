@@ -14,6 +14,7 @@ import AuthCallbackPage from './pages/AuthCallbackPage.jsx';
 import DashboardPage from './pages/DashboardPage.jsx';
 import ProtectedRoute from './components/ProtectedRoute.jsx';
 import PublicRoute from './components/PublicRoute.jsx';
+import AISEO from './pages/AISEO.jsx';
 
 function FeatureCard({ icon, title, description, buttonText, link, badge, delay }) {
   return (
@@ -296,7 +297,7 @@ export default function App() {
         <main className={`app-main ${isHomePage ? 'home-page' : 'content-page'} ${isAuthPage ? 'auth-page-shell' : ''}`}>
           <Routes>
             <Route path="/" element={<HomePage />} />
-            <Route path="/aiseo" element={<AISEOFallbackPage />} />
+            <Route path="/aiseo" element={<AISEO />} />
             <Route path="/watermark" element={<Watermark />} />
             <Route path="/seo-excel-generator" element={<SeoExcelGenerator />} />
             <Route

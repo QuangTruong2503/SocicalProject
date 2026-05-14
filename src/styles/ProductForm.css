@@ -76,6 +76,7 @@
 .product-form-textarea {
   resize: vertical;
   min-height: 80px;
+  width: 100%;
 }
 
 .product-form-hint {

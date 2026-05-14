@@ -274,9 +274,24 @@
   padding: 18px 24px 0;
 }
 
+.seo-form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.seo-form-grid__footer {
+  display: grid;
+  gap: 12px;
+}
+
 .seo-field {
   display: grid;
   gap: 8px;
+}
+
+.seo-field--span-2 {
+  grid-column: span 2;
 }
 
 .seo-field__label {
@@ -328,6 +343,16 @@
 .seo-textarea {
   resize: vertical;
   min-height: 126px;
+}
+
+.seo-helper-line {
+  color: #94a3b8;
+  line-height: 1.7;
+  font-size: 0.94rem;
+}
+
+[data-theme="light"] .seo-helper-line {
+  color: #64748b;
 }
 
 .seo-input--search {
@@ -500,6 +525,66 @@
   margin-bottom: 16px;
 }
 
+.seo-result-card__analysis {
+  display: grid;
+  gap: 12px;
+  margin-bottom: 18px;
+}
+
+.seo-analysis-card {
+  padding: 16px 16px 14px;
+  border-radius: 20px;
+  border: 1px solid rgba(148, 163, 184, 0.14);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+[data-theme="light"] .seo-analysis-card {
+  background: rgba(255, 255, 255, 0.9);
+}
+
+.seo-analysis-card__label {
+  display: inline-block;
+  margin-bottom: 8px;
+  color: #94a3b8;
+  font-size: 0.74rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.seo-analysis-card__value {
+  margin: 0;
+  color: #e2e8f0;
+  line-height: 1.7;
+}
+
+[data-theme="light"] .seo-analysis-card__value {
+  color: #475569;
+}
+
+.seo-result-card__tags {
+  display: grid;
+  gap: 14px;
+}
+
+.seo-result-card__section-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.seo-result-card__section-head h4 {
+  margin: 6px 0 0;
+  color: #f8fbff;
+  font-size: 1rem;
+  line-height: 1.35;
+}
+
+[data-theme="light"] .seo-result-card__section-head h4 {
+  color: #0f172a;
+}
+
 .seo-result-card__timestamp {
   text-align: right;
 }
@@ -514,6 +599,10 @@
 
 .seo-empty-inline {
   min-height: 180px;
+}
+
+.seo-empty-inline--compact {
+  min-height: 120px;
 }
 
 .seo-empty-inline__icon,
@@ -807,6 +896,14 @@
     margin-right: 18px;
   }
 
+  .seo-form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .seo-field--span-2 {
+    grid-column: span 1;
+  }
+
   .seo-result-card__header,
   .seo-result-card__toolbar {
     flex-direction: column;
@@ -815,6 +912,11 @@
 
   .seo-result-card__meta {
     text-align: left;
+  }
+
+  .seo-result-card__section-head {
+    flex-direction: column;
+    align-items: flex-start;
   }
 
   .seo-generator__actions,
