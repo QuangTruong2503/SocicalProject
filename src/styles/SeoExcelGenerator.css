@@ -807,6 +807,186 @@
   }
 }
 
+/* Genesis overrides */
+.seo-excel-page {
+  min-height: calc(100vh - 56px);
+  padding: 32px 24px 64px;
+  background:
+    radial-gradient(circle at top left, rgba(99, 102, 241, 0.06), transparent 22%),
+    var(--color-bg);
+}
+
+.seo-excel-hero,
+.seo-excel-card,
+.seo-upload-zone,
+.seo-modal,
+.seo-toast,
+.seo-log-console,
+.seo-stat-box,
+.seo-hero-stat {
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  box-shadow: none;
+  backdrop-filter: none;
+}
+
+.seo-excel-hero,
+.seo-excel-card,
+.seo-modal,
+.seo-log-console {
+  border-radius: 24px;
+}
+
+.seo-excel-hero {
+  padding: 24px;
+  margin-bottom: 24px;
+}
+
+.seo-excel-badge,
+.seo-excel-kicker,
+.seo-status-badge,
+.seo-meta-chip {
+  border-radius: 999px;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+}
+
+.seo-excel-badge,
+.seo-excel-kicker {
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text-secondary);
+}
+
+.seo-excel-hero h1,
+.seo-excel-card__header h2,
+.seo-modal__header h2 {
+  color: var(--color-text);
+  font-family: var(--font-display);
+  letter-spacing: -0.04em;
+}
+
+.seo-excel-hero h1 {
+  font-size: clamp(2.75rem, 5vw, 4.5rem);
+  line-height: 0.98;
+}
+
+.seo-excel-hero p,
+.seo-helper-line,
+.seo-upload-zone__copy,
+.seo-log-empty,
+.seo-modal__description,
+.seo-toast__message {
+  color: var(--color-text-secondary);
+}
+
+.seo-status-badge {
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text);
+}
+
+.seo-status-badge--ready,
+.seo-status-badge--running,
+.seo-status-badge--done {
+  color: var(--color-primary);
+}
+
+.seo-status-badge--error {
+  color: var(--color-error);
+}
+
+.seo-status-badge--paused {
+  color: var(--color-warning);
+}
+
+.seo-hero-stat strong,
+.seo-stat-box strong,
+.seo-modal__stat strong {
+  color: var(--color-text);
+  font-family: var(--font-display);
+  letter-spacing: -0.04em;
+}
+
+.seo-input,
+.seo-textarea,
+.seo-upload-zone,
+.seo-btn,
+.seo-dropdown-btn {
+  border-radius: var(--radius-sm);
+}
+
+.seo-input,
+.seo-textarea {
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text);
+}
+
+.seo-input::placeholder,
+.seo-textarea::placeholder {
+  color: var(--color-neutral);
+}
+
+.seo-input:focus,
+.seo-textarea:focus {
+  border-color: var(--color-primary);
+  box-shadow: var(--focus-ring);
+}
+
+.seo-btn {
+  min-height: 38px;
+  border: 1px solid var(--color-border);
+  background: transparent;
+  color: var(--color-text);
+  box-shadow: none;
+}
+
+.seo-btn:hover {
+  transform: translateY(-1px);
+}
+
+.seo-btn--primary {
+  border-color: var(--color-primary);
+  background: var(--color-primary);
+  color: #fff;
+}
+
+.seo-btn--primary:hover {
+  background: var(--color-primary-hover);
+  border-color: var(--color-primary-hover);
+  box-shadow: var(--shadow-glow);
+}
+
+.seo-btn--danger {
+  color: var(--color-error);
+  border-color: rgba(239, 68, 68, 0.28);
+}
+
+.seo-progress-bar {
+  background: var(--color-border);
+}
+
+.seo-progress-bar__fill {
+  background: var(--color-primary);
+}
+
+.seo-modal-backdrop {
+  background: rgba(10, 10, 10, 0.22);
+  backdrop-filter: blur(5px);
+}
+
+.seo-toast__title,
+.seo-log-line {
+  color: var(--color-text);
+}
+
+@media (max-width: 768px) {
+  .seo-excel-page {
+    padding: 20px 12px 48px;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

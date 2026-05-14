@@ -162,3 +162,43 @@
     height: 36px;
   }
 }
+
+.wm-controls-section {
+  gap: 20px;
+}
+
+.wm-control-label,
+.wm-control-value {
+  color: var(--color-text);
+}
+
+.wm-control-input {
+  padding: 10px 14px;
+  border-color: var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+}
+
+.wm-control-input:focus {
+  border-color: var(--color-primary);
+  box-shadow: var(--focus-ring);
+}
+
+.wm-control-range {
+  height: 8px;
+  background: var(--color-border);
+}
+
+.wm-control-button {
+  min-height: 38px;
+  padding: 0 14px;
+  border-radius: 999px;
+}
+
+.wm-control-button:hover {
+  color: var(--color-primary);
+}
+
+.wm-control-button.active {
+  color: #fff;
+}

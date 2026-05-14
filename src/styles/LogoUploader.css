@@ -194,3 +194,33 @@
     font-size: 1.5rem;
   }
 }
+
+.logo-uploader-preview-item,
+.logo-uploader-upload-area {
+  border-color: var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+  box-shadow: none;
+}
+
+.logo-uploader-preview-item:hover,
+.logo-uploader-upload-area:hover {
+  border-color: var(--color-primary);
+  background: color-mix(in srgb, var(--color-surface) 94%, var(--color-primary) 6%);
+}
+
+.logo-uploader-preview-name,
+.logo-uploader-upload-title {
+  color: var(--color-text);
+}
+
+.logo-uploader-preview-size,
+.logo-uploader-upload-desc,
+.logo-uploader-loading {
+  color: var(--color-text-secondary);
+}
+
+.logo-uploader-btn-outline,
+.logo-uploader-btn-danger {
+  border-radius: var(--radius-sm);
+}

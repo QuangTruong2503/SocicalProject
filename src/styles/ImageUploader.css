@@ -219,3 +219,38 @@
     font-size: 0.7rem;
   }
 }
+
+.image-uploader-dropzone,
+.image-uploader-gallery-item {
+  border-color: var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+  box-shadow: none;
+}
+
+.image-uploader-dropzone:hover,
+.image-uploader-dropzone.active,
+.image-uploader-gallery-item:hover {
+  border-color: var(--color-primary);
+  background: color-mix(in srgb, var(--color-surface) 94%, var(--color-primary) 6%);
+}
+
+.image-uploader-title,
+.image-uploader-gallery-name {
+  color: var(--color-text);
+}
+
+.image-uploader-desc,
+.image-uploader-hint,
+.image-uploader-empty,
+.image-uploader-loading {
+  color: var(--color-text-secondary);
+}
+
+.image-uploader-gallery-btn:hover {
+  background: rgba(99, 102, 241, 0.08);
+}
+
+.image-uploader-gallery-btn.danger:hover {
+  background: rgba(239, 68, 68, 0.08);
+}

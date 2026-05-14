@@ -1,39 +1,36 @@
-/* ==================== COMPANY CONFIG STYLES ==================== */
-
 .company-config-card {
-  background: var(--bg-card);
-  border: 1px solid var(--border-color);
-  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
   overflow: hidden;
-  margin-bottom: 1.5rem;
-  box-shadow: var(--shadow-sm);
-  transition: all var(--transition-base);
 }
 
 .company-config-header {
-  background: var(--primary-color);
-  color: white;
-  padding: 1rem 1.5rem;
   display: flex;
   align-items: center;
-  gap: 0.75rem;
+  gap: 12px;
+  padding: 18px 20px;
+  border-bottom: 1px solid var(--color-border);
+  background: color-mix(in srgb, var(--color-surface) 92%, var(--color-primary) 8%);
+  color: var(--color-text);
 }
 
 .company-config-header h5 {
-  font-size: 1rem;
-  font-weight: 700;
   margin: 0;
+  font-family: var(--font-display);
+  font-size: 24px;
+  font-weight: 700;
+  letter-spacing: -0.03em;
 }
 
 .company-config-body {
-  padding: 1.5rem;
+  padding: 20px;
 }
 
 .company-config-group {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-  margin-bottom: 1.25rem;
+  display: grid;
+  gap: 8px;
+  margin-bottom: 20px;
 }
 
 .company-config-group:last-child {
@@ -41,88 +38,53 @@
 }
 
 .company-config-label {
-  font-size: 0.95rem;
+  color: var(--color-text);
+  font-size: 14px;
   font-weight: 600;
-  color: var(--text-muted);
-  margin: 0;
 }
 
-.company-config-select {
-  padding: 0.75rem;
-  border: 1px solid var(--border-color);
+.company-config-select,
+.company-config-textarea {
+  width: 100%;
+  border: 1px solid var(--color-border);
   border-radius: var(--radius-sm);
-  background: var(--bg-dark);
-  color: var(--text-light);
-  font-size: 0.95rem;
-  font-family: inherit;
-  transition: all var(--transition-base);
-}
-
-.company-config-select:hover {
-  border-color: var(--primary-color);
-  box-shadow: 0 0 8px rgba(102, 126, 234, 0.15);
-}
-
-.company-config-select:focus {
-  outline: none;
-  border-color: var(--primary-light);
-  box-shadow: 0 0 12px rgba(102, 126, 234, 0.3);
+  background: var(--color-surface);
+  color: var(--color-text);
+  padding: 10px 14px;
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
 }
 
 .company-config-textarea {
-  padding: 0.75rem;
-  border: 1px solid var(--border-color);
-  border-radius: var(--radius-sm);
-  background: var(--bg-dark-alt, rgba(30, 41, 59, 0.5));
-  color: var(--text-light);
-  font-size: 0.9rem;
-  font-family: inherit;
+  min-height: 180px;
   resize: vertical;
-  min-height: 150px;
-  transition: all var(--transition-base);
+  line-height: 1.6;
 }
 
-.company-config-textarea:hover {
-  border-color: var(--primary-color);
-  box-shadow: 0 0 8px rgba(102, 126, 234, 0.15);
+.company-config-select::placeholder,
+.company-config-textarea::placeholder {
+  color: var(--color-neutral);
 }
 
+.company-config-select:focus,
 .company-config-textarea:focus {
   outline: none;
-  border-color: var(--primary-light);
-  box-shadow: 0 0 12px rgba(102, 126, 234, 0.3);
+  border-color: var(--color-primary);
+  box-shadow: var(--focus-ring);
 }
 
 .company-config-hint {
-  font-size: 0.8rem;
-  color: var(--text-muted);
-  margin: 0.5rem 0 0 0;
   display: flex;
   align-items: flex-start;
-  gap: 0.5rem;
+  gap: 8px;
+  margin-top: 8px;
+  color: var(--color-text-secondary);
+  font-size: 13px;
+  line-height: 1.6;
 }
-
-.company-config-hint i {
-  flex-shrink: 0;
-  margin-top: 2px;
-}
-
-/* ==================== RESPONSIVE ==================== */
 
 @media (max-width: 768px) {
-  .company-config-card {
-    margin-bottom: 1rem;
-  }
-
-  .company-config-header {
-    padding: 0.75rem 1rem;
-  }
-
+  .company-config-header,
   .company-config-body {
-    padding: 1rem;
-  }
-
-  .company-config-textarea {
-    min-height: 120px;
+    padding: 16px;
   }
 }
