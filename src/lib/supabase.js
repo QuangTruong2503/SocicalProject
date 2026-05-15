@@ -19,56 +19,12 @@ console.debug('[supabase] Initializing browser client', {
   storageKey: supabaseAuthStorageKey,
 });
 
-function getStorageValue(key) {
-  if (typeof document === 'undefined') {
-    return null;
-  }
-
-  try {
-    return window.localStorage.getItem(key);
-  } catch (error) {
-    console.warn('[supabase] Unable to read auth storage value', { key, error });
-    return null;
-  }
-}
-
-function setStorageValue(key, value) {
-  if (typeof document === 'undefined') {
-    return;
-  }
-
-  try {
-    window.localStorage.setItem(key, value);
-  } catch (error) {
-    console.error('[supabase] Unable to write auth storage value', { key, error });
-  }
-}
-
-function removeStorageValue(key) {
-  if (typeof document === 'undefined') {
-    return;
-  }
-
-  try {
-    window.localStorage.removeItem(key);
-  } catch (error) {
-    console.error('[supabase] Unable to remove auth storage value', { key, error });
-  }
-}
-
-const localStorageStorage = {
-  getItem: (key) => getStorageValue(key),
-  setItem: (key, value) => setStorageValue(key, value),
-  removeItem: (key) => removeStorageValue(key),
-};
-
 export const supabase = createClient(supabaseUrl, supabasePublishableKey, {
   auth: {
     autoRefreshToken: true,
     persistSession: true,
     detectSessionInUrl: true,
     flowType: 'pkce',
-    storage: localStorageStorage,
     storageKey: supabaseAuthStorageKey,
   },
 });

@@ -32,9 +32,10 @@ export default function AuthField({
             type="button"
             className="auth-password-toggle"
             onClick={onTogglePassword}
-            aria-label={isPasswordVisible ? 'An mat khau' : 'Hien mat khau'}
+            disabled={disabled}
+            aria-label={isPasswordVisible ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'}
           >
-            {isPasswordVisible ? '🙈' : '👁'}
+            {isPasswordVisible ? 'Hide' : 'Show'}
           </button>
         )}
       </div>

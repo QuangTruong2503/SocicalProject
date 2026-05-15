@@ -11,7 +11,7 @@
   border: 1px solid rgba(255, 255, 255, 0.28);
   border-radius: 50%;
   background: linear-gradient(135deg, var(--primary-color), #764ba2);
-  color: #ffffff;
+  color: var(--color-primary);
   box-shadow: 0 16px 36px rgba(15, 23, 42, 0.24);
   cursor: pointer;
   opacity: 0;

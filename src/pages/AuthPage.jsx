@@ -13,9 +13,6 @@ export default function AuthPage() {
 
       <div className="auth-page">
         <div className="auth-bg-grid"></div>
-        <div className="auth-bg-orb auth-bg-orb-one"></div>
-        <div className="auth-bg-orb auth-bg-orb-two"></div>
-        <div className="auth-bg-orb auth-bg-orb-three"></div>
 
         <div className="auth-page-content">
           <div className="auth-layout">
@@ -25,10 +22,10 @@ export default function AuthPage() {
               </Link>
 
               <div className="auth-showcase-badge">Modern Access Experience</div>
-              <h1>Đăng nhập mượt mà, giao diện sáng và chuyên nghiệp hơn.</h1>
+              <h1>Đăng nhập rõ ràng, mượt và đáng tin.</h1>
               <p>
-                Tạo tài khoản, xác thực email và truy cập dashboard trong một trải nghiệm
-                gọn gàng, thân thiện và rõ ràng hơn.
+                Email/password và Google OAuth được gom trong một luồng thống nhất,
+                giúp bạn vào dashboard nhanh mà vẫn giữ phiên an toàn.
               </p>
 
               <div className="auth-showcase-points">

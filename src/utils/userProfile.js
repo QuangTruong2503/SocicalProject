@@ -3,6 +3,11 @@ function cleanString(value) {
 }
 
 export function getUserDisplayName(user, profile) {
+  const fullName = cleanString(profile?.full_name);
+  if (fullName) {
+    return fullName;
+  }
+
   const profileName = cleanString(profile?.username);
   if (profileName) {
     return profileName;
@@ -26,6 +31,7 @@ export function getUserDisplayName(user, profile) {
 
 export function getUserAvatarUrl(user, profile, latestUpload = null) {
   return cleanString(latestUpload?.image_url)
+    || cleanString(profile?.avatar_url)
     || cleanString(user?.user_metadata?.avatar_url)
     || cleanString(user?.user_metadata?.picture)
     || cleanString(user?.user_metadata?.avatar)

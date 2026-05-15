@@ -27,11 +27,15 @@ import { createServiceResult, normalizeServiceError } from './serviceHelpers.js'
 export async function signUp({ email, password, username }) {
   try {
     console.debug('[authService] signUp start', { email, username });
+    const emailRedirectTo = typeof window === 'undefined'
+      ? undefined
+      : new URL('/auth/callback?next=/dashboard', window.location.origin).toString();
 
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
       options: {
+        emailRedirectTo,
         data: {
           username,
         },
@@ -105,10 +109,14 @@ export async function signInWithGoogle(redirectTo) {
   try {
     console.debug('[authService] signInWithGoogle start', { redirectTo });
 
-    const { error } = await supabase.auth.signInWithOAuth({
+    const { data, error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
         redirectTo,
+        queryParams: {
+          access_type: 'offline',
+          prompt: 'select_account',
+        },
       },
     });
 
@@ -117,7 +125,7 @@ export async function signInWithGoogle(redirectTo) {
       return createServiceResult(null, normalizeServiceError(error, 'Unable to start Google sign-in.'));
     }
 
-    return createServiceResult(true);
+    return createServiceResult(data ?? true);
   } catch (error) {
     const message = normalizeServiceError(error, 'Unable to start Google sign-in.');
     console.error('[authService] signInWithGoogle exception', error);
@@ -144,6 +152,37 @@ export async function signOut() {
   } catch (error) {
     const message = normalizeServiceError(error, 'Unable to sign out.');
     console.error('[authService] signOut exception', error);
+    return createServiceResult(null, message);
+  }
+}
+
+/**
+ * @param {{ password: string, currentPassword?: string }} payload
+ * @returns {Promise<import('./serviceHelpers.js').ServiceResult<import('@supabase/supabase-js').User | null>>}
+ */
+export async function updatePassword({ password, currentPassword }) {
+  try {
+    console.debug('[authService] updatePassword start');
+
+    const attributes = currentPassword
+      ? { password, currentPassword }
+      : { password };
+
+    const { data, error } = await supabase.auth.updateUser(attributes);
+
+    if (error) {
+      console.error('[authService] updatePassword failed', error);
+      return createServiceResult(null, normalizeServiceError(error, 'Không thể cập nhật mật khẩu.'));
+    }
+
+    console.debug('[authService] updatePassword success', {
+      userId: data.user?.id ?? null,
+    });
+
+    return createServiceResult(data.user ?? null);
+  } catch (error) {
+    const message = normalizeServiceError(error, 'Không thể cập nhật mật khẩu.');
+    console.error('[authService] updatePassword exception', error);
     return createServiceResult(null, message);
   }
 }
