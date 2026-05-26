@@ -90,6 +90,110 @@
   margin-top: 0.4rem;
 }
 
+/* ─── Count Board ─────────────────────────────────────────────────── */
+.wm-count-board {
+  position: relative;
+  overflow: hidden;
+  margin-bottom: 1.5rem;
+  padding: 1.25rem;
+  border: 1px solid rgba(37, 99, 235, 0.18);
+  border-radius: 24px;
+  background:
+    linear-gradient(135deg, rgba(37, 99, 235, 0.12), rgba(16, 185, 129, 0.08)),
+    var(--wm-card);
+  box-shadow: 0 18px 48px rgba(15, 23, 42, 0.08);
+}
+
+.wm-count-board__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.wm-count-board__kicker {
+  display: block;
+  margin-bottom: 0.25rem;
+  color: var(--wm-accent);
+  font-family: var(--wm-font-display);
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.wm-count-board h2 {
+  margin: 0;
+  color: var(--wm-text);
+  font-family: var(--wm-font-display);
+  font-size: 1.35rem;
+  line-height: 1.15;
+}
+
+.wm-count-board__status {
+  display: inline-flex;
+  align-items: center;
+  min-height: 2rem;
+  padding: 0.35rem 0.7rem;
+  border: 1px solid rgba(16, 185, 129, 0.35);
+  border-radius: 999px;
+  background: rgba(16, 185, 129, 0.1);
+  color: #047857;
+  font-size: 0.78rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.wm-count-board__status.is-warning {
+  border-color: rgba(244, 163, 51, 0.35);
+  background: rgba(244, 163, 51, 0.1);
+  color: #b45309;
+}
+
+.wm-count-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.85rem;
+}
+
+.wm-count-card {
+  min-width: 0;
+  padding: 1rem;
+  border: 1px solid var(--wm-border);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.78);
+  backdrop-filter: blur(8px);
+}
+
+.wm-count-card__label,
+.wm-count-card__note {
+  display: block;
+  color: var(--wm-text-muted);
+  font-size: 0.78rem;
+}
+
+.wm-count-card strong {
+  display: block;
+  margin: 0.25rem 0;
+  color: var(--wm-text);
+  font-family: var(--wm-font-display);
+  font-size: clamp(1.8rem, 4vw, 3rem);
+  line-height: 1;
+}
+
+.wm-count-card--primary {
+  border-color: rgba(37, 99, 235, 0.3);
+}
+
+.wm-count-card--success {
+  border-color: rgba(16, 185, 129, 0.35);
+}
+
+.wm-count-card--neutral {
+  border-color: rgba(100, 116, 139, 0.25);
+}
+
 /* ─── Card ────────────────────────────────────────────────────────── */
 .wm-card {
   background: var(--wm-card);
@@ -986,7 +1090,8 @@ body.wm-modal-open {
 .wm-result-card,
 .wm-dropdown,
 .wm-preview-modal,
-.wm-tip-alert {
+.wm-tip-alert,
+.wm-count-board {
   border: 1px solid var(--color-border);
   background: var(--color-surface);
   box-shadow: none;
@@ -1009,11 +1114,33 @@ body.wm-modal-open {
 }
 
 .wm-section-label,
-.wm-preview-kicker {
+.wm-preview-kicker,
+.wm-count-board__kicker {
   color: var(--color-text-secondary);
   font-size: 11px;
   letter-spacing: 0.08em;
   text-transform: uppercase;
+}
+
+.wm-count-board {
+  background:
+    linear-gradient(135deg, rgba(37, 99, 235, 0.1), rgba(16, 185, 129, 0.08)),
+    var(--color-surface);
+}
+
+.wm-count-board h2,
+.wm-count-card strong {
+  color: var(--color-text);
+}
+
+.wm-count-card {
+  border: 1px solid var(--color-border);
+  background: color-mix(in srgb, var(--color-surface) 86%, transparent);
+}
+
+.wm-count-card__label,
+.wm-count-card__note {
+  color: var(--color-text-secondary);
 }
 
 .wm-dropzone,
@@ -1287,6 +1414,21 @@ body.wm-modal-open {
   color: #f4c46a;
 }
 
+[data-theme="dark"] .wm-count-card,
+.theme-dark .wm-count-card {
+  background: rgba(17, 24, 39, 0.72);
+}
+
+[data-theme="dark"] .wm-count-board__status.is-live,
+.theme-dark .wm-count-board__status.is-live {
+  color: #86efac;
+}
+
+[data-theme="dark"] .wm-count-board__status.is-warning,
+.theme-dark .wm-count-board__status.is-warning {
+  color: #facc15;
+}
+
 @media (max-width: 992px) {
   .wm-layout {
     grid-template-columns: 1fr;
@@ -1296,5 +1438,17 @@ body.wm-modal-open {
 @media (max-width: 640px) {
   .wm-container {
     width: min(100% - 1rem, 1200px);
+  }
+
+  .wm-count-board {
+    padding: 1rem;
+  }
+
+  .wm-count-board__header {
+    flex-direction: column;
+  }
+
+  .wm-count-grid {
+    grid-template-columns: 1fr;
   }
 }
