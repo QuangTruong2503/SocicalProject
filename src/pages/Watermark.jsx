@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { Helmet } from 'react-helmet-async';
 import LogoUploader from '../components/watermark/LogoUploader';
 import ImageUploader from '../components/watermark/ImageUploader';
@@ -6,6 +6,12 @@ import WatermarkControls from '../components/watermark/WatermarkControls';
 import WatermarkGallery from '../components/watermark/WatermarkGallery';
 import { processWatermark, resizeBlob, buildFileName, compressAndResizeBlob } from '../hooks/useWatermarkProcessor';
 import NotificationModal from '../components/NotificationModal';
+import { useAuth } from '../hooks/useAuth.js';
+import {
+  createWatermarkImageCount,
+  getWatermarkImageCountTotal,
+} from '../services/watermarkImageCountService.js';
+import luffyGif from '../asset/luffy.gif';
 import '../styles/Watermark.css';
 
 const DEFAULT_OPTIONS = {
@@ -34,17 +40,105 @@ function getDownloadFileName(fileName, suffix = '') {
   return `${baseName}${suffix}.jpg`;
 }
 
+function formatCount(value) {
+  return new Intl.NumberFormat('vi-VN').format(Number(value) || 0);
+}
+
+function WatermarkCountBoard({
+  totalCreated,
+  sessionCreated,
+  lastCreated,
+  selectedCount,
+  isLoading,
+  error,
+}) {
+  const rows = [
+    {
+      label: 'Tổng ảnh đã tạo',
+      value: isLoading ? '...' : formatCount(totalCreated),
+      note: error ? 'Chưa tải được dữ liệu Supabase' : 'Ghi nhận từ website',
+      tone: error ? 'warning' : 'primary',
+    },
+    {
+      label: 'Phiên hiện tại',
+      value: formatCount(sessionCreated),
+      note: 'Tính từ khi mở trang này',
+      tone: 'success',
+    },
+    {
+      label: 'Lần tạo gần nhất',
+      value: formatCount(lastCreated),
+      note: selectedCount > 0 ? `${formatCount(selectedCount)} ảnh đang chọn` : 'Chưa chọn ảnh',
+      tone: 'neutral',
+    },
+  ];
+
+  return (
+    <section className="wm-count-board" aria-label="Bảng đếm ảnh watermark">
+      <div className="wm-count-board__header">
+        <div>
+          <span className="wm-count-board__kicker">Watermark counter</span>
+          <h2>Bảng đếm ảnh đã tạo</h2>
+        </div>
+        <span className={`wm-count-board__status ${error ? 'is-warning' : 'is-live'}`}>
+          {error ? 'Chưa đồng bộ' : 'Đang đồng bộ'}
+        </span>
+      </div>
+
+      <div className="wm-count-grid">
+        {rows.map((row) => (
+          <article className={`wm-count-card wm-count-card--${row.tone}`} key={row.label}>
+            <span className="wm-count-card__label">{row.label}</span>
+            <strong>{row.value}</strong>
+            <span className="wm-count-card__note">{row.note}</span>
+          </article>
+        ))}
+      </div>
+    </section>
+  );
+}
+
 export default function Watermark() {
+  const { user } = useAuth();
   const [logoUrl, setLogoUrl]   = useState(null);
   const [logoName, setLogoName] = useState(null);
   const [images, setImages]     = useState([]);
   const [options, setOptions]   = useState(DEFAULT_OPTIONS);
   const [results, setResults]   = useState([]);
   const [processing, setProcessing] = useState(false);
+  const [totalCreated, setTotalCreated] = useState(0);
+  const [sessionCreated, setSessionCreated] = useState(0);
+  const [lastCreated, setLastCreated] = useState(0);
+  const [statsLoading, setStatsLoading] = useState(true);
+  const [statsError, setStatsError] = useState(null);
 
   const handleLogoChange = useCallback((url, name) => {
     setLogoUrl(url);
     setLogoName(name);
+  }, []);
+
+  useEffect(() => {
+    let isActive = true;
+
+    getWatermarkImageCountTotal().then((result) => {
+      if (!isActive) {
+        return;
+      }
+
+      if (result.error) {
+        setStatsError(result.error);
+        setStatsLoading(false);
+        return;
+      }
+
+      setTotalCreated(result.data || 0);
+      setStatsError(null);
+      setStatsLoading(false);
+    });
+
+    return () => {
+      isActive = false;
+    };
   }, []);
 
   // ── Create watermarked images ──────────────────────────────────────
@@ -69,6 +163,22 @@ export default function Watermark() {
     setResults(newResults);
     setProcessing(false);
 
+    if (newResults.length > 0) {
+      const result = await createWatermarkImageCount({
+        userId: user?.id,
+        imageCount: newResults.length,
+      });
+
+      if (result.error) {
+        console.warn('[Watermark] Could not save image count', result.error);
+      } else {
+        setTotalCreated((current) => current + newResults.length);
+        setSessionCreated((current) => current + newResults.length);
+        setLastCreated(newResults.length);
+        setStatsError(null);
+      }
+    }
+
     // Scroll to gallery
     setTimeout(() => {
       document.getElementById('wm-gallery')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -84,12 +194,12 @@ export default function Watermark() {
       if (mode === '800x600') {
         try {
           blob = await resizeBlob(blob, 800, 600);
-          fileName = getDownloadFileName(r.fileName, '-800x600');
+          fileName = getDownloadFileName(r.fileName);
         } catch { /* use original */ }
       } else if (mode === 'ImageCompress') {
         try {
           blob = await compressAndResizeBlob(blob, 800, 600, 100);
-          fileName = getDownloadFileName(r.fileName, '_compressed');
+          fileName = getDownloadFileName(r.fileName);
         } catch { /* use original */ }
       }
 
@@ -125,13 +235,29 @@ export default function Watermark() {
 
           {/* ── Header ── */}
           <div className="wm-header">
-            <h1 className="wm-headline">
-              Water<span>mark</span>
-          </h1>
-          <p className="wm-subline">
-            Thêm logo bảo vệ bản quyền hàng loạt — nhanh, đẹp, chuẩn.
-          </p>
-        </div>
+            <div className="wm-header__copy">
+              <h1 className="wm-headline">
+                Water<span>mark</span>
+              </h1>
+              <p className="wm-subline">
+                Thêm logo bảo vệ bản quyền hàng loạt — nhanh, đẹp, chuẩn.
+              </p>
+            </div>
+            <img
+              className="wm-luffy"
+              src={luffyGif}
+              alt="Luffy cổ vũ tạo watermark"
+            />
+          </div>
+
+        <WatermarkCountBoard
+          totalCreated={totalCreated}
+          sessionCreated={sessionCreated}
+          lastCreated={lastCreated}
+          selectedCount={images.length}
+          isLoading={statsLoading}
+          error={statsError}
+        />
 
         {/* ── Main Layout ── */}
         <div className="wm-layout">

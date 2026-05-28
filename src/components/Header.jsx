@@ -103,7 +103,7 @@ export default function Header() {
       icon: '🎮',
     },
     {
-      label: user ? 'Dashboard' : 'Auth',
+      label: user ? 'Dashboard' : 'Đăng nhập',
       path: user ? '/dashboard/overview' : '/auth',
       icon: user ? '📊' : '🔐',
     },
@@ -236,7 +236,7 @@ export default function Header() {
                 aria-label="Go to authentication"
                 title="Auth"
               >
-                Auth
+                Đăng nhập
               </button>
             )}
 
