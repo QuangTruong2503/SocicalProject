@@ -11,6 +11,7 @@ import {
   createWatermarkImageCount,
   getWatermarkImageCountTotal,
 } from '../services/watermarkImageCountService.js';
+import luffyGif from '../asset/luffy.gif';
 import '../styles/Watermark.css';
 
 const DEFAULT_OPTIONS = {
@@ -193,12 +194,12 @@ export default function Watermark() {
       if (mode === '800x600') {
         try {
           blob = await resizeBlob(blob, 800, 600);
-          fileName = getDownloadFileName(r.fileName, '-800x600');
+          fileName = getDownloadFileName(r.fileName);
         } catch { /* use original */ }
       } else if (mode === 'ImageCompress') {
         try {
           blob = await compressAndResizeBlob(blob, 800, 600, 100);
-          fileName = getDownloadFileName(r.fileName, '_compressed');
+          fileName = getDownloadFileName(r.fileName);
         } catch { /* use original */ }
       }
 
@@ -234,13 +235,20 @@ export default function Watermark() {
 
           {/* ── Header ── */}
           <div className="wm-header">
-            <h1 className="wm-headline">
-              Water<span>mark</span>
-          </h1>
-          <p className="wm-subline">
-            Thêm logo bảo vệ bản quyền hàng loạt — nhanh, đẹp, chuẩn.
-          </p>
-        </div>
+            <div className="wm-header__copy">
+              <h1 className="wm-headline">
+                Water<span>mark</span>
+              </h1>
+              <p className="wm-subline">
+                Thêm logo bảo vệ bản quyền hàng loạt — nhanh, đẹp, chuẩn.
+              </p>
+            </div>
+            <img
+              className="wm-luffy"
+              src={luffyGif}
+              alt="Luffy cổ vũ tạo watermark"
+            />
+          </div>
 
         <WatermarkCountBoard
           totalCreated={totalCreated}
