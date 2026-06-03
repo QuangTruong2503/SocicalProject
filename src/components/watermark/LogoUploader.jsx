@@ -2,7 +2,7 @@ import React, { useEffect, useRef } from 'react';
 import { saveLogo, loadLogo, clearLogo } from '../../hooks/useIndexedDB';
 import '../../styles/LogoUploader.css';
 
-export default function LogoUploader({ logoUrl, logoName, onLogoChange }) {
+export default function LogoUploader({ logoUrl, logoName, onLogoChange, onImagePreview }) {
   const fileRef = useRef();
 
   // Load logo from IndexedDB on mount
@@ -41,9 +41,18 @@ export default function LogoUploader({ logoUrl, logoName, onLogoChange }) {
 
       {logoUrl ? (
         <div className="wm-logo-preview-wrap">
-          <div className="wm-logo-preview">
+          <button
+            className="wm-logo-preview wm-zoom-trigger"
+            type="button"
+            onClick={() => onImagePreview?.({
+              url: logoUrl,
+              title: logoName || 'Logo watermark',
+              kicker: 'Logo watermark',
+            })}
+            aria-label="Phóng to logo watermark"
+          >
             <img src={logoUrl} alt="logo" />
-          </div>
+          </button>
           <div className="wm-logo-info">
             <span className="wm-logo-name" title={logoName}>
               <span className="wm-status-icon" aria-hidden="true">✓</span>

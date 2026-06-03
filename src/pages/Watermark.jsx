@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { Helmet } from 'react-helmet-async';
 import LogoUploader from '../components/watermark/LogoUploader';
 import ImageUploader from '../components/watermark/ImageUploader';
@@ -100,6 +101,48 @@ function WatermarkCountBoard({
   );
 }
 
+function WatermarkImageZoom({ image, onClose }) {
+  if (!image) return null;
+
+  return createPortal(
+    <div
+      className="wm-preview-backdrop"
+      role="presentation"
+      onPointerDown={onClose}
+    >
+      <div
+        className="wm-preview-modal wm-preview-modal--zoom"
+        role="dialog"
+        aria-modal="true"
+        aria-label={`Phóng to ${image.title}`}
+        onPointerDown={(event) => event.stopPropagation()}
+      >
+        <div className="wm-preview-header">
+          <div className="wm-preview-title-wrap">
+            <span className="wm-preview-kicker">{image.kicker || 'Xem ảnh'}</span>
+            <strong className="wm-preview-title" title={image.title}>
+              {image.title}
+            </strong>
+          </div>
+          <button
+            className="wm-preview-close"
+            type="button"
+            onClick={onClose}
+            aria-label="Đóng ảnh phóng to"
+          >
+            <span aria-hidden="true">×</span>
+          </button>
+        </div>
+
+        <div className="wm-preview-image-frame">
+          <img src={image.url} alt={image.title} />
+        </div>
+      </div>
+    </div>,
+    document.body
+  );
+}
+
 export default function Watermark() {
   const { user } = useAuth();
   const [logoUrl, setLogoUrl]   = useState(null);
@@ -113,10 +156,19 @@ export default function Watermark() {
   const [lastCreated, setLastCreated] = useState(0);
   const [statsLoading, setStatsLoading] = useState(true);
   const [statsError, setStatsError] = useState(null);
+  const [zoomImage, setZoomImage] = useState(null);
 
   const handleLogoChange = useCallback((url, name) => {
     setLogoUrl(url);
     setLogoName(name);
+  }, []);
+
+  const openZoom = useCallback((image) => {
+    setZoomImage(image);
+  }, []);
+
+  const closeZoom = useCallback(() => {
+    setZoomImage(null);
   }, []);
 
   useEffect(() => {
@@ -142,6 +194,24 @@ export default function Watermark() {
       isActive = false;
     };
   }, []);
+
+  useEffect(() => {
+    if (!zoomImage) return undefined;
+
+    const handleEscape = (event) => {
+      if (event.key === 'Escape') {
+        closeZoom();
+      }
+    };
+
+    document.addEventListener('keydown', handleEscape);
+    document.body.classList.add('wm-modal-open');
+
+    return () => {
+      document.removeEventListener('keydown', handleEscape);
+      document.body.classList.remove('wm-modal-open');
+    };
+  }, [closeZoom, zoomImage]);
 
   // ── Create watermarked images ──────────────────────────────────────
   const handleCreate = async () => {
@@ -244,7 +314,7 @@ export default function Watermark() {
                   World Cup <span>Watermark</span>
                 </h1>
                 <p className="wm-subline">
-                  Lên logo, chốt đội hình ảnh và xuất file như một trận chung kết.
+                  Cristiano Ronaldo – ONE LAST DANCE | World Cup 2026
                 </p>
                 <div className="wm-hero-chips" aria-hidden="true">
                   <span>Kickoff</span>
@@ -256,14 +326,41 @@ export default function Watermark() {
                   className="wm-luffy"
                   src={fifaImg}
                   alt=""
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => openZoom({
+                    url: fifaImg,
+                    title: 'World Cup trophy',
+                    kicker: 'World Cup',
+                  })}
+                  onKeyDown={(event) => {
+                    if (event.key === 'Enter' || event.key === ' ') {
+                      event.preventDefault();
+                      openZoom({
+                        url: fifaImg,
+                        title: 'World Cup trophy',
+                        kicker: 'World Cup',
+                      });
+                    }
+                  }}
                 />  
             </div>
-            <div className="wm-header-anchors" aria-hidden="true">
+            <div className="wm-header-anchors">
               {headerAnchors.map((anchor) => (
-                <span className="wm-header-anchor" key={anchor}>
+                <button
+                  className="wm-header-anchor"
+                  key={anchor}
+                  type="button"
+                  onClick={() => openZoom({
+                    url: cr7Gif,
+                    title: `CR7 #${anchor + 1}`,
+                    kicker: 'CR7 highlight',
+                  })}
+                  aria-label={`Phóng to ảnh CR7 ${anchor + 1}`}
+                >
                   <span className="wm-header-anchor__line" />
                   <img src={cr7Gif} alt="" />
-                </span>
+                </button>
               ))}
             </div>
 
@@ -288,11 +385,16 @@ export default function Watermark() {
                 logoUrl={logoUrl}
                 logoName={logoName}
                 onLogoChange={handleLogoChange}
+                onImagePreview={openZoom}
               />
             </div>
 
             <div className="wm-card">
-              <ImageUploader images={images} onImagesChange={setImages} />
+              <ImageUploader
+                images={images}
+                onImagesChange={setImages}
+                onImagePreview={openZoom}
+              />
             </div>
           </div>
 
@@ -358,6 +460,7 @@ export default function Watermark() {
     <NotificationModal
       notification={notification}
     />
+    <WatermarkImageZoom image={zoomImage} onClose={closeZoom} />
     </>
   );
 }

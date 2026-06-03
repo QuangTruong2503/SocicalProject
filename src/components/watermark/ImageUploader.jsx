@@ -1,7 +1,7 @@
 import React, { useRef } from 'react';
 import '../../styles/ImageUploader.css';
 
-export default function ImageUploader({ images, onImagesChange }) {
+export default function ImageUploader({ images, onImagesChange, onImagePreview }) {
   const fileRef = useRef();
 
   const handleFiles = (e) => {
@@ -65,10 +65,32 @@ export default function ImageUploader({ images, onImagesChange }) {
       {images.length > 0 && (
         <div className="wm-thumb-grid">
           {images.map((img, i) => (
-            <div key={i} className="wm-thumb">
+            <div
+              key={i}
+              className="wm-thumb wm-zoom-trigger"
+              role="button"
+              tabIndex={0}
+              onClick={() => onImagePreview?.({
+                url: img.preview,
+                title: img.name,
+                kicker: `Ảnh nguồn #${i + 1}`,
+              })}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter' || event.key === ' ') {
+                  event.preventDefault();
+                  onImagePreview?.({
+                    url: img.preview,
+                    title: img.name,
+                    kicker: `Ảnh nguồn #${i + 1}`,
+                  });
+                }
+              }}
+              aria-label={`Phóng to ${img.name}`}
+            >
               <img src={img.preview} alt={img.name} />
               <button
                 className="wm-thumb-remove"
+                type="button"
                 onClick={(e) => {
                   e.stopPropagation();
                   removeImage(i);
