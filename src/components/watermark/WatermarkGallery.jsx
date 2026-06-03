@@ -220,7 +220,14 @@ function ResultCard({ result, index, onPreview, onRenameFile }) {
   return (
     <div className="wm-result-card">
       <div className="wm-result-img-wrap">
-        <img src={result.url} alt={result.fileName} loading="lazy" />
+        <button
+          className="wm-result-image-trigger"
+          type="button"
+          onClick={onPreview}
+          aria-label={`Phóng to ${result.fileName}`}
+        >
+          <img src={result.url} alt={result.fileName} loading="lazy" />
+        </button>
         <div className="wm-result-overlay">
           <div className="wm-result-action-row">
             <button

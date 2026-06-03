@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { Helmet } from 'react-helmet-async';
 import LogoUploader from '../components/watermark/LogoUploader';
 import ImageUploader from '../components/watermark/ImageUploader';
@@ -11,7 +12,8 @@ import {
   createWatermarkImageCount,
   getWatermarkImageCountTotal,
 } from '../services/watermarkImageCountService.js';
-import luffyGif from '../asset/luffy.gif';
+import fifaImg from '../asset/fifawc.png';
+import cr7Gif from '../asset/cr7.gif';
 import '../styles/Watermark.css';
 
 const DEFAULT_OPTIONS = {
@@ -27,6 +29,7 @@ const notification = {
   content: 'Đã thêm tính năng mới cho trang watermark.',
   imageUrl: 'https://psqfbcgkgafqtsmrgjqu.supabase.co/storage/v1/object/public/ZepLao/asset/notify.png',
 };
+const headerAnchors = Array.from({ length: 5 }, (_, index) => index);
 
 function normalizeFileName(fileName, fallbackBase = 'image') {
   const trimmed = (fileName || '').trim();
@@ -56,19 +59,19 @@ function WatermarkCountBoard({
     {
       label: 'Tổng ảnh đã tạo',
       value: isLoading ? '...' : formatCount(totalCreated),
-      note: error ? 'Chưa tải được dữ liệu Supabase' : 'Ghi nhận từ website',
+      note: error ? 'Chưa tải được dữ liệu Supabase' : 'Lượt ảnh toàn mùa',
       tone: error ? 'warning' : 'primary',
     },
     {
       label: 'Phiên hiện tại',
       value: formatCount(sessionCreated),
-      note: 'Tính từ khi mở trang này',
+      note: 'Tỷ số trong trận này',
       tone: 'success',
     },
     {
       label: 'Lần tạo gần nhất',
       value: formatCount(lastCreated),
-      note: selectedCount > 0 ? `${formatCount(selectedCount)} ảnh đang chọn` : 'Chưa chọn ảnh',
+      note: selectedCount > 0 ? `${formatCount(selectedCount)} ảnh trong đội hình` : 'Chưa chọn ảnh',
       tone: 'neutral',
     },
   ];
@@ -77,8 +80,8 @@ function WatermarkCountBoard({
     <section className="wm-count-board" aria-label="Bảng đếm ảnh watermark">
       <div className="wm-count-board__header">
         <div>
-          <span className="wm-count-board__kicker">Watermark counter</span>
-          <h2>Bảng đếm ảnh đã tạo</h2>
+          <span className="wm-count-board__kicker">World Cup counter</span>
+          <h2>Bảng tỷ số ảnh đã tạo</h2>
         </div>
         <span className={`wm-count-board__status ${error ? 'is-warning' : 'is-live'}`}>
           {error ? 'Chưa đồng bộ' : 'Đang đồng bộ'}
@@ -98,6 +101,48 @@ function WatermarkCountBoard({
   );
 }
 
+function WatermarkImageZoom({ image, onClose }) {
+  if (!image) return null;
+
+  return createPortal(
+    <div
+      className="wm-preview-backdrop"
+      role="presentation"
+      onPointerDown={onClose}
+    >
+      <div
+        className="wm-preview-modal wm-preview-modal--zoom"
+        role="dialog"
+        aria-modal="true"
+        aria-label={`Phóng to ${image.title}`}
+        onPointerDown={(event) => event.stopPropagation()}
+      >
+        <div className="wm-preview-header">
+          <div className="wm-preview-title-wrap">
+            <span className="wm-preview-kicker">{image.kicker || 'Xem ảnh'}</span>
+            <strong className="wm-preview-title" title={image.title}>
+              {image.title}
+            </strong>
+          </div>
+          <button
+            className="wm-preview-close"
+            type="button"
+            onClick={onClose}
+            aria-label="Đóng ảnh phóng to"
+          >
+            <span aria-hidden="true">×</span>
+          </button>
+        </div>
+
+        <div className="wm-preview-image-frame">
+          <img src={image.url} alt={image.title} />
+        </div>
+      </div>
+    </div>,
+    document.body
+  );
+}
+
 export default function Watermark() {
   const { user } = useAuth();
   const [logoUrl, setLogoUrl]   = useState(null);
@@ -111,10 +156,19 @@ export default function Watermark() {
   const [lastCreated, setLastCreated] = useState(0);
   const [statsLoading, setStatsLoading] = useState(true);
   const [statsError, setStatsError] = useState(null);
+  const [zoomImage, setZoomImage] = useState(null);
 
   const handleLogoChange = useCallback((url, name) => {
     setLogoUrl(url);
     setLogoName(name);
+  }, []);
+
+  const openZoom = useCallback((image) => {
+    setZoomImage(image);
+  }, []);
+
+  const closeZoom = useCallback(() => {
+    setZoomImage(null);
   }, []);
 
   useEffect(() => {
@@ -140,6 +194,24 @@ export default function Watermark() {
       isActive = false;
     };
   }, []);
+
+  useEffect(() => {
+    if (!zoomImage) return undefined;
+
+    const handleEscape = (event) => {
+      if (event.key === 'Escape') {
+        closeZoom();
+      }
+    };
+
+    document.addEventListener('keydown', handleEscape);
+    document.body.classList.add('wm-modal-open');
+
+    return () => {
+      document.removeEventListener('keydown', handleEscape);
+      document.body.classList.remove('wm-modal-open');
+    };
+  }, [closeZoom, zoomImage]);
 
   // ── Create watermarked images ──────────────────────────────────────
   const handleCreate = async () => {
@@ -236,18 +308,62 @@ export default function Watermark() {
           {/* ── Header ── */}
           <div className="wm-header">
             <div className="wm-header__copy">
-              <h1 className="wm-headline">
-                Water<span>mark</span>
-              </h1>
-              <p className="wm-subline">
-                Thêm logo bảo vệ bản quyền hàng loạt — nhanh, đẹp, chuẩn.
-              </p>
+              <div className="wm-hero-copy">
+                <span className="wm-hero-kicker">World Cup studio</span>
+                <h1 className="wm-headline">
+                  World Cup <span>Watermark</span>
+                </h1>
+                <p className="wm-subline">
+                  Cristiano Ronaldo – ONE LAST DANCE | World Cup 2026
+                </p>
+                <div className="wm-hero-chips" aria-hidden="true">
+                  <span>Kickoff</span>
+                  <span>Final ready</span>
+                  <span>Clean export</span>
+                </div>
+              </div>
+              <img
+                  className="wm-luffy"
+                  src={fifaImg}
+                  alt=""
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => openZoom({
+                    url: fifaImg,
+                    title: 'World Cup trophy',
+                    kicker: 'World Cup',
+                  })}
+                  onKeyDown={(event) => {
+                    if (event.key === 'Enter' || event.key === ' ') {
+                      event.preventDefault();
+                      openZoom({
+                        url: fifaImg,
+                        title: 'World Cup trophy',
+                        kicker: 'World Cup',
+                      });
+                    }
+                  }}
+                />  
             </div>
-            <img
-              className="wm-luffy"
-              src={luffyGif}
-              alt="Luffy cổ vũ tạo watermark"
-            />
+            <div className="wm-header-anchors">
+              {headerAnchors.map((anchor) => (
+                <button
+                  className="wm-header-anchor"
+                  key={anchor}
+                  type="button"
+                  onClick={() => openZoom({
+                    url: cr7Gif,
+                    title: `CR7 #${anchor + 1}`,
+                    kicker: 'CR7 highlight',
+                  })}
+                  aria-label={`Phóng to ảnh CR7 ${anchor + 1}`}
+                >
+                  <span className="wm-header-anchor__line" />
+                  <img src={cr7Gif} alt="" />
+                </button>
+              ))}
+            </div>
+
           </div>
 
         <WatermarkCountBoard
@@ -269,11 +385,16 @@ export default function Watermark() {
                 logoUrl={logoUrl}
                 logoName={logoName}
                 onLogoChange={handleLogoChange}
+                onImagePreview={openZoom}
               />
             </div>
 
             <div className="wm-card">
-              <ImageUploader images={images} onImagesChange={setImages} />
+              <ImageUploader
+                images={images}
+                onImagesChange={setImages}
+                onImagePreview={openZoom}
+              />
             </div>
           </div>
 
@@ -298,7 +419,7 @@ export default function Watermark() {
                     </>
                   ) : (
                     <>
-                      <span className="wm-inline-icon" aria-hidden="true">✨</span>
+                      <span className="wm-inline-icon" aria-hidden="true">⚽</span>
                       Tạo ảnh Watermark
                     </>
                   )}
@@ -339,6 +460,7 @@ export default function Watermark() {
     <NotificationModal
       notification={notification}
     />
+    <WatermarkImageZoom image={zoomImage} onClose={closeZoom} />
     </>
   );
 }
