@@ -11,7 +11,8 @@ import {
   createWatermarkImageCount,
   getWatermarkImageCountTotal,
 } from '../services/watermarkImageCountService.js';
-import luffyGif from '../asset/luffy.gif';
+import fifaImg from '../asset/fifawc.png';
+import cr7Gif from '../asset/cr7.gif';
 import '../styles/Watermark.css';
 
 const DEFAULT_OPTIONS = {
@@ -27,6 +28,7 @@ const notification = {
   content: 'Đã thêm tính năng mới cho trang watermark.',
   imageUrl: 'https://psqfbcgkgafqtsmrgjqu.supabase.co/storage/v1/object/public/ZepLao/asset/notify.png',
 };
+const headerAnchors = Array.from({ length: 5 }, (_, index) => index);
 
 function normalizeFileName(fileName, fallbackBase = 'image') {
   const trimmed = (fileName || '').trim();
@@ -56,19 +58,19 @@ function WatermarkCountBoard({
     {
       label: 'Tổng ảnh đã tạo',
       value: isLoading ? '...' : formatCount(totalCreated),
-      note: error ? 'Chưa tải được dữ liệu Supabase' : 'Ghi nhận từ website',
+      note: error ? 'Chưa tải được dữ liệu Supabase' : 'Lượt ảnh toàn mùa',
       tone: error ? 'warning' : 'primary',
     },
     {
       label: 'Phiên hiện tại',
       value: formatCount(sessionCreated),
-      note: 'Tính từ khi mở trang này',
+      note: 'Tỷ số trong trận này',
       tone: 'success',
     },
     {
       label: 'Lần tạo gần nhất',
       value: formatCount(lastCreated),
-      note: selectedCount > 0 ? `${formatCount(selectedCount)} ảnh đang chọn` : 'Chưa chọn ảnh',
+      note: selectedCount > 0 ? `${formatCount(selectedCount)} ảnh trong đội hình` : 'Chưa chọn ảnh',
       tone: 'neutral',
     },
   ];
@@ -77,8 +79,8 @@ function WatermarkCountBoard({
     <section className="wm-count-board" aria-label="Bảng đếm ảnh watermark">
       <div className="wm-count-board__header">
         <div>
-          <span className="wm-count-board__kicker">Watermark counter</span>
-          <h2>Bảng đếm ảnh đã tạo</h2>
+          <span className="wm-count-board__kicker">World Cup counter</span>
+          <h2>Bảng tỷ số ảnh đã tạo</h2>
         </div>
         <span className={`wm-count-board__status ${error ? 'is-warning' : 'is-live'}`}>
           {error ? 'Chưa đồng bộ' : 'Đang đồng bộ'}
@@ -236,18 +238,35 @@ export default function Watermark() {
           {/* ── Header ── */}
           <div className="wm-header">
             <div className="wm-header__copy">
-              <h1 className="wm-headline">
-                Water<span>mark</span>
-              </h1>
-              <p className="wm-subline">
-                Thêm logo bảo vệ bản quyền hàng loạt — nhanh, đẹp, chuẩn.
-              </p>
+              <div className="wm-hero-copy">
+                <span className="wm-hero-kicker">World Cup studio</span>
+                <h1 className="wm-headline">
+                  World Cup <span>Watermark</span>
+                </h1>
+                <p className="wm-subline">
+                  Lên logo, chốt đội hình ảnh và xuất file như một trận chung kết.
+                </p>
+                <div className="wm-hero-chips" aria-hidden="true">
+                  <span>Kickoff</span>
+                  <span>Final ready</span>
+                  <span>Clean export</span>
+                </div>
+              </div>
+              <img
+                  className="wm-luffy"
+                  src={fifaImg}
+                  alt=""
+                />  
             </div>
-            <img
-              className="wm-luffy"
-              src={luffyGif}
-              alt="Luffy cổ vũ tạo watermark"
-            />
+            <div className="wm-header-anchors" aria-hidden="true">
+              {headerAnchors.map((anchor) => (
+                <span className="wm-header-anchor" key={anchor}>
+                  <span className="wm-header-anchor__line" />
+                  <img src={cr7Gif} alt="" />
+                </span>
+              ))}
+            </div>
+
           </div>
 
         <WatermarkCountBoard
@@ -298,7 +317,7 @@ export default function Watermark() {
                     </>
                   ) : (
                     <>
-                      <span className="wm-inline-icon" aria-hidden="true">✨</span>
+                      <span className="wm-inline-icon" aria-hidden="true">⚽</span>
                       Tạo ảnh Watermark
                     </>
                   )}
