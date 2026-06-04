@@ -12,47 +12,12 @@ export default function AuthPage() {
       </Helmet>
 
       <div className="auth-page">
-        <div className="auth-bg-grid"></div>
-
         <div className="auth-page-content">
+          <Link to="/" className="auth-home-link">
+            ← Trang chính
+          </Link>
+
           <div className="auth-layout">
-            <section className="auth-showcase">
-              <Link to="/" className="auth-home-link">
-                ← Quay lại trang chính
-              </Link>
-
-              <div className="auth-showcase-badge">Modern Access Experience</div>
-              <h1>Đăng nhập rõ ràng, mượt và đáng tin.</h1>
-              <p>
-                Email/password và Google OAuth được gom trong một luồng thống nhất,
-                giúp bạn vào dashboard nhanh mà vẫn giữ phiên an toàn.
-              </p>
-
-              <div className="auth-showcase-points">
-                <div className="auth-showcase-point">
-                  <span>01</span>
-                  <div>
-                    <strong>Đăng ký nhanh</strong>
-                    <p>Biểu mẫu rõ ràng, validation trực tiếp và phản hồi dễ hiểu.</p>
-                  </div>
-                </div>
-                <div className="auth-showcase-point">
-                  <span>02</span>
-                  <div>
-                    <strong>Xác thực an toàn</strong>
-                    <p>Supabase Auth xử lý session, email verification và social login.</p>
-                  </div>
-                </div>
-                <div className="auth-showcase-point">
-                  <span>03</span>
-                  <div>
-                    <strong>Trải nghiệm nhất quán</strong>
-                    <p>Hoạt động tốt ở cả light mode và dark mode với animation nhẹ nhàng.</p>
-                  </div>
-                </div>
-              </div>
-            </section>
-
             <div className="auth-panel">
               <AuthCard />
             </div>

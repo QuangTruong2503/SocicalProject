@@ -109,11 +109,17 @@ export default function Header() {
     },
   ];
 
-  const isActive = (path) => (
-    path.startsWith('/dashboard')
-      ? location.pathname.startsWith('/dashboard')
-      : location.pathname === path
-  );
+  const isActive = (path) => {
+    if (path.startsWith('/dashboard')) {
+      return location.pathname.startsWith('/dashboard');
+    }
+
+    if (path === '/watermark') {
+      return location.pathname.startsWith('/watermark');
+    }
+
+    return location.pathname === path;
+  };
 
   async function handleLogout() {
     const result = await logout();

@@ -16,13 +16,13 @@ function openDB() {
   });
 }
 
-export async function saveLogo(file) {
+async function saveAsset(key, file) {
   const db = await openDB();
   const buffer = await file.arrayBuffer();
   return new Promise((resolve, reject) => {
     const tx = db.transaction(STORE_NAME, 'readwrite');
     tx.objectStore(STORE_NAME).put({
-      key: 'logo',
+      key,
       data: buffer,
       type: file.type,
       name: file.name,
@@ -32,11 +32,11 @@ export async function saveLogo(file) {
   });
 }
 
-export async function loadLogo() {
+async function loadAsset(key) {
   const db = await openDB();
   return new Promise((resolve, reject) => {
     const tx = db.transaction(STORE_NAME, 'readonly');
-    const req = tx.objectStore(STORE_NAME).get('logo');
+    const req = tx.objectStore(STORE_NAME).get(key);
     req.onsuccess = (e) => {
       if (e.target.result) {
         const { data, type, name } = e.target.result;
@@ -51,12 +51,36 @@ export async function loadLogo() {
   });
 }
 
-export async function clearLogo() {
+async function clearAsset(key) {
   const db = await openDB();
   return new Promise((resolve, reject) => {
     const tx = db.transaction(STORE_NAME, 'readwrite');
-    tx.objectStore(STORE_NAME).delete('logo');
+    tx.objectStore(STORE_NAME).delete(key);
     tx.oncomplete = () => resolve();
     tx.onerror = (e) => reject(e.target.error);
   });
+}
+
+export function saveLogo(file) {
+  return saveAsset('logo', file);
+}
+
+export function loadLogo() {
+  return loadAsset('logo');
+}
+
+export function clearLogo() {
+  return clearAsset('logo');
+}
+
+export function saveDoanTrangHeroImage(file) {
+  return saveAsset('doan-trang-hero-image', file);
+}
+
+export function loadDoanTrangHeroImage() {
+  return loadAsset('doan-trang-hero-image');
+}
+
+export function clearDoanTrangHeroImage() {
+  return clearAsset('doan-trang-hero-image');
 }

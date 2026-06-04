@@ -56,7 +56,7 @@ export default function AuthCard() {
   const registerFields = useMemo(() => ([
     {
       id: 'register-username',
-      label: 'Username',
+      label: 'Tên người dùng',
       value: registerForm.username,
       error: errors.username,
       autoComplete: 'username',
@@ -77,7 +77,7 @@ export default function AuthCard() {
     },
     {
       id: 'register-password',
-      label: 'Password',
+      label: 'Mật khẩu',
       value: registerForm.password,
       error: errors.password,
       autoComplete: 'new-password',
@@ -90,7 +90,7 @@ export default function AuthCard() {
     },
     {
       id: 'register-confirm-password',
-      label: 'Confirm Password',
+      label: 'Nhập lại mật khẩu',
       value: registerForm.confirmPassword,
       error: errors.confirmPassword,
       autoComplete: 'new-password',
@@ -297,7 +297,7 @@ export default function AuthCard() {
             Đang mở Google...
           </>
         ) : (
-          'Continue with Google'
+          'Tiếp tục với Google'
         )}
       </button>
     );
@@ -309,13 +309,8 @@ export default function AuthCard() {
 
       <div className={`auth-card auth-appear ${isShaking ? 'auth-shake' : ''}`}>
         <div className="auth-card-header">
-          <span className="auth-chip">ZepLao Account</span>
-          <h1>{activeTab === 'login' ? 'Chào mừng trở lại' : 'Tạo tài khoản'}</h1>
-          <p>
-            {activeTab === 'login'
-              ? 'Tiếp tục vào dashboard và các công cụ cá nhân của bạn.'
-              : 'Bắt đầu đồng bộ dữ liệu, hồ sơ và phiên làm việc an toàn.'}
-          </p>
+          <h1>{activeTab === 'login' ? 'Đăng nhập' : 'Đăng ký'}</h1>
+          <p>{activeTab === 'login' ? 'Vào dashboard của bạn.' : 'Tạo tài khoản mới.'}</p>
         </div>
 
         <div className="auth-tabs" role="tablist" aria-label="Authentication tabs">
@@ -347,7 +342,7 @@ export default function AuthCard() {
                 {renderGoogleButton()}
 
                 <div className="auth-divider">
-                  <span>or continue with email</span>
+                  <span>hoặc dùng email</span>
                 </div>
 
                 <AuthField
@@ -363,7 +358,7 @@ export default function AuthCard() {
 
                 <AuthField
                   id="login-password"
-                  label="Password"
+                  label="Mật khẩu"
                   value={loginForm.password}
                   onChange={(event) => setLoginForm((prev) => ({ ...prev, password: event.target.value }))}
                   error={errors.password}
@@ -377,10 +372,6 @@ export default function AuthCard() {
                 <button type="submit" className="auth-submit-btn" disabled={isSubmitting}>
                   {getSubmitLabel('login', 'Đăng nhập')}
                 </button>
-
-                <p className="auth-footnote">
-                  Bằng việc tiếp tục, bạn đồng ý với quy trình xác thực và bảo mật của hệ thống.
-                </p>
               </form>
             </section>
 
@@ -389,7 +380,7 @@ export default function AuthCard() {
                 {renderGoogleButton()}
 
                 <div className="auth-divider">
-                  <span>or continue with email</span>
+                  <span>hoặc dùng email</span>
                 </div>
 
                 {registerFields.map((field) => (
@@ -412,10 +403,6 @@ export default function AuthCard() {
                 <button type="submit" className="auth-submit-btn" disabled={isSubmitting}>
                   {getSubmitLabel('register', 'Tạo tài khoản')}
                 </button>
-
-                <p className="auth-footnote">
-                  Sau khi đăng ký, bạn có thể cần xác thực email trước khi đăng nhập.
-                </p>
               </form>
             </section>
           </div>
