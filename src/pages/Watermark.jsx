@@ -14,6 +14,7 @@ import {
 } from '../services/watermarkImageCountService.js';
 import fifaImg from '../asset/fifawc.png';
 import cr7Gif from '../asset/cr7.gif';
+import cr702Gif from '../asset/cr7-02.gif';
 import '../styles/Watermark.css';
 
 const DEFAULT_OPTIONS = {
@@ -30,6 +31,7 @@ const notification = {
   imageUrl: 'https://psqfbcgkgafqtsmrgjqu.supabase.co/storage/v1/object/public/ZepLao/asset/notify.png',
 };
 const headerAnchors = Array.from({ length: 5 }, (_, index) => index);
+const cr7HeaderImages = [cr7Gif, cr702Gif, cr7Gif, cr702Gif, cr7Gif];
 
 function normalizeFileName(fileName, fallbackBase = 'image') {
   const trimmed = (fileName || '').trim();
@@ -352,14 +354,14 @@ export default function Watermark() {
                   key={anchor}
                   type="button"
                   onClick={() => openZoom({
-                    url: cr7Gif,
+                    url: cr7HeaderImages[anchor],
                     title: `CR7 #${anchor + 1}`,
                     kicker: 'CR7 highlight',
                   })}
                   aria-label={`Phóng to ảnh CR7 ${anchor + 1}`}
                 >
                   <span className="wm-header-anchor__line" />
-                  <img src={cr7Gif} alt="" />
+                  <img src={cr7HeaderImages[anchor]} alt="" />
                 </button>
               ))}
             </div>
