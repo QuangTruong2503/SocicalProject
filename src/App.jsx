@@ -3,6 +3,7 @@ import { HelmetProvider, Helmet } from 'react-helmet-async';
 import { useTheme } from './hooks/useTheme';
 import './styles/auth.css';
 import Watermark from './pages/Watermark.jsx';
+import DoanTrangWatermarkPage from './pages/DoanTrangWatermarkPage.jsx';
 import Footer from './components/Footer.jsx';
 import Header from './components/Header.jsx';
 import ScrollToTopButton from './components/ScrollToTopButton.jsx';
@@ -311,6 +312,7 @@ export default function App() {
             <Route path="/" element={<HomePage />} />
             <Route path="/aiseo" element={<AISEO />} />
             <Route path="/watermark" element={<Watermark />} />
+            <Route path="/watermark/doantrang" element={<DoanTrangWatermarkPage />} />
             <Route path="/seo-excel-generator" element={<SeoExcelGenerator />} />
             <Route
               path="/auth"
