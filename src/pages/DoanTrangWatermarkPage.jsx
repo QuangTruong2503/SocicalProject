@@ -31,6 +31,7 @@ const DEFAULT_OPTIONS = {
   productName: 'doan-trang',
   logoPosition: 'center',
 };
+const DOANTRANG_COUNT_SOURCE_PAGE = 'watermark/doantrang';
 
 function normalizeFileName(fileName, fallbackBase = 'image') {
   const trimmed = (fileName || '').trim();
@@ -60,7 +61,7 @@ function DoanTrangCountBoard({
     {
       label: 'Tổng ảnh đã tạo',
       value: isLoading ? '...' : formatCount(totalCreated),
-      note: error ? 'Chưa tải được dữ liệu Supabase' : 'Đã đồng bộ toàn bộ',
+      note: error ? 'Chưa tải được dữ liệu Supabase' : 'Chỉ tính trang Watermark Đoan Trang',
       tone: error ? 'warning' : 'primary',
     },
     {
@@ -216,7 +217,7 @@ export default function DoanTrangWatermarkPage() {
   useEffect(() => {
     let isActive = true;
 
-    getWatermarkImageCountTotal().then((result) => {
+    getWatermarkImageCountTotal({ sourcePage: DOANTRANG_COUNT_SOURCE_PAGE }).then((result) => {
       if (!isActive) return;
 
       if (result.error) {
@@ -328,6 +329,7 @@ export default function DoanTrangWatermarkPage() {
       const result = await createWatermarkImageCount({
         userId: user?.id,
         imageCount: newResults.length,
+        sourcePage: DOANTRANG_COUNT_SOURCE_PAGE,
       });
 
       if (result.error) {

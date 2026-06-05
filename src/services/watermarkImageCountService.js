@@ -3,16 +3,25 @@ import { createServiceResult, normalizeServiceError } from './serviceHelpers.js'
 
 const WATERMARK_IMAGE_COUNTS_TABLE = 'watermark_image_counts';
 
-export async function createWatermarkImageCount({ userId, imageCount }) {
+/**
+ * @param {{ userId?: string | null, imageCount: number, sourcePage?: string }} payload
+ */
+export async function createWatermarkImageCount({ userId, imageCount, sourcePage = 'watermark' }) {
   try {
     const normalizedCount = Number(imageCount);
+    const normalizedSourcePage = (sourcePage || 'watermark').trim();
 
     if (!Number.isFinite(normalizedCount) || normalizedCount <= 0) {
       return createServiceResult(null, 'Image count must be greater than zero.');
     }
 
+    if (!normalizedSourcePage) {
+      return createServiceResult(null, 'Source page is required to save the watermark image count.');
+    }
+
     const payload = {
       user_id: userId || null,
+      source_page: normalizedSourcePage,
       image_count: Math.floor(normalizedCount),
     };
 
@@ -32,11 +41,20 @@ export async function createWatermarkImageCount({ userId, imageCount }) {
   }
 }
 
-export async function getWatermarkImageCountTotal() {
+/**
+ * @param {{ sourcePage?: string }} options
+ */
+export async function getWatermarkImageCountTotal({ sourcePage = null } = {}) {
   try {
-    const { data, error } = await supabase
+    let query = supabase
       .from(WATERMARK_IMAGE_COUNTS_TABLE)
       .select('image_count');
+
+    if (sourcePage) {
+      query = query.eq('source_page', sourcePage);
+    }
+
+    const { data, error } = await query;
 
     if (error) {
       console.error('[watermarkImageCountService] getWatermarkImageCountTotal error', { error });
