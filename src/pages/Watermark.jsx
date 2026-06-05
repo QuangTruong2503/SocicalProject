@@ -30,6 +30,7 @@ const notification = {
   content: 'Đã thêm tính năng mới cho trang watermark.',
   imageUrl: 'https://psqfbcgkgafqtsmrgjqu.supabase.co/storage/v1/object/public/ZepLao/asset/notify.png',
 };
+const WATERMARK_COUNT_SOURCE_PAGE = 'watermark';
 const headerAnchors = Array.from({ length: 5 }, (_, index) => index);
 const cr7HeaderImages = [cr7Gif, cr702Gif, cr7Gif, cr702Gif, cr7Gif];
 
@@ -61,7 +62,7 @@ function WatermarkCountBoard({
     {
       label: 'Tổng ảnh đã tạo',
       value: isLoading ? '...' : formatCount(totalCreated),
-      note: error ? 'Chưa tải được dữ liệu Supabase' : 'Lượt ảnh toàn mùa',
+      note: error ? 'Chưa tải được dữ liệu Supabase' : 'Chỉ tính trang Watermark',
       tone: error ? 'warning' : 'primary',
     },
     {
@@ -176,7 +177,7 @@ export default function Watermark() {
   useEffect(() => {
     let isActive = true;
 
-    getWatermarkImageCountTotal().then((result) => {
+    getWatermarkImageCountTotal({ sourcePage: WATERMARK_COUNT_SOURCE_PAGE }).then((result) => {
       if (!isActive) {
         return;
       }
@@ -241,6 +242,7 @@ export default function Watermark() {
       const result = await createWatermarkImageCount({
         userId: user?.id,
         imageCount: newResults.length,
+        sourcePage: WATERMARK_COUNT_SOURCE_PAGE,
       });
 
       if (result.error) {
