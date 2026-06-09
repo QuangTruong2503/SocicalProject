@@ -12,9 +12,10 @@ import {
   createWatermarkImageCount,
   getWatermarkImageCountTotal,
 } from '../services/watermarkImageCountService.js';
-import fifaImg from '../asset/fifawc.png';
-import cr7Gif from '../asset/cr7.gif';
+// import fifaImg from '../asset/fifawc.png';
+// import cr7Gif from '../asset/cr7.gif';
 import '../styles/Watermark.css';
+import '../styles/DoanTrangWatermark.css';
 
 const DEFAULT_OPTIONS = {
   size: 60,
@@ -30,7 +31,7 @@ const notification = {
   imageUrl: 'https://psqfbcgkgafqtsmrgjqu.supabase.co/storage/v1/object/public/ZepLao/asset/notify.png',
 };
 const WATERMARK_COUNT_SOURCE_PAGE = 'watermark';
-const headerAnchors = Array.from({ length: 5 }, (_, index) => index);
+// const headerAnchors = Array.from({ length: 5 }, (_, index) => index);
 
 function normalizeFileName(fileName, fallbackBase = 'image') {
   const trimmed = (fileName || '').trim();
@@ -66,13 +67,13 @@ function WatermarkCountBoard({
     {
       label: 'Phiên hiện tại',
       value: formatCount(sessionCreated),
-      note: 'Tỷ số trong trận này',
+      note: 'Ảnh đã tạo trong phiên làm việc này',
       tone: 'success',
     },
-    {
+    { 
       label: 'Lần tạo gần nhất',
       value: formatCount(lastCreated),
-      note: selectedCount > 0 ? `${formatCount(selectedCount)} ảnh trong đội hình` : 'Chưa chọn ảnh',
+      note: selectedCount > 0 ? `${formatCount(selectedCount)} ảnh` : 'Chưa chọn ảnh',
       tone: 'neutral',
     },
   ];
@@ -81,8 +82,8 @@ function WatermarkCountBoard({
     <section className="wm-count-board" aria-label="Bảng đếm ảnh watermark">
       <div className="wm-count-board__header">
         <div>
-          <span className="wm-count-board__kicker">World Cup counter</span>
-          <h2>Bảng tỷ số ảnh đã tạo</h2>
+          <span className="wm-count-board__kicker">Ảnh Đã Tạo</span>
+          <h2>Ảnh Đã Tạo</h2>
         </div>
         <span className={`wm-count-board__status ${error ? 'is-warning' : 'is-live'}`}>
           {error ? 'Chưa đồng bộ' : 'Đang đồng bộ'}
@@ -308,7 +309,7 @@ export default function Watermark() {
         <div className="wm-container">
 
           {/* ── Header ── */}
-          <div className="wm-header">
+          {/* <div className="wm-header">
             <div className="wm-header__copy">
               <div className="wm-hero-copy">
                 <span className="wm-hero-kicker">World Cup studio</span>
@@ -366,7 +367,7 @@ export default function Watermark() {
               ))}
             </div>
 
-          </div>
+          </div> */}
 
         <WatermarkCountBoard
           totalCreated={totalCreated}
@@ -421,7 +422,7 @@ export default function Watermark() {
                     </>
                   ) : (
                     <>
-                      <span className="wm-inline-icon" aria-hidden="true">⚽</span>
+                      <span className="wm-inline-icon" aria-hidden="true">🌼</span>
                       Tạo ảnh Watermark
                     </>
                   )}
