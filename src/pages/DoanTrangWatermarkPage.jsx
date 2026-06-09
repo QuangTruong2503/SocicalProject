@@ -22,7 +22,7 @@ import {
   loadDoanTrangHeroImage,
   saveDoanTrangHeroImage,
 } from '../hooks/useIndexedDB.js';
-import '../styles/Watermark.css';
+import '../styles/Watermark-girly-pink-complete.css';
 import '../styles/DoanTrangWatermark.css';
 
 const DEFAULT_OPTIONS = {
