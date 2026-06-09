@@ -369,14 +369,14 @@ export default function Watermark() {
                   key={anchor}
                   type="button"
                   onClick={() => openZoom({
-                    url: cr7Gif,
+                    url: cr7HeaderImages[anchor],
                     title: `CR7 #${anchor + 1}`,
                     kicker: 'CR7 highlight',
                   })}
                   aria-label={`Phóng to ảnh CR7 ${anchor + 1}`}
                 >
                   <span className="wm-header-anchor__line" />
-                  <img src={cr7Gif} alt="" />
+                  <img src={cr7HeaderImages[anchor]} alt="" />
                 </button>
               ))}
             </div>
