@@ -808,10 +808,11 @@ body.dtw-watermark-theme .wm-preview-backdrop.is-closing {
 
 body.dtw-watermark-theme .wm-preview-modal {
   width: min(100%, 1040px);
-  max-height: min(92vh, 820px);
+  height: min(92vh, 820px);
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  border-radius: 28px;
   box-shadow: 0 28px 70px rgba(136, 14, 79, 0.28);
   animation: dtwWmModalIn 0.28s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
@@ -879,23 +880,24 @@ body.dtw-watermark-theme .wm-preview-backdrop.is-closing .wm-preview-modal {
 }
 
 .dtw-wm-page .wm-preview-image-frame {
+  flex: 1;
   min-height: 0;
+  overflow: auto;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 1rem;
+  padding: clamp(1rem, 2vw, 1.5rem);
   background:
-    linear-gradient(45deg, rgba(233, 30, 140, 0.08) 25%, transparent 25%),
-    linear-gradient(-45deg, rgba(233, 30, 140, 0.08) 25%, transparent 25%),
-    linear-gradient(45deg, transparent 75%, rgba(233, 30, 140, 0.08) 75%),
-    linear-gradient(-45deg, transparent 75%, rgba(233, 30, 140, 0.08) 75%);
-  background-position: 0 0, 0 10px, 10px -10px, -10px 0;
-  background-size: 20px 20px;
+    radial-gradient(circle at 20% 20%, rgba(233, 30, 140, 0.05), transparent 28%),
+    linear-gradient(180deg, rgba(136, 14, 79, 0.03), rgba(136, 14, 79, 0.015));
 }
 
 .dtw-wm-page .wm-preview-image-frame img {
+  display: block;
   max-width: 100%;
-  max-height: calc(92vh - 6.8rem);
+  max-height: 100%;
+  width: auto;
+  height: auto;
   object-fit: contain;
   border-radius: var(--wm-radius-sm);
   box-shadow: 0 16px 40px rgba(136, 14, 79, 0.18);
@@ -1100,12 +1102,12 @@ body.dtw-watermark-theme .wm-preview-backdrop.is-closing .wm-preview-modal {
 
 @media (max-width: 640px) {
   body.dtw-watermark-theme .wm-preview-backdrop {
-    align-items: flex-end;
+    align-items: center;
     padding: 0.75rem;
   }
 
   body.dtw-watermark-theme .wm-preview-modal {
-    max-height: 88vh;
+    height: min(88vh, 820px);
   }
 
   .dtw-wm-page .wm-preview-header {
@@ -1117,7 +1119,7 @@ body.dtw-watermark-theme .wm-preview-backdrop.is-closing .wm-preview-modal {
   }
 
   .dtw-wm-page .wm-preview-image-frame img {
-    max-height: calc(88vh - 6.2rem);
+    max-height: 100%;
   }
 
   .dtw-wm-page .wm-result-grid {
