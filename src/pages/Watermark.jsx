@@ -16,7 +16,6 @@ import { getOrCreateWatermarkVisitorId } from '../utils/watermarkVisitor.js';
 // import fifaImg from '../asset/fifawc.png';
 // import cr7Gif from '../asset/cr7.gif';
 import '../styles/Watermark.css';
-import '../styles/DoanTrangWatermark.css';
 
 const DEFAULT_OPTIONS = {
   size: 60,
@@ -173,6 +172,14 @@ export default function Watermark() {
 
   const closeZoom = useCallback(() => {
     setZoomImage(null);
+  }, []);
+
+  useEffect(() => {
+    document.body.classList.add('wm-watermark-theme');
+
+    return () => {
+      document.body.classList.remove('wm-watermark-theme');
+    };
   }, []);
 
   useEffect(() => {
@@ -436,7 +443,7 @@ export default function Watermark() {
                     </>
                   ) : (
                     <>
-                      <span className="wm-inline-icon" aria-hidden="true">🌼</span>
+                      <span className="wm-inline-icon" aria-hidden="true">🦈</span>
                       Tạo ảnh Watermark
                     </>
                   )}
