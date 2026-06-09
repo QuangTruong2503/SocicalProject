@@ -97,11 +97,11 @@ export default function Header() {
       path: '/watermark',
       icon: '🎨',
     },
-    {
-      label: 'Memory Game',
-      path: '/memory-game',
-      icon: '🎮',
-    },
+    // {
+    //   label: 'Memory Game',
+    //   path: '/memory-game',
+    //   icon: '🎮',
+    // },
     {
       label: user ? 'Dashboard' : 'Đăng nhập',
       path: user ? '/dashboard/overview' : '/auth',

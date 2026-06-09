@@ -12,10 +12,11 @@ import {
   createWatermarkImageCount,
   getWatermarkImageCountTotal,
 } from '../services/watermarkImageCountService.js';
-import fifaImg from '../asset/fifawc.png';
-import cr7Gif from '../asset/cr7.gif';
-import cr702Gif from '../asset/cr7-02.gif';
+import { getOrCreateWatermarkVisitorId } from '../utils/watermarkVisitor.js';
+// import fifaImg from '../asset/fifawc.png';
+// import cr7Gif from '../asset/cr7.gif';
 import '../styles/Watermark.css';
+import '../styles/DoanTrangWatermark.css';
 
 const DEFAULT_OPTIONS = {
   size: 60,
@@ -31,8 +32,7 @@ const notification = {
   imageUrl: 'https://psqfbcgkgafqtsmrgjqu.supabase.co/storage/v1/object/public/ZepLao/asset/notify.png',
 };
 const WATERMARK_COUNT_SOURCE_PAGE = 'watermark';
-const headerAnchors = Array.from({ length: 5 }, (_, index) => index);
-const cr7HeaderImages = [cr7Gif, cr702Gif, cr7Gif, cr702Gif, cr7Gif];
+// const headerAnchors = Array.from({ length: 5 }, (_, index) => index);
 
 function normalizeFileName(fileName, fallbackBase = 'image') {
   const trimmed = (fileName || '').trim();
@@ -52,7 +52,7 @@ function formatCount(value) {
 
 function WatermarkCountBoard({
   totalCreated,
-  sessionCreated,
+  personalCreated,
   lastCreated,
   selectedCount,
   isLoading,
@@ -66,15 +66,15 @@ function WatermarkCountBoard({
       tone: error ? 'warning' : 'primary',
     },
     {
-      label: 'Phiên hiện tại',
-      value: formatCount(sessionCreated),
-      note: 'Tỷ số trong trận này',
+      label: 'Ảnh của bạn',
+      value: isLoading ? '...' : formatCount(personalCreated),
+      note: 'Số ảnh bạn đã tạo trên trình duyệt này',
       tone: 'success',
     },
-    {
+    { 
       label: 'Lần tạo gần nhất',
       value: formatCount(lastCreated),
-      note: selectedCount > 0 ? `${formatCount(selectedCount)} ảnh trong đội hình` : 'Chưa chọn ảnh',
+      note: selectedCount > 0 ? `${formatCount(selectedCount)} ảnh` : 'Chưa chọn ảnh',
       tone: 'neutral',
     },
   ];
@@ -83,8 +83,8 @@ function WatermarkCountBoard({
     <section className="wm-count-board" aria-label="Bảng đếm ảnh watermark">
       <div className="wm-count-board__header">
         <div>
-          <span className="wm-count-board__kicker">World Cup counter</span>
-          <h2>Bảng tỷ số ảnh đã tạo</h2>
+          <span className="wm-count-board__kicker">Ảnh Đã Tạo</span>
+          <h2>Ảnh Đã Tạo</h2>
         </div>
         <span className={`wm-count-board__status ${error ? 'is-warning' : 'is-live'}`}>
           {error ? 'Chưa đồng bộ' : 'Đang đồng bộ'}
@@ -155,11 +155,12 @@ export default function Watermark() {
   const [results, setResults]   = useState([]);
   const [processing, setProcessing] = useState(false);
   const [totalCreated, setTotalCreated] = useState(0);
-  const [sessionCreated, setSessionCreated] = useState(0);
+  const [personalCreated, setPersonalCreated] = useState(0);
   const [lastCreated, setLastCreated] = useState(0);
   const [statsLoading, setStatsLoading] = useState(true);
   const [statsError, setStatsError] = useState(null);
   const [zoomImage, setZoomImage] = useState(null);
+  const [visitorId] = useState(() => getOrCreateWatermarkVisitorId());
 
   const handleLogoChange = useCallback((url, name) => {
     setLogoUrl(url);
@@ -175,28 +176,38 @@ export default function Watermark() {
   }, []);
 
   useEffect(() => {
+    if (!visitorId) {
+      return undefined;
+    }
+
     let isActive = true;
 
-    getWatermarkImageCountTotal({ sourcePage: WATERMARK_COUNT_SOURCE_PAGE }).then((result) => {
+    Promise.all([
+      getWatermarkImageCountTotal({ sourcePage: WATERMARK_COUNT_SOURCE_PAGE }),
+      getWatermarkImageCountTotal({
+        sourcePage: WATERMARK_COUNT_SOURCE_PAGE,
+        visitorId,
+      }),
+    ]).then(([totalResult, personalResult]) => {
       if (!isActive) {
         return;
       }
 
-      if (result.error) {
-        setStatsError(result.error);
-        setStatsLoading(false);
-        return;
+      if (totalResult.error || personalResult.error) {
+        setStatsError(totalResult.error || personalResult.error);
+      } else {
+        setStatsError(null);
       }
 
-      setTotalCreated(result.data || 0);
-      setStatsError(null);
+      setTotalCreated(totalResult.data || 0);
+      setPersonalCreated(personalResult.data || 0);
       setStatsLoading(false);
     });
 
     return () => {
       isActive = false;
     };
-  }, []);
+  }, [visitorId]);
 
   useEffect(() => {
     if (!zoomImage) return undefined;
@@ -220,6 +231,7 @@ export default function Watermark() {
   const handleCreate = async () => {
     if (!logoUrl) return alert('Vui lòng chọn logo trước.');
     if (!images.length) return alert('Vui lòng chọn ít nhất 1 ảnh.');
+    if (!visitorId) return alert('Đang khởi tạo mã người dùng, bạn thử lại sau vài giây.');
 
     setProcessing(true);
     const newResults = [];
@@ -241,6 +253,7 @@ export default function Watermark() {
     if (newResults.length > 0) {
       const result = await createWatermarkImageCount({
         userId: user?.id,
+        visitorId,
         imageCount: newResults.length,
         sourcePage: WATERMARK_COUNT_SOURCE_PAGE,
       });
@@ -249,7 +262,7 @@ export default function Watermark() {
         console.warn('[Watermark] Could not save image count', result.error);
       } else {
         setTotalCreated((current) => current + newResults.length);
-        setSessionCreated((current) => current + newResults.length);
+        setPersonalCreated((current) => current + newResults.length);
         setLastCreated(newResults.length);
         setStatsError(null);
       }
@@ -310,7 +323,7 @@ export default function Watermark() {
         <div className="wm-container">
 
           {/* ── Header ── */}
-          <div className="wm-header">
+          {/* <div className="wm-header">
             <div className="wm-header__copy">
               <div className="wm-hero-copy">
                 <span className="wm-hero-kicker">World Cup studio</span>
@@ -368,11 +381,11 @@ export default function Watermark() {
               ))}
             </div>
 
-          </div>
+          </div> */}
 
         <WatermarkCountBoard
           totalCreated={totalCreated}
-          sessionCreated={sessionCreated}
+          personalCreated={personalCreated}
           lastCreated={lastCreated}
           selectedCount={images.length}
           isLoading={statsLoading}
@@ -423,7 +436,7 @@ export default function Watermark() {
                     </>
                   ) : (
                     <>
-                      <span className="wm-inline-icon" aria-hidden="true">⚽</span>
+                      <span className="wm-inline-icon" aria-hidden="true">🌼</span>
                       Tạo ảnh Watermark
                     </>
                   )}

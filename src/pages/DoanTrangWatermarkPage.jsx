@@ -16,6 +16,7 @@ import {
   createWatermarkImageCount,
   getWatermarkImageCountTotal,
 } from '../services/watermarkImageCountService.js';
+import { getOrCreateWatermarkVisitorId } from '../utils/watermarkVisitor.js';
 import { uploadDoanTrangHeroPreview } from '../services/uploadService.js';
 import {
   loadDoanTrangHeroImage,
@@ -51,7 +52,7 @@ function formatCount(value) {
 
 function DoanTrangCountBoard({
   totalCreated,
-  sessionCreated,
+  personalCreated,
   lastCreated,
   selectedCount,
   isLoading,
@@ -65,9 +66,9 @@ function DoanTrangCountBoard({
       tone: error ? 'warning' : 'primary',
     },
     {
-      label: 'Phiên hiện tại',
-      value: formatCount(sessionCreated),
-      note: 'Số ảnh tạo trong lần mở trang này',
+      label: 'Ảnh của bạn',
+      value: isLoading ? '...' : formatCount(personalCreated),
+      note: 'Số ảnh bạn đã tạo trên trình duyệt này',
       tone: 'success',
     },
     {
@@ -155,7 +156,7 @@ export default function DoanTrangWatermarkPage() {
   const [results, setResults] = useState([]);
   const [processing, setProcessing] = useState(false);
   const [totalCreated, setTotalCreated] = useState(0);
-  const [sessionCreated, setSessionCreated] = useState(0);
+  const [personalCreated, setPersonalCreated] = useState(0);
   const [lastCreated, setLastCreated] = useState(0);
   const [statsLoading, setStatsLoading] = useState(true);
   const [statsError, setStatsError] = useState(null);
@@ -166,6 +167,7 @@ export default function DoanTrangWatermarkPage() {
   const [heroImageLoading, setHeroImageLoading] = useState(true);
   const [heroImageUploading, setHeroImageUploading] = useState(false);
   const [heroImageStorageUrl, setHeroImageStorageUrl] = useState('');
+  const [visitorId] = useState(() => getOrCreateWatermarkVisitorId());
 
   const handleLogoChange = useCallback((url, name) => {
     setLogoUrl(url);
@@ -215,26 +217,36 @@ export default function DoanTrangWatermarkPage() {
   }, []);
 
   useEffect(() => {
+    if (!visitorId) {
+      return undefined;
+    }
+
     let isActive = true;
 
-    getWatermarkImageCountTotal({ sourcePage: DOANTRANG_COUNT_SOURCE_PAGE }).then((result) => {
+    Promise.all([
+      getWatermarkImageCountTotal({ sourcePage: DOANTRANG_COUNT_SOURCE_PAGE }),
+      getWatermarkImageCountTotal({
+        sourcePage: DOANTRANG_COUNT_SOURCE_PAGE,
+        visitorId,
+      }),
+    ]).then(([totalResult, personalResult]) => {
       if (!isActive) return;
 
-      if (result.error) {
-        setStatsError(result.error);
-        setStatsLoading(false);
-        return;
+      if (totalResult.error || personalResult.error) {
+        setStatsError(totalResult.error || personalResult.error);
+      } else {
+        setStatsError(null);
       }
 
-      setTotalCreated(result.data || 0);
-      setStatsError(null);
+      setTotalCreated(totalResult.data || 0);
+      setPersonalCreated(personalResult.data || 0);
       setStatsLoading(false);
     });
 
     return () => {
       isActive = false;
     };
-  }, []);
+  }, [visitorId]);
 
   useEffect(() => {
     if (!zoomImage) return undefined;
@@ -307,6 +319,7 @@ export default function DoanTrangWatermarkPage() {
   const handleCreate = async () => {
     if (!logoUrl) return alert('Vui lòng chọn logo trước.');
     if (!images.length) return alert('Vui lòng chọn ít nhất 1 ảnh.');
+    if (!visitorId) return alert('Đang khởi tạo mã người dùng, bạn thử lại sau vài giây.');
 
     setProcessing(true);
     const newResults = [];
@@ -328,6 +341,7 @@ export default function DoanTrangWatermarkPage() {
     if (newResults.length > 0) {
       const result = await createWatermarkImageCount({
         userId: user?.id,
+        visitorId,
         imageCount: newResults.length,
         sourcePage: DOANTRANG_COUNT_SOURCE_PAGE,
       });
@@ -336,7 +350,7 @@ export default function DoanTrangWatermarkPage() {
         console.warn('[DoanTrangWatermark] Could not save image count', result.error);
       } else {
         setTotalCreated((current) => current + newResults.length);
-        setSessionCreated((current) => current + newResults.length);
+        setPersonalCreated((current) => current + newResults.length);
         setLastCreated(newResults.length);
         setStatsError(null);
       }
@@ -392,7 +406,7 @@ export default function DoanTrangWatermarkPage() {
   return (
     <>
       <Helmet>
-        <title>Watermark Đoan Trang | Công cụ tạo watermark ảnh</title>
+        <title>Watermark just for Đoan Trang</title>  
         <meta
           name="description"
           content="Tạo watermark ảnh phong cách nữ tính, màu hồng tinh tế, dễ dùng và tải xuống nhanh chóng."
@@ -491,7 +505,7 @@ export default function DoanTrangWatermarkPage() {
 
           <DoanTrangCountBoard
             totalCreated={totalCreated}
-            sessionCreated={sessionCreated}
+            personalCreated={personalCreated}
             lastCreated={lastCreated}
             selectedCount={images.length}
             isLoading={statsLoading}

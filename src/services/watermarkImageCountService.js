@@ -4,15 +4,20 @@ import { createServiceResult, normalizeServiceError } from './serviceHelpers.js'
 const WATERMARK_IMAGE_COUNTS_TABLE = 'watermark_image_counts';
 
 /**
- * @param {{ userId?: string | null, imageCount: number, sourcePage?: string }} payload
+ * @param {{ userId?: string | null, visitorId?: string | null, imageCount: number, sourcePage?: string }} payload
  */
-export async function createWatermarkImageCount({ userId, imageCount, sourcePage = 'watermark' }) {
+export async function createWatermarkImageCount({ userId, visitorId, imageCount, sourcePage = 'watermark' }) {
   try {
     const normalizedCount = Number(imageCount);
     const normalizedSourcePage = (sourcePage || 'watermark').trim();
+    const normalizedVisitorId = (visitorId || '').trim();
 
     if (!Number.isFinite(normalizedCount) || normalizedCount <= 0) {
       return createServiceResult(null, 'Image count must be greater than zero.');
+    }
+
+    if (!normalizedVisitorId) {
+      return createServiceResult(null, 'Visitor ID is required to save the watermark image count.');
     }
 
     if (!normalizedSourcePage) {
@@ -21,6 +26,7 @@ export async function createWatermarkImageCount({ userId, imageCount, sourcePage
 
     const payload = {
       user_id: userId || null,
+      visitor_id: normalizedVisitorId,
       source_page: normalizedSourcePage,
       image_count: Math.floor(normalizedCount),
     };
@@ -42,9 +48,9 @@ export async function createWatermarkImageCount({ userId, imageCount, sourcePage
 }
 
 /**
- * @param {{ sourcePage?: string }} options
+ * @param {{ sourcePage?: string | null, visitorId?: string | null }} options
  */
-export async function getWatermarkImageCountTotal({ sourcePage = null } = {}) {
+export async function getWatermarkImageCountTotal({ sourcePage = null, visitorId = null } = {}) {
   try {
     let query = supabase
       .from(WATERMARK_IMAGE_COUNTS_TABLE)
@@ -52,6 +58,10 @@ export async function getWatermarkImageCountTotal({ sourcePage = null } = {}) {
 
     if (sourcePage) {
       query = query.eq('source_page', sourcePage);
+    }
+
+    if (visitorId) {
+      query = query.eq('visitor_id', visitorId);
     }
 
     const { data, error } = await query;
