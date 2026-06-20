@@ -4,6 +4,7 @@ import { useTheme } from './hooks/useTheme';
 import './styles/auth.css';
 import Watermark from './pages/Watermark.jsx';
 import DoanTrangWatermarkPage from './pages/DoanTrangWatermarkPage.jsx';
+import WatermarkDashboardPage from './pages/WatermarkDashboardPage.jsx';
 import Footer from './components/Footer.jsx';
 import Header from './components/Header.jsx';
 import ScrollToTopButton from './components/ScrollToTopButton.jsx';
@@ -313,6 +314,7 @@ export default function App() {
             <Route path="/aiseo" element={<AISEO />} />
             <Route path="/watermark" element={<Watermark />} />
             <Route path="/watermark/doantrang" element={<DoanTrangWatermarkPage />} />
+            <Route path="/watermark/dashboard" element={<WatermarkDashboardPage />} />
             <Route path="/seo-excel-generator" element={<SeoExcelGenerator />} />
             <Route
               path="/auth"

@@ -4,13 +4,20 @@ import { createServiceResult, normalizeServiceError } from './serviceHelpers.js'
 const WATERMARK_IMAGE_COUNTS_TABLE = 'watermark_image_counts';
 
 /**
- * @param {{ userId?: string | null, visitorId?: string | null, imageCount: number, sourcePage?: string }} payload
+ * @param {{ userId?: string | null, visitorId?: string | null, displayName?: string | null, imageCount: number, sourcePage?: string }} payload
  */
-export async function createWatermarkImageCount({ userId, visitorId, imageCount, sourcePage = 'watermark' }) {
+export async function createWatermarkImageCount({
+  userId,
+  visitorId,
+  displayName = null,
+  imageCount,
+  sourcePage = 'watermark',
+}) {
   try {
     const normalizedCount = Number(imageCount);
     const normalizedSourcePage = (sourcePage || 'watermark').trim();
     const normalizedVisitorId = (visitorId || '').trim();
+    const normalizedDisplayName = (displayName || '').trim();
 
     if (!Number.isFinite(normalizedCount) || normalizedCount <= 0) {
       return createServiceResult(null, 'Image count must be greater than zero.');
@@ -27,6 +34,7 @@ export async function createWatermarkImageCount({ userId, visitorId, imageCount,
     const payload = {
       user_id: userId || null,
       visitor_id: normalizedVisitorId,
+      display_name: normalizedDisplayName || null,
       source_page: normalizedSourcePage,
       image_count: Math.floor(normalizedCount),
     };
@@ -44,6 +52,36 @@ export async function createWatermarkImageCount({ userId, visitorId, imageCount,
   } catch (error) {
     console.error('[watermarkImageCountService] createWatermarkImageCount exception', { error });
     return createServiceResult(null, normalizeServiceError(error, 'Không thể lưu số lượng ảnh watermark.'));
+  }
+}
+
+/**
+ * Fetch watermark rows for the dashboard.
+ *
+ * @param {{ sourcePage?: string | null }} options
+ */
+export async function getWatermarkDashboardRows({ sourcePage = null } = {}) {
+  try {
+    let query = supabase
+      .from(WATERMARK_IMAGE_COUNTS_TABLE)
+      .select('visitor_id, user_id, display_name, source_page, image_count, created_at')
+      .order('created_at', { ascending: false });
+
+    if (sourcePage) {
+      query = query.eq('source_page', sourcePage);
+    }
+
+    const { data, error } = await query;
+
+    if (error) {
+      console.error('[watermarkImageCountService] getWatermarkDashboardRows error', { error, sourcePage });
+      return createServiceResult(null, normalizeServiceError(error, 'Không thể tải dữ liệu dashboard watermark.'));
+    }
+
+    return createServiceResult(data || []);
+  } catch (error) {
+    console.error('[watermarkImageCountService] getWatermarkDashboardRows exception', { error, sourcePage });
+    return createServiceResult(null, normalizeServiceError(error, 'Không thể tải dữ liệu dashboard watermark.'));
   }
 }
 

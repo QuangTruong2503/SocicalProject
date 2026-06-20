@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { Helmet } from 'react-helmet-async';
+import { Link } from 'react-router-dom';
 import LogoUploader from '../components/watermark/LogoUploader';
 import ImageUploader from '../components/watermark/ImageUploader';
 import WatermarkControls from '../components/watermark/WatermarkControls';
@@ -8,6 +9,7 @@ import WatermarkGallery from '../components/watermark/WatermarkGallery';
 import { processWatermark, resizeBlob, buildFileName, compressAndResizeBlob } from '../hooks/useWatermarkProcessor';
 import NotificationModal from '../components/NotificationModal';
 import { useAuth } from '../hooks/useAuth.js';
+import { getUserDisplayName } from '../utils/userProfile.js';
 import {
   createWatermarkImageCount,
   getWatermarkImageCountTotal,
@@ -56,6 +58,7 @@ function WatermarkCountBoard({
   selectedCount,
   isLoading,
   error,
+  dashboardHref,
 }) {
   const rows = [
     {
@@ -85,9 +88,16 @@ function WatermarkCountBoard({
           <span className="wm-count-board__kicker">Ảnh Đã Tạo</span>
           <h2>Ảnh Đã Tạo</h2>
         </div>
-        <span className={`wm-count-board__status ${error ? 'is-warning' : 'is-live'}`}>
-          {error ? 'Chưa đồng bộ' : 'Đang đồng bộ'}
-        </span>
+        <div className="wm-count-board__actions">
+          {dashboardHref && (
+            <Link className="wm-count-board__link" to={dashboardHref}>
+              Mở dashboard
+            </Link>
+          )}
+          <span className={`wm-count-board__status ${error ? 'is-warning' : 'is-live'}`}>
+            {error ? 'Chưa đồng bộ' : 'Đang đồng bộ'}
+          </span>
+        </div>
       </div>
 
       <div className="wm-count-grid">
@@ -258,9 +268,11 @@ export default function Watermark() {
     setProcessing(false);
 
     if (newResults.length > 0) {
+      const displayName = user ? getUserDisplayName(user, null) : null;
       const result = await createWatermarkImageCount({
         userId: user?.id,
         visitorId,
+        displayName,
         imageCount: newResults.length,
         sourcePage: WATERMARK_COUNT_SOURCE_PAGE,
       });
@@ -397,6 +409,7 @@ export default function Watermark() {
           selectedCount={images.length}
           isLoading={statsLoading}
           error={statsError}
+          dashboardHref="/watermark/dashboard"
         />
 
         {/* ── Main Layout ── */}

@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Helmet } from 'react-helmet-async';
+import { Link } from 'react-router-dom';
 import LogoUploader from '../components/watermark/LogoUploader';
 import ImageUploader from '../components/watermark/ImageUploader';
 import WatermarkControls from '../components/watermark/WatermarkControls';
@@ -12,6 +13,7 @@ import {
   resizeBlob,
 } from '../hooks/useWatermarkProcessor';
 import { useAuth } from '../hooks/useAuth.js';
+import { getUserDisplayName } from '../utils/userProfile.js';
 import {
   createWatermarkImageCount,
   getWatermarkImageCountTotal,
@@ -57,6 +59,7 @@ function DoanTrangCountBoard({
   selectedCount,
   isLoading,
   error,
+  dashboardHref,
 }) {
   const rows = [
     {
@@ -86,9 +89,16 @@ function DoanTrangCountBoard({
           <span className="dtw-kicker">Rose counter</span>
           <h2>Bảng đếm ảnh đã tạo</h2>
         </div>
-        <span className={`dtw-count-board__status ${error ? 'is-warning' : 'is-live'}`}>
-          {error ? 'Chưa đồng bộ' : 'Đang đồng bộ'}
-        </span>
+        <div className="wm-count-board__actions">
+          {dashboardHref && (
+            <Link className="wm-count-board__link" to={dashboardHref}>
+              Mở dashboard
+            </Link>
+          )}
+          <span className={`dtw-count-board__status ${error ? 'is-warning' : 'is-live'}`}>
+            {error ? 'Chưa đồng bộ' : 'Đang đồng bộ'}
+          </span>
+        </div>
       </div>
 
       <div className="dtw-count-grid">
@@ -339,9 +349,11 @@ export default function DoanTrangWatermarkPage() {
     setProcessing(false);
 
     if (newResults.length > 0) {
+      const displayName = user ? getUserDisplayName(user, null) : null;
       const result = await createWatermarkImageCount({
         userId: user?.id,
         visitorId,
+        displayName,
         imageCount: newResults.length,
         sourcePage: DOANTRANG_COUNT_SOURCE_PAGE,
       });
@@ -510,6 +522,7 @@ export default function DoanTrangWatermarkPage() {
             selectedCount={images.length}
             isLoading={statsLoading}
             error={statsError}
+            dashboardHref="/watermark/dashboard"
           />
 
           <section className="wm-layout dtw-layout" aria-label="Công cụ tạo watermark Đoan Trang">
