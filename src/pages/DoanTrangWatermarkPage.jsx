@@ -35,6 +35,7 @@ const DEFAULT_OPTIONS = {
   logoPosition: 'center',
 };
 const DOANTRANG_COUNT_SOURCE_PAGE = 'watermark/doantrang';
+const DOANTRANG_IMAGE_MILESTONES = [800, 1000, 1200, 1500, 2000, 2500, 3000, 4000, 5000, 6000, 7000, 8000, 9000, 10000];
 
 function normalizeFileName(fileName, fallbackBase = 'image') {
   const trimmed = (fileName || '').trim();
@@ -50,6 +51,32 @@ function getDownloadFileName(fileName, suffix = '') {
 
 function formatCount(value) {
   return new Intl.NumberFormat('vi-VN').format(Number(value) || 0);
+}
+
+function getReachedImageMilestone(previousCount, nextCount) {
+  const previous = Number(previousCount) || 0;
+  const next = Number(nextCount) || 0;
+
+  if (next <= previous) return null;
+
+  const fixedMilestone = DOANTRANG_IMAGE_MILESTONES
+    .filter((milestone) => previous < milestone && next >= milestone)
+    .at(-1);
+
+  if (fixedMilestone) {
+    return fixedMilestone;
+  }
+
+  if (next > 1000) {
+    const previousThousand = Math.floor(previous / 1000);
+    const nextThousand = Math.floor(next / 1000);
+
+    if (nextThousand > previousThousand) {
+      return nextThousand * 1000;
+    }
+  }
+
+  return null;
 }
 
 function DoanTrangCountBoard({
@@ -111,6 +138,46 @@ function DoanTrangCountBoard({
         ))}
       </div>
     </section>
+  );
+}
+
+function DoanTrangMilestoneCelebration({ milestone, justCreated, onClose }) {
+  if (!milestone) return null;
+
+  return createPortal(
+    <div className="dtw-milestone-backdrop" role="presentation" onPointerDown={onClose}>
+      <div
+        className="dtw-milestone-modal"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="dtw-milestone-title"
+        onPointerDown={(event) => event.stopPropagation()}
+      >
+        <div className="dtw-milestone-burst" aria-hidden="true">
+          {Array.from({ length: 18 }).map((_, index) => (
+            <span
+              key={index}
+              style={{
+                '--dtw-confetti-angle': `${index * 20}deg`,
+                animationDelay: `${index * 28}ms`,
+              }}
+            />
+          ))}
+        </div>
+
+        <span className="dtw-milestone-kicker">Milestone unlocked</span>
+        <strong id="dtw-milestone-title" className="dtw-milestone-title">
+          Bạn đã đạt cột mốc {formatCount(milestone)} ảnh!
+        </strong>
+        <p>
+          Vừa tạo thêm {formatCount(justCreated)} ảnh watermark. Bộ sưu tập Đoan Trang đang lên mood rất xịn.
+        </p>
+        <button className="dtw-milestone-button" type="button" onClick={onClose}>
+          Tiếp tục tạo ảnh
+        </button>
+      </div>
+    </div>,
+    document.body
   );
 }
 
@@ -177,6 +244,7 @@ export default function DoanTrangWatermarkPage() {
   const [heroImageLoading, setHeroImageLoading] = useState(true);
   const [heroImageUploading, setHeroImageUploading] = useState(false);
   const [heroImageStorageUrl, setHeroImageStorageUrl] = useState('');
+  const [milestoneCelebration, setMilestoneCelebration] = useState(null);
   const [visitorId] = useState(() => getOrCreateWatermarkVisitorId());
 
   const handleLogoChange = useCallback((url, name) => {
@@ -190,6 +258,10 @@ export default function DoanTrangWatermarkPage() {
 
   const closeZoom = useCallback(() => {
     setZoomImage(null);
+  }, []);
+
+  const closeMilestoneCelebration = useCallback(() => {
+    setMilestoneCelebration(null);
   }, []);
 
   useEffect(() => {
@@ -276,6 +348,26 @@ export default function DoanTrangWatermarkPage() {
     };
   }, [closeZoom, zoomImage]);
 
+  useEffect(() => {
+    if (!milestoneCelebration) return undefined;
+
+    const handleEscape = (event) => {
+      if (event.key === 'Escape') {
+        closeMilestoneCelebration();
+      }
+    };
+
+    const timeoutId = window.setTimeout(closeMilestoneCelebration, 6800);
+    document.addEventListener('keydown', handleEscape);
+    document.body.classList.add('wm-modal-open');
+
+    return () => {
+      window.clearTimeout(timeoutId);
+      document.removeEventListener('keydown', handleEscape);
+      document.body.classList.remove('wm-modal-open');
+    };
+  }, [closeMilestoneCelebration, milestoneCelebration]);
+
   useEffect(() => () => {
     if (heroImageUrl) {
       URL.revokeObjectURL(heroImageUrl);
@@ -361,10 +453,20 @@ export default function DoanTrangWatermarkPage() {
       if (result.error) {
         console.warn('[DoanTrangWatermark] Could not save image count', result.error);
       } else {
+        const nextPersonalCreated = personalCreated + newResults.length;
+        const reachedMilestone = getReachedImageMilestone(personalCreated, nextPersonalCreated);
+
         setTotalCreated((current) => current + newResults.length);
-        setPersonalCreated((current) => current + newResults.length);
+        setPersonalCreated(nextPersonalCreated);
         setLastCreated(newResults.length);
         setStatsError(null);
+
+        if (reachedMilestone) {
+          setMilestoneCelebration({
+            milestone: reachedMilestone,
+            justCreated: newResults.length,
+          });
+        }
       }
     }
 
@@ -600,6 +702,11 @@ export default function DoanTrangWatermarkPage() {
       </div>
 
       <WatermarkImageZoom image={zoomImage} onClose={closeZoom} />
+      <DoanTrangMilestoneCelebration
+        milestone={milestoneCelebration?.milestone}
+        justCreated={milestoneCelebration?.justCreated}
+        onClose={closeMilestoneCelebration}
+      />
     </>
   );
 }
