@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Helmet } from 'react-helmet-async';
 import { Link } from 'react-router-dom';
-import { animate, motion, useMotionValue, useTransform } from 'framer-motion';
+import { AnimatePresence, animate, motion, useMotionValue, useTransform } from 'framer-motion';
 import LogoUploader from '../components/watermark/LogoUploader';
 import ImageUploader from '../components/watermark/ImageUploader';
 import WatermarkControls from '../components/watermark/WatermarkControls';
@@ -79,6 +79,30 @@ const imageCardVariants = {
     transition: { type: 'spring', stiffness: 100, damping: 15 },
   },
 };
+const exportConfettiColors = ['#db2777', '#f472b6', '#ffffff'];
+
+function buildExportConfettiPieces(itemCount = 1) {
+  const normalizedCount = Math.max(1, Number(itemCount) || 1);
+  const pieceCount = Math.min(24 + normalizedCount * 50, 180);
+  const burstScale = 1 + Math.min(normalizedCount, 8) * 0.12;
+
+  return Array.from({ length: pieceCount }, (_, index) => {
+    const angle = (index / pieceCount) * Math.PI * 2;
+    const distance = (180 + Math.random() * 140) * burstScale;
+    const driftX = Math.cos(angle) * distance + (Math.random() * 90 - 45) * burstScale;
+    const driftY = Math.sin(angle) * distance * 0.5 + 120 + Math.random() * 120 * burstScale;
+
+    return {
+      id: `${Date.now()}-${index}-${Math.random().toString(16).slice(2)}`,
+      color: exportConfettiColors[index % exportConfettiColors.length],
+      x: driftX,
+      y: driftY,
+      rotate: -180 + Math.random() * 360,
+      size: (7 + Math.random() * 7) * burstScale,
+      delay: Math.random() * 0.14,
+    };
+  });
+}
 
 function normalizeFileName(fileName, fallbackBase = 'image') {
   const trimmed = (fileName || '').trim();
@@ -228,6 +252,106 @@ function DoanTrangMilestoneCelebration({ milestone, justCreated, onClose }) {
   );
 }
 
+function DoanTrangExportSuccessCelebration({ burst, onClose }) {
+  const pieces = buildExportConfettiPieces(burst?.count);
+
+  return createPortal(
+    <AnimatePresence>
+      {burst && (
+        <motion.div
+          key={burst.id}
+          className="dtw-export-success-backdrop"
+          role="presentation"
+          style={{
+            position: 'fixed',
+            inset: 0,
+            zIndex: 1150,
+            overflow: 'hidden',
+            background: 'rgba(136, 14, 79, 0.08)',
+            pointerEvents: 'auto',
+          }}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.18 }}
+          onPointerDown={onClose}
+        >
+          {pieces.map((piece) => (
+            <motion.span
+              key={piece.id}
+              className="dtw-export-confetti"
+              aria-hidden="true"
+              style={{
+                position: 'absolute',
+                left: '50%',
+                top: '44%',
+                width: `${piece.size}px`,
+                height: `${piece.size * 1.45}px`,
+                background: piece.color,
+                borderRadius: '999px',
+                boxShadow: '0 0 0 1px rgba(255, 255, 255, 0.16)',
+                pointerEvents: 'none',
+              }}
+              initial={{
+                x: 0,
+                y: 0,
+                rotate: 0,
+                scale: 0.7,
+                opacity: 1,
+              }}
+              animate={{
+                x: piece.x,
+                y: piece.y,
+                rotate: piece.rotate,
+                scale: [0.7, 1, 0.95],
+                opacity: [1, 1, 0],
+              }}
+              exit={{ opacity: 0 }}
+              transition={{
+                duration: 1.4,
+                delay: piece.delay,
+                ease: 'easeOut',
+              }}
+            />
+          ))}
+
+          {/* <motion.div
+            className="dtw-export-success-toast"
+            role="status"
+            aria-live="polite"
+            style={{
+              position: 'absolute',
+              left: '50%',
+              bottom: 'min(12vh, 110px)',
+              transform: 'translateX(-50%)',
+              minWidth: 'min(90vw, 320px)',
+              maxWidth: 'min(90vw, 360px)',
+              padding: '1rem 1.15rem',
+              borderRadius: '18px',
+              background: 'rgba(255, 255, 255, 0.96)',
+              border: '1px solid rgba(219, 39, 119, 0.18)',
+              boxShadow: '0 24px 60px rgba(136, 14, 79, 0.18)',
+              color: '#3e0020',
+              textAlign: 'center',
+              pointerEvents: 'auto',
+              backdropFilter: 'blur(12px)',
+            }}
+            initial={{ opacity: 0, y: 14, scale: 0.96 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 10, scale: 0.98 }}
+            transition={{ duration: 0.2 }}
+            onPointerDown={(event) => event.stopPropagation()}
+          >
+            <strong>Xuất ảnh thành công</strong>
+            <p>Tải xuống {burst.count} ảnh thành công</p>
+          </motion.div> */}
+        </motion.div>
+      )}
+    </AnimatePresence>,
+    document.body
+  );
+}
+
 function WatermarkImageZoom({ image, onClose }) {
   if (!image) return null;
 
@@ -295,6 +419,7 @@ export default function DoanTrangWatermarkPage() {
   const [heroImageUploading, setHeroImageUploading] = useState(false);
   const [heroImageStorageUrl, setHeroImageStorageUrl] = useState('');
   const [milestoneCelebration, setMilestoneCelebration] = useState(null);
+  const [exportSuccessBurst, setExportSuccessBurst] = useState(null);
   const [createButtonHovered, setCreateButtonHovered] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const [visitorId] = useState(() => getOrCreateWatermarkVisitorId());
@@ -314,6 +439,10 @@ export default function DoanTrangWatermarkPage() {
 
   const closeMilestoneCelebration = useCallback(() => {
     setMilestoneCelebration(null);
+  }, []);
+
+  const closeExportSuccessCelebration = useCallback(() => {
+    setExportSuccessBurst(null);
   }, []);
 
   useEffect(() => {
@@ -426,6 +555,18 @@ export default function DoanTrangWatermarkPage() {
     }
   }, [heroImageUrl]);
 
+  useEffect(() => {
+    if (!exportSuccessBurst) return undefined;
+
+    const timeoutId = window.setTimeout(() => {
+      setExportSuccessBurst(null);
+    }, 2200);
+
+    return () => {
+      window.clearTimeout(timeoutId);
+    };
+  }, [exportSuccessBurst]);
+
   const handleHeroImageChange = async (event) => {
     const file = event.target.files?.[0];
     setHeroImageError('');
@@ -528,6 +669,8 @@ export default function DoanTrangWatermarkPage() {
   };
 
   const handleDownloadAll = useCallback(async (mode) => {
+    if (!results.length) return;
+
     for (const result of results) {
       let blob = result.blob;
       let fileName = getDownloadFileName(result.fileName);
@@ -554,6 +697,12 @@ export default function DoanTrangWatermarkPage() {
       anchor.click();
       await new Promise((resolve) => setTimeout(resolve, 80));
     }
+
+    setExportSuccessBurst({
+      id: `${Date.now()}-${mode}-${results.length}`,
+      count: results.length,
+      mode,
+    });
   }, [results]);
 
   const handleClear = useCallback(() => {
@@ -935,6 +1084,10 @@ export default function DoanTrangWatermarkPage() {
         milestone={milestoneCelebration?.milestone}
         justCreated={milestoneCelebration?.justCreated}
         onClose={closeMilestoneCelebration}
+      />
+      <DoanTrangExportSuccessCelebration
+        burst={exportSuccessBurst}
+        onClose={closeExportSuccessCelebration}
       />
     </>
   );
