@@ -80,6 +80,23 @@ const imageCardVariants = {
   },
 };
 const exportConfettiColors = ['#db2777', '#f472b6', '#ffffff'];
+const milestoneFireworkColors = ['#fb7185', '#f97316', '#facc15', '#60a5fa', '#34d399', '#f472b6'];
+
+// Some lint setups in this repo do not count JSX tag usage for namespace imports.
+void motion;
+
+function createSeededRandom(seed) {
+  let value = Math.abs(Math.floor(seed)) % 2147483647;
+
+  if (value === 0) {
+    value = 1;
+  }
+
+  return () => {
+    value = (value * 16807) % 2147483647;
+    return (value - 1) / 2147483646;
+  };
+}
 
 function buildExportConfettiPieces(itemCount = 1) {
   const normalizedCount = Math.max(1, Number(itemCount) || 1);
@@ -104,6 +121,44 @@ function buildExportConfettiPieces(itemCount = 1) {
   });
 }
 
+function buildMilestoneFireworkBursts(milestone) {
+  const rand = createSeededRandom(Number(milestone) || 1);
+  const burstLayout = [
+    { left: 16, top: 20, delay: 0 },
+    { left: 80, top: 18, delay: 0.18 },
+    { left: 20, top: 66, delay: 0.28 },
+    { left: 82, top: 64, delay: 0.42 },
+  ];
+
+  return burstLayout.map((base, burstIndex) => {
+    const particleCount = 10 + Math.floor(rand() * 5);
+    const baseRadius = 92 + burstIndex * 10 + rand() * 16;
+
+    return {
+      id: `dtw-firework-${milestone}-${burstIndex}`,
+      left: base.left + (rand() * 8 - 4),
+      top: base.top + (rand() * 6 - 3),
+      delay: base.delay + rand() * 0.16,
+      scale: 0.9 + rand() * 0.45,
+      particles: Array.from({ length: particleCount }, (_, index) => {
+        const angle = (index / particleCount) * Math.PI * 2 + rand() * 0.35;
+        const distance = baseRadius + rand() * 60;
+        const drift = rand() * 18 - 9;
+
+        return {
+          id: `${milestone}-${burstIndex}-${index}`,
+          color: milestoneFireworkColors[(burstIndex + index) % milestoneFireworkColors.length],
+          x: Math.cos(angle) * distance + drift,
+          y: Math.sin(angle) * distance * 0.9 + drift * 0.5,
+          size: 5 + rand() * 5,
+          delay: burstIndex * 0.14 + index * 0.012 + rand() * 0.08,
+          rotate: -120 + rand() * 240,
+        };
+      }),
+    };
+  });
+}
+
 function normalizeFileName(fileName, fallbackBase = 'image') {
   const trimmed = (fileName || '').trim();
   const baseName = trimmed ? trimmed.replace(/\.[^.]+$/, '') : fallbackBase;
@@ -120,14 +175,19 @@ function formatCount(value) {
   return new Intl.NumberFormat('vi-VN').format(Number(value) || 0);
 }
 
-function AnimatedCount({ value, duration = 1.5 }) {
+function AnimatedCount({ value, duration = 1.5, shouldAnimate }) {
   const count = useMotionValue(0);
   const rounded = useTransform(count, (latest) => Math.round(latest).toLocaleString('vi-VN'));
 
   useEffect(() => {
+    if (!shouldAnimate) {
+      count.set(0);
+      return undefined;
+    }
+
     const animation = animate(count, Number(value) || 0, { duration, ease: 'easeOut' });
     return animation.stop;
-  }, [count, duration, value]);
+  }, [count, duration, shouldAnimate, value]);
 
   return <motion.span>{rounded}</motion.span>;
 }
@@ -165,8 +225,34 @@ function DoanTrangCountBoard({
   selectedCount,
   isLoading,
   error,
-  dashboardHref,
 }) {
+  const boardRef = useRef(null);
+  const [isInView, setIsInView] = useState(false);
+
+  useEffect(() => {
+    const boardElement = boardRef.current;
+    if (!boardElement) return undefined;
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setIsInView(true);
+        } else {
+          setIsInView(false);
+        }
+      },
+      {
+        threshold: 0.35,
+      }
+    );
+
+    observer.observe(boardElement);
+
+    return () => {
+      observer.disconnect();
+    };
+  }, []);
+
   const rows = [
     {
       label: 'Tổng ảnh đã tạo',
@@ -192,7 +278,11 @@ function DoanTrangCountBoard({
   ];
 
   return (
-    <section className="dtw-count-board" aria-label="Bảng đếm ảnh watermark Đoan Trang">
+    <section
+      ref={boardRef}
+      className="dtw-count-board"
+      aria-label="Bảng đếm ảnh watermark Đoan Trang"
+    >
       <div className="dtw-count-board__header">
         <div>
           <span className="dtw-kicker">Rose counter</span>
@@ -203,7 +293,11 @@ function DoanTrangCountBoard({
         {rows.map((row) => (
           <article className={`dtw-count-card dtw-count-card--${row.tone}`} key={row.label}>
             <span className="dtw-count-card__label">{row.label}</span>
-            <strong>{row.isLoading ? '...' : <AnimatedCount value={row.value} />}</strong>
+            <strong>
+              {row.isLoading ? '...' : (
+                <AnimatedCount value={row.value} shouldAnimate={isInView} />
+              )}
+            </strong>
             <span className="dtw-count-card__note">{row.note}</span>
           </article>
         ))}
@@ -214,9 +308,56 @@ function DoanTrangCountBoard({
 
 function DoanTrangMilestoneCelebration({ milestone, justCreated, onClose }) {
   if (!milestone) return null;
+  const fireworkBursts = buildMilestoneFireworkBursts(milestone);
 
   return createPortal(
     <div className="dtw-milestone-backdrop" role="presentation" onPointerDown={onClose}>
+      <div className="dtw-milestone-fireworks" aria-hidden="true">
+        {fireworkBursts.map((burst) => (
+          <span
+            key={burst.id}
+            className="dtw-milestone-firework"
+            style={{
+              left: `${burst.left}%`,
+              top: `${burst.top}%`,
+              '--dtw-firework-delay': `${burst.delay}s`,
+              '--dtw-firework-scale': burst.scale,
+            }}
+          >
+            {burst.particles.map((particle) => (
+              <motion.span
+                key={particle.id}
+                className="dtw-milestone-spark"
+                style={{
+                  '--dtw-spark-color': particle.color,
+                  '--dtw-spark-size': `${particle.size}px`,
+                  '--dtw-spark-delay': `${particle.delay}s`,
+                }}
+                initial={{
+                  x: 0,
+                  y: 0,
+                  opacity: 0,
+                  scale: 0.25,
+                  rotate: 0,
+                }}
+                animate={{
+                  x: particle.x,
+                  y: particle.y,
+                  opacity: [0, 1, 1, 0],
+                  scale: [0.25, 1.1, 1, 0.82],
+                  rotate: particle.rotate,
+                }}
+                transition={{
+                  duration: 1.55,
+                  delay: burst.delay + particle.delay,
+                  ease: 'easeOut',
+                }}
+              />
+            ))}
+          </span>
+        ))}
+      </div>
+
       <div
         className="dtw-milestone-modal"
         role="dialog"

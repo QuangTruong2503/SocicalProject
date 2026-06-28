@@ -868,8 +868,41 @@ body.dtw-watermark-theme .wm-preview-image-frame img {
   animation: dtwMilestoneBackdropIn 240ms ease-out both;
 }
 
+.dtw-milestone-fireworks {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  pointer-events: none;
+  mix-blend-mode: screen;
+}
+
+.dtw-milestone-firework {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  transform: translate(-50%, -50%) scale(var(--dtw-firework-scale, 1));
+  transform-origin: center;
+}
+
+.dtw-milestone-spark {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: var(--dtw-spark-size, 8px);
+  height: var(--dtw-spark-size, 8px);
+  margin-left: calc(var(--dtw-spark-size, 8px) * -0.5);
+  margin-top: calc(var(--dtw-spark-size, 8px) * -0.5);
+  border-radius: 999px;
+  background: var(--dtw-spark-color, #ffffff);
+  box-shadow:
+    0 0 0 2px rgba(255, 255, 255, 0.22),
+    0 0 18px rgba(255, 255, 255, 0.34);
+}
+
 .dtw-milestone-modal {
   position: relative;
+  z-index: 1;
   width: min(440px, 100%);
   min-height: 340px;
   display: grid;
@@ -1081,13 +1114,16 @@ body.dtw-watermark-theme .wm-preview-image-frame img {
 
 @media (prefers-reduced-motion: reduce) {
   .dtw-milestone-backdrop,
+  .dtw-milestone-fireworks,
   .dtw-milestone-modal,
   .dtw-milestone-modal::before,
   .dtw-milestone-modal::after,
-  .dtw-milestone-burst span {
+  .dtw-milestone-burst span,
+  .dtw-milestone-spark {
     animation: none;
   }
 
+  .dtw-milestone-fireworks,
   .dtw-milestone-burst {
     display: none;
   }
