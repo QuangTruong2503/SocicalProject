@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Helmet } from 'react-helmet-async';
 import { Link } from 'react-router-dom';
+import { animate, motion, useMotionValue, useTransform } from 'framer-motion';
 import LogoUploader from '../components/watermark/LogoUploader';
 import ImageUploader from '../components/watermark/ImageUploader';
 import WatermarkControls from '../components/watermark/WatermarkControls';
@@ -36,6 +37,48 @@ const DEFAULT_OPTIONS = {
 };
 const DOANTRANG_COUNT_SOURCE_PAGE = 'watermark/doantrang';
 const DOANTRANG_IMAGE_MILESTONES = [800, 1000, 1200, 1500, 2000, 2500, 3000, 4000, 5000, 6000, 7000, 8000, 9000, 10000];
+const buttonVariants = {
+  hover: { scale: 1.05, boxShadow: '0px 5px 15px rgba(219, 39, 119, 0.4)' },
+  tap: { scale: 0.95 },
+};
+const heartVariants = {
+  hover: {
+    scale: [1, 1.2, 1, 1.2, 1],
+    transition: { duration: 1.3, repeat: Infinity },
+  },
+};
+const containerVariants = {
+  idle: { scale: 1, borderColor: '#f472b6', backgroundColor: 'rgba(255, 255, 255, 0.96)' },
+  dragging: {
+    scale: 1.02,
+    borderColor: '#db2777',
+    backgroundColor: 'rgba(251, 207, 232, 0.3)',
+    transition: { repeat: Infinity, repeatType: 'reverse', duration: 0.8 },
+  },
+};
+const iconVariants = {
+  dragging: {
+    y: [0, -10, 0],
+    transition: { repeat: Infinity, duration: 1, ease: 'easeInOut' },
+  },
+};
+const galleryVariants = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.08,
+    },
+  },
+};
+const imageCardVariants = {
+  hidden: { opacity: 0, y: 20 },
+  visible: {
+    opacity: 1,
+    y: 0,
+    transition: { type: 'spring', stiffness: 100, damping: 15 },
+  },
+};
 
 function normalizeFileName(fileName, fallbackBase = 'image') {
   const trimmed = (fileName || '').trim();
@@ -51,6 +94,18 @@ function getDownloadFileName(fileName, suffix = '') {
 
 function formatCount(value) {
   return new Intl.NumberFormat('vi-VN').format(Number(value) || 0);
+}
+
+function AnimatedCount({ value, duration = 1.5 }) {
+  const count = useMotionValue(0);
+  const rounded = useTransform(count, (latest) => Math.round(latest).toLocaleString('vi-VN'));
+
+  useEffect(() => {
+    const animation = animate(count, Number(value) || 0, { duration, ease: 'easeOut' });
+    return animation.stop;
+  }, [count, duration, value]);
+
+  return <motion.span>{rounded}</motion.span>;
 }
 
 function getReachedImageMilestone(previousCount, nextCount) {
@@ -91,19 +146,22 @@ function DoanTrangCountBoard({
   const rows = [
     {
       label: 'Tổng ảnh đã tạo',
-      value: isLoading ? '...' : formatCount(totalCreated),
+      value: totalCreated,
+      isLoading,
       note: error ? 'Chưa tải được dữ liệu Supabase' : 'Chỉ tính trang Watermark Đoan Trang',
       tone: error ? 'warning' : 'primary',
     },
     {
       label: 'Ảnh của bạn',
-      value: isLoading ? '...' : formatCount(personalCreated),
+      value: personalCreated,
+      isLoading,
       note: 'Số ảnh bạn đã tạo trên trình duyệt này',
       tone: 'success',
     },
     {
       label: 'Lần tạo gần nhất',
-      value: formatCount(lastCreated),
+      value: lastCreated,
+      isLoading,
       note: selectedCount > 0 ? `${formatCount(selectedCount)} ảnh đang chọn` : 'Chưa chọn ảnh',
       tone: 'neutral',
     },
@@ -114,17 +172,6 @@ function DoanTrangCountBoard({
       <div className="dtw-count-board__header">
         <div>
           <span className="dtw-kicker">Rose counter</span>
-          <h2>Bảng đếm ảnh đã tạo</h2>
-        </div>
-        <div className="wm-count-board__actions">
-          {dashboardHref && (
-            <Link className="wm-count-board__link" to={dashboardHref}>
-              Mở dashboard
-            </Link>
-          )}
-          <span className={`dtw-count-board__status ${error ? 'is-warning' : 'is-live'}`}>
-            {error ? 'Chưa đồng bộ' : 'Đang đồng bộ'}
-          </span>
         </div>
       </div>
 
@@ -132,7 +179,7 @@ function DoanTrangCountBoard({
         {rows.map((row) => (
           <article className={`dtw-count-card dtw-count-card--${row.tone}`} key={row.label}>
             <span className="dtw-count-card__label">{row.label}</span>
-            <strong>{row.value}</strong>
+            <strong>{row.isLoading ? '...' : <AnimatedCount value={row.value} />}</strong>
             <span className="dtw-count-card__note">{row.note}</span>
           </article>
         ))}
@@ -226,6 +273,9 @@ function WatermarkImageZoom({ image, onClose }) {
 export default function DoanTrangWatermarkPage() {
   const { user } = useAuth();
   const heroInputRef = useRef(null);
+  const imageDropzoneShellRef = useRef(null);
+  const galleryShellRef = useRef(null);
+  const imageDragDepthRef = useRef(0);
   const [logoUrl, setLogoUrl] = useState(null);
   const [logoName, setLogoName] = useState(null);
   const [images, setImages] = useState([]);
@@ -245,6 +295,8 @@ export default function DoanTrangWatermarkPage() {
   const [heroImageUploading, setHeroImageUploading] = useState(false);
   const [heroImageStorageUrl, setHeroImageStorageUrl] = useState('');
   const [milestoneCelebration, setMilestoneCelebration] = useState(null);
+  const [createButtonHovered, setCreateButtonHovered] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
   const [visitorId] = useState(() => getOrCreateWatermarkVisitorId());
 
   const handleLogoChange = useCallback((url, name) => {
@@ -515,7 +567,132 @@ export default function DoanTrangWatermarkPage() {
     )));
   }, []);
 
-  const canCreate = logoUrl && images.length > 0 && !processing;
+  useEffect(() => {
+    const shell = imageDropzoneShellRef.current;
+    if (!shell) return undefined;
+
+    const dropzoneIcon = shell.querySelector('.wm-dropzone-icon');
+    if (!dropzoneIcon) return undefined;
+
+    if (isDragging) {
+      const animation = dropzoneIcon.animate(
+        iconVariants.dragging.y.map((position) => ({ transform: `translateY(${position}px)` })),
+        {
+          duration: iconVariants.dragging.transition.duration * 1000,
+          iterations: Infinity,
+          easing: 'ease-in-out',
+        }
+      );
+
+      return () => animation.cancel();
+    } else {
+      dropzoneIcon.getAnimations().forEach((animation) => animation.cancel());
+    }
+
+    return () => {
+      dropzoneIcon.getAnimations().forEach((animation) => animation.cancel());
+    };
+  }, [isDragging]);
+
+  useEffect(() => {
+    const shell = imageDropzoneShellRef.current;
+    if (!shell) return undefined;
+
+    const applyStaggerReveal = (selector) => {
+      const cards = Array.from(shell.querySelectorAll(selector));
+
+      cards.forEach((card, index) => {
+        card.animate(
+          [
+            {
+              opacity: imageCardVariants.hidden.opacity,
+              transform: `translateY(${imageCardVariants.hidden.y}px)`,
+            },
+            {
+              opacity: imageCardVariants.visible.opacity,
+              transform: `translateY(${imageCardVariants.visible.y}px)`,
+            },
+          ],
+          {
+            duration: 340,
+            delay: index * 80,
+            fill: 'both',
+            easing: 'cubic-bezier(0.16, 1, 0.3, 1)',
+          }
+        );
+      });
+    };
+
+    applyStaggerReveal('.wm-thumb');
+    return undefined;
+  }, [images]);
+
+  useEffect(() => {
+    const shell = galleryShellRef.current;
+    if (!shell) return undefined;
+
+    const cards = Array.from(shell.querySelectorAll('.wm-result-card'));
+    cards.forEach((card, index) => {
+      card.animate(
+        [
+          {
+            opacity: imageCardVariants.hidden.opacity,
+            transform: `translateY(${imageCardVariants.hidden.y}px)`,
+          },
+          {
+            opacity: imageCardVariants.visible.opacity,
+            transform: `translateY(${imageCardVariants.visible.y}px)`,
+          },
+        ],
+        {
+          duration: 340,
+          delay: index * 80,
+          fill: 'both',
+          easing: 'cubic-bezier(0.16, 1, 0.3, 1)',
+        }
+      );
+    });
+
+    return undefined;
+  }, [results]);
+
+  const isImageDrag = useCallback((event) => {
+    const types = Array.from(event.dataTransfer?.types || []);
+    return types.includes('Files');
+  }, []);
+
+  const handleImageDropzoneDragEnter = useCallback((event) => {
+    if (!isImageDrag(event)) return;
+    event.preventDefault();
+    imageDragDepthRef.current += 1;
+    setIsDragging(true);
+  }, [isImageDrag]);
+
+  const handleImageDropzoneDragOver = useCallback((event) => {
+    if (!isImageDrag(event)) return;
+    event.preventDefault();
+    setIsDragging(true);
+  }, [isImageDrag]);
+
+  const handleImageDropzoneDragLeave = useCallback((event) => {
+    if (!isImageDrag(event)) return;
+    event.preventDefault();
+    imageDragDepthRef.current = Math.max(0, imageDragDepthRef.current - 1);
+    if (imageDragDepthRef.current === 0) {
+      setIsDragging(false);
+    }
+  }, [isImageDrag]);
+
+  const handleImageDropzoneDrop = useCallback((event) => {
+    if (!isImageDrag(event)) return;
+    event.preventDefault();
+    imageDragDepthRef.current = 0;
+    setIsDragging(false);
+  }, [isImageDrag]);
+
+  const hasCreateInputs = Boolean(logoUrl && images.length > 0);
+  const canCreate = hasCreateInputs && !processing;
+  const createHeartIcon = hasCreateInputs && createButtonHovered ? '♥' : '♡';
 
   return (
     <>
@@ -526,6 +703,26 @@ export default function DoanTrangWatermarkPage() {
           content="Tạo watermark ảnh phong cách nữ tính, màu hồng tinh tế, dễ dùng và tải xuống nhanh chóng."
         />
       </Helmet>
+
+      <style>{`
+        .dtw-wm-page .dtw-dropzone-shell {
+          transform-origin: center;
+        }
+
+        .dtw-wm-page .dtw-dropzone-shell--dragging .wm-dropzone {
+          border-color: #db2777;
+          background: rgba(251, 207, 232, 0.3);
+          box-shadow: 0 0 0 4px rgba(219, 39, 119, 0.12);
+        }
+
+        .dtw-wm-page .dtw-dropzone-shell--dragging .wm-dropzone-title {
+          color: #880e4f;
+        }
+
+        .dtw-wm-page .dtw-dropzone-shell--dragging .wm-dropzone-icon {
+          color: #db2777;
+        }
+      `}</style>
 
       <div className="dtw-page dtw-wm-page">
         <div className="wm-container dtw-container">
@@ -629,22 +826,36 @@ export default function DoanTrangWatermarkPage() {
 
           <section className="wm-layout dtw-layout" aria-label="Công cụ tạo watermark Đoan Trang">
             <div className="wm-panel-column wm-panel-column--narrow">
-              <div className="wm-card wm-card--spaced">
+              <motion.div
+                ref={imageDropzoneShellRef}
+                className="wm-card wm-card--spaced"
+                variants={containerVariants}
+                animate="idle"
+              >
                 <LogoUploader
                   logoUrl={logoUrl}
                   logoName={logoName}
                   onLogoChange={handleLogoChange}
                   onImagePreview={openZoom}
                 />
-              </div>
+              </motion.div>
 
-              <div className="wm-card">
+              <motion.div
+                ref={imageDropzoneShellRef}
+                className={`wm-card dtw-dropzone-shell${isDragging ? ' dtw-dropzone-shell--dragging' : ''}`}
+                onDragEnter={handleImageDropzoneDragEnter}
+                onDragOver={handleImageDropzoneDragOver}
+                onDragLeave={handleImageDropzoneDragLeave}
+                onDrop={handleImageDropzoneDrop}
+                variants={containerVariants}
+                animate={isDragging ? 'dragging' : 'idle'}
+              >
                 <ImageUploader
                   images={images}
                   onImagesChange={setImages}
                   onImagePreview={openZoom}
                 />
-              </div>
+              </motion.div>
             </div>
 
             <div className="wm-panel-column wm-panel-column--wide">
@@ -654,11 +865,16 @@ export default function DoanTrangWatermarkPage() {
                 <hr className="wm-divider" />
 
                 <div className="wm-action-bar">
-                  <button
+                  <motion.button
                     className="wm-btn-primary wm-create-btn"
                     type="button"
                     onClick={handleCreate}
                     disabled={!canCreate}
+                    variants={buttonVariants}
+                    whileHover={canCreate ? 'hover' : undefined}
+                    whileTap={canCreate ? 'tap' : undefined}
+                    onHoverStart={() => setCreateButtonHovered(true)}
+                    onHoverEnd={() => setCreateButtonHovered(false)}
                   >
                     {processing ? (
                       <>
@@ -667,11 +883,17 @@ export default function DoanTrangWatermarkPage() {
                       </>
                     ) : (
                       <>
-                        <span className="wm-inline-icon" aria-hidden="true">♡</span>
+                        <motion.span
+                          className="wm-inline-icon"
+                          aria-hidden="true"
+                          variants={heartVariants}
+                        >
+                          {createHeartIcon}
+                        </motion.span>
                         Tạo ảnh watermark
                       </>
                     )}
-                  </button>
+                  </motion.button>
 
                   <span className="wm-create-hint">
                     {!logoUrl && 'Chưa có logo · '}
@@ -690,13 +912,20 @@ export default function DoanTrangWatermarkPage() {
           </section>
 
           <div id="dtw-gallery">
-            <WatermarkGallery
-              results={results}
-              onClear={handleClear}
-              onDownloadAll={handleDownloadAll}
-              onRenameFile={handleRenameResult}
-              isProcessing={processing}
-            />
+            <motion.div
+              ref={galleryShellRef}
+              variants={galleryVariants}
+              initial="hidden"
+              animate={results.length > 0 ? 'visible' : 'hidden'}
+            >
+              <WatermarkGallery
+                results={results}
+                onClear={handleClear}
+                onDownloadAll={handleDownloadAll}
+                onRenameFile={handleRenameResult}
+                isProcessing={processing}
+              />
+            </motion.div>
           </div>
         </div>
       </div>
