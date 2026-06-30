@@ -4,6 +4,16 @@
   width: 100%;
 }
 
+.wm-result-viewport {
+  width: 100%;
+}
+
+.wm-result-viewport.is-virtualized {
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding-right: 4px;
+}
+
 .wm-gallery-header {
   display: flex;
   justify-content: space-between;
@@ -200,6 +210,16 @@
   width: 100%;
 }
 
+.wm-result-grid {
+  display: grid;
+  gap: 20px;
+  width: 100%;
+}
+
+.wm-result-grid--skeleton {
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+}
+
 /* Result Card */
 .wm-result-card {
   background: var(--bg-card);
@@ -212,6 +232,108 @@
 .wm-result-card:hover {
   border-color: var(--primary-color);
   box-shadow: var(--shadow-lg);
+}
+
+.wm-result-card--skeleton {
+  overflow: hidden;
+}
+
+.wm-result-card--skeleton:hover {
+  border-color: var(--border-color);
+  box-shadow: none;
+}
+
+.wm-skeleton {
+  position: relative;
+  overflow: hidden;
+  background: linear-gradient(90deg, rgba(233, 30, 140, 0.08), rgba(255, 255, 255, 0.8), rgba(233, 30, 140, 0.08));
+  background-size: 240% 100%;
+  animation: wmSkeletonShimmer 1.35s ease-in-out infinite;
+}
+
+.wm-skeleton::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.35), transparent);
+  transform: translateX(-100%);
+  animation: wmSkeletonSweep 1.35s ease-in-out infinite;
+}
+
+.wm-skeleton--image {
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  border-radius: 0;
+}
+
+.wm-skeleton--line {
+  height: 14px;
+  border-radius: 999px;
+}
+
+.wm-skeleton--name {
+  width: 68%;
+}
+
+.wm-skeleton--chip {
+  width: 34px;
+  height: 24px;
+  border-radius: 999px;
+}
+
+.wm-skeleton--input {
+  height: 40px;
+  border-radius: 12px;
+}
+
+.wm-skeleton--button {
+  width: 112px;
+  height: 34px;
+  border-radius: 12px;
+}
+
+.wm-result-overlay--skeleton {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.wm-result-overlay--skeleton .wm-skeleton--button {
+  width: 44%;
+  max-width: 120px;
+}
+
+.wm-result-meta {
+  display: grid;
+  gap: 12px;
+  padding: 1rem;
+}
+
+.wm-result-meta-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+@keyframes wmSkeletonShimmer {
+  0% {
+    background-position: 200% 0;
+  }
+
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+@keyframes wmSkeletonSweep {
+  0% {
+    transform: translateX(-110%);
+  }
+
+  100% {
+    transform: translateX(110%);
+  }
 }
 
 .wm-result-image {
@@ -296,6 +418,13 @@
   .wm-result-dl-btn,
   .wm-result-copy-btn {
     width: 100%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .wm-skeleton,
+  .wm-skeleton::after {
+    animation: none;
   }
 }
 

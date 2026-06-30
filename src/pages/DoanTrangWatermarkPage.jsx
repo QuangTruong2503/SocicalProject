@@ -22,7 +22,9 @@ import {
 import { getOrCreateWatermarkVisitorId } from '../utils/watermarkVisitor.js';
 import { uploadDoanTrangHeroPreview } from '../services/uploadService.js';
 import {
+  loadDoanTrangWatermarkOptions,
   loadDoanTrangHeroImage,
+  saveDoanTrangWatermarkOptions,
   saveDoanTrangHeroImage,
 } from '../hooks/useIndexedDB.js';
 import '../styles/Watermark-girly-pink-complete.css';
@@ -535,14 +537,37 @@ function WatermarkImageZoom({ image, onClose }) {
   );
 }
 
+function HeroPreviewSkeleton() {
+  return (
+    <div className="dtw-hero-skeleton" aria-hidden="true">
+      <div className="dtw-hero-skeleton__card">
+        <div className="dtw-skeleton dtw-skeleton--hero-image" />
+        <div className="dtw-hero-skeleton__overlay">
+          <span className="dtw-skeleton dtw-skeleton--hero-chip" />
+          <span className="dtw-skeleton dtw-skeleton--hero-chip" />
+        </div>
+      </div>
+      <div className="dtw-hero-skeleton__meta">
+        <span className="dtw-skeleton dtw-skeleton--hero-line dtw-skeleton--hero-line-lg" />
+        <span className="dtw-skeleton dtw-skeleton--hero-line" />
+        <span className="dtw-skeleton dtw-skeleton--hero-button" />
+      </div>
+    </div>
+  );
+}
+
 export default function DoanTrangWatermarkPage() {
   const { user } = useAuth();
   const heroInputRef = useRef(null);
   const imageDropzoneShellRef = useRef(null);
   const galleryShellRef = useRef(null);
+  const workerRef = useRef(null);
+  const workerTaskIdRef = useRef(0);
+  const pendingWorkerTasksRef = useRef(new Map());
   const imageDragDepthRef = useRef(0);
   const [logoUrl, setLogoUrl] = useState(null);
   const [logoName, setLogoName] = useState(null);
+  const [logoBlob, setLogoBlob] = useState(null);
   const [images, setImages] = useState([]);
   const [options, setOptions] = useState(DEFAULT_OPTIONS);
   const [results, setResults] = useState([]);
@@ -565,9 +590,10 @@ export default function DoanTrangWatermarkPage() {
   const [isDragging, setIsDragging] = useState(false);
   const [visitorId] = useState(() => getOrCreateWatermarkVisitorId());
 
-  const handleLogoChange = useCallback((url, name) => {
+  const handleLogoChange = useCallback((url, name, blob) => {
     setLogoUrl(url);
     setLogoName(name);
+    setLogoBlob(blob || null);
   }, []);
 
   const openZoom = useCallback((image) => {
@@ -593,6 +619,35 @@ export default function DoanTrangWatermarkPage() {
       document.body.classList.remove('dtw-watermark-theme');
     };
   }, []);
+
+  useEffect(() => {
+    let isActive = true;
+
+    loadDoanTrangWatermarkOptions()
+      .then((storedOptions) => {
+        if (!isActive || !storedOptions) return;
+        setOptions((current) => ({ ...current, ...storedOptions }));
+      })
+      .catch((error) => {
+        console.warn('[DoanTrangWatermark] Could not load watermark options', error);
+      });
+
+    return () => {
+      isActive = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      saveDoanTrangWatermarkOptions(options).catch((error) => {
+        console.warn('[DoanTrangWatermark] Could not save watermark options', error);
+      });
+    }, 180);
+
+    return () => {
+      window.clearTimeout(timer);
+    };
+  }, [options]);
 
   useEffect(() => {
     let isActive = true;
@@ -708,6 +763,114 @@ export default function DoanTrangWatermarkPage() {
     };
   }, [exportSuccessBurst]);
 
+  useEffect(() => {
+    if (typeof Worker === 'undefined') {
+      return undefined;
+    }
+
+    const pendingTasks = pendingWorkerTasksRef.current;
+    const worker = new Worker(new URL('../workers/doanTrangWatermarkWorker.js', import.meta.url), {
+      type: 'module',
+    });
+
+    workerRef.current = worker;
+
+    worker.onmessage = (event) => {
+      const { id, ok, blob, error } = event.data || {};
+      const task = pendingTasks.get(id);
+
+      if (!task) {
+        return;
+      }
+
+      pendingTasks.delete(id);
+
+      if (ok) {
+        task.resolve(blob);
+      } else {
+        task.reject(new Error(error || 'Worker processing failed'));
+      }
+    };
+
+    worker.onerror = (event) => {
+      console.error('[DoanTrangWatermark] Watermark worker failed', event.error || event.message);
+      pendingTasks.forEach(({ reject }) => reject(new Error('Watermark worker crashed')));
+      pendingTasks.clear();
+      workerRef.current = null;
+    };
+
+    return () => {
+      worker.terminate();
+      workerRef.current = null;
+      pendingTasks.forEach(({ reject }) => reject(new Error('Watermark worker stopped')));
+      pendingTasks.clear();
+    };
+  }, []);
+
+  const processWatermarkWithWorker = useCallback(async (sourceFile, activeOptions) => {
+    let activeLogoBlob = logoBlob;
+
+    if (!activeLogoBlob && logoUrl) {
+      try {
+        activeLogoBlob = await fetch(logoUrl).then((response) => response.blob());
+      } catch (error) {
+        console.warn('[DoanTrangWatermark] Could not hydrate logo blob for worker', error);
+      }
+    }
+
+    if (!workerRef.current || !activeLogoBlob) {
+      return processWatermark(sourceFile, logoUrl, activeOptions);
+    }
+
+    const taskId = `dtw-watermark-${Date.now()}-${workerTaskIdRef.current += 1}`;
+
+    return new Promise((resolve, reject) => {
+      pendingWorkerTasksRef.current.set(taskId, { resolve, reject });
+
+      try {
+        workerRef.current.postMessage({
+          id: taskId,
+          type: 'process',
+          payload: {
+            sourceFile,
+            logoBlob: activeLogoBlob,
+            options: activeOptions,
+          },
+        });
+      } catch (error) {
+        pendingWorkerTasksRef.current.delete(taskId);
+        reject(error);
+      }
+    });
+  }, [logoBlob, logoUrl]);
+
+  const resizeBlobWithWorker = useCallback(async (sourceBlob, width, height) => {
+    if (!workerRef.current) {
+      return resizeBlob(sourceBlob, width, height);
+    }
+
+    const taskId = `dtw-resize-${Date.now()}-${workerTaskIdRef.current += 1}`;
+
+    return new Promise((resolve, reject) => {
+      pendingWorkerTasksRef.current.set(taskId, { resolve, reject });
+
+      try {
+        workerRef.current.postMessage({
+          id: taskId,
+          type: 'resize',
+          payload: {
+            blob: sourceBlob,
+            width,
+            height,
+          },
+        });
+      } catch (error) {
+        pendingWorkerTasksRef.current.delete(taskId);
+        reject(error);
+      }
+    });
+  }, []);
+
   const handleHeroImageChange = async (event) => {
     const file = event.target.files?.[0];
     setHeroImageError('');
@@ -762,7 +925,7 @@ export default function DoanTrangWatermarkPage() {
 
     for (let i = 0; i < images.length; i++) {
       try {
-        const blob = await processWatermark(images[i].file, logoUrl, options);
+        const blob = await processWatermarkWithWorker(images[i].file, options);
         const url = URL.createObjectURL(blob);
         const fileName = buildFileName(options.productName, i, images.length);
         newResults.push({ url, blob, fileName });
@@ -771,7 +934,10 @@ export default function DoanTrangWatermarkPage() {
       }
     }
 
-    setResults(newResults);
+    setResults((current) => {
+      current.forEach((result) => URL.revokeObjectURL(result.url));
+      return newResults;
+    });
     setProcessing(false);
 
     if (newResults.length > 0) {
@@ -824,7 +990,7 @@ export default function DoanTrangWatermarkPage() {
 
       if (mode === '800x600') {
         try {
-          blob = await resizeBlob(blob, 800, 600);
+          blob = await resizeBlobWithWorker(blob, 800, 600);
           fileName = getDownloadFileName(result.fileName);
         } catch {
           /* Use original blob. */
@@ -844,7 +1010,7 @@ export default function DoanTrangWatermarkPage() {
       anchor.click();
       await new Promise((resolve) => setTimeout(resolve, 80));
     }
-  }, [results]);
+  }, [results, resizeBlobWithWorker]);
 
   const handleClear = useCallback(() => {
     results.forEach((result) => URL.revokeObjectURL(result.url));
@@ -1033,7 +1199,7 @@ export default function DoanTrangWatermarkPage() {
               </div>
             </div>
 
-            <div className={`dtw-hero-preview ${heroImageUrl ? 'has-image' : 'is-empty'}`}>
+            <div className={`dtw-hero-preview ${heroImageUrl ? 'has-image' : 'is-empty'}${heroImageLoading ? ' is-loading' : ''}`}>
               <input
                 ref={heroInputRef}
                 className="dtw-hero-file-input"
@@ -1066,19 +1232,19 @@ export default function DoanTrangWatermarkPage() {
                         Thay ảnh
                       </button>
                     </>
+                  ) : heroImageLoading ? (
+                    <HeroPreviewSkeleton />
                   ) : (
                     <div className="dtw-hero-empty">
                       <span className="dtw-hero-empty-mark" aria-hidden="true">DT</span>
-                      <strong>{heroImageLoading ? 'Đang tải ảnh...' : 'Chưa có ảnh preview'}</strong>
-                      {!heroImageLoading && (
-                        <button
-                          className="dtw-hero-upload-button"
-                          type="button"
-                          onClick={() => heroInputRef.current?.click()}
-                        >
-                          Chọn ảnh preview
-                        </button>
-                      )}
+                      <strong>Chưa có ảnh preview</strong>
+                      <button
+                        className="dtw-hero-upload-button"
+                        type="button"
+                        onClick={() => heroInputRef.current?.click()}
+                      >
+                        Chọn ảnh preview
+                      </button>
                       {heroImageError && <small>{heroImageError}</small>}
                     </div>
                   )}

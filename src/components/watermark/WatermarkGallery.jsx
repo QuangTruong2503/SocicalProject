@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import '../../styles/WatermarkGallery.css';
 
@@ -18,8 +18,11 @@ export default function WatermarkGallery({
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [previewResult, setPreviewResult] = useState(null);
   const [isPreviewClosing, setIsPreviewClosing] = useState(false);
+  const [viewportSize, setViewportSize] = useState({ width: 0, height: 0, scrollTop: 0 });
   const menuRef = useRef(null);
+  const viewportRef = useRef(null);
   const previewCloseTimerRef = useRef(null);
+  const isVirtualized = results.length > 24;
 
   const closePreview = useCallback(() => {
     if (!previewResult || isPreviewClosing) return;
@@ -89,12 +92,78 @@ export default function WatermarkGallery({
     };
   }, []);
 
+  useEffect(() => {
+    const viewport = viewportRef.current;
+    if (!viewport || !isVirtualized) {
+      return undefined;
+    }
+
+    const updateViewport = () => {
+      setViewportSize({
+        width: viewport.clientWidth,
+        height: viewport.clientHeight,
+        scrollTop: viewport.scrollTop,
+      });
+    };
+
+    updateViewport();
+
+    const resizeObserver = new ResizeObserver(updateViewport);
+    resizeObserver.observe(viewport);
+    viewport.addEventListener('scroll', updateViewport, { passive: true });
+
+    return () => {
+      resizeObserver.disconnect();
+      viewport.removeEventListener('scroll', updateViewport);
+    };
+  }, [isVirtualized, results.length]);
+
+  const virtualizedWindow = useMemo(() => {
+    if (!isVirtualized) {
+      return {
+        startIndex: 0,
+        endIndex: results.length,
+        topPadding: 0,
+        bottomPadding: 0,
+        columnCount: 0,
+      };
+    }
+
+    const gap = 20;
+    const minCardWidth = 220;
+    const overscanRows = 2;
+    const columnCount = Math.max(1, Math.floor((viewportSize.width + gap) / (minCardWidth + gap)));
+    const rowHeight = 392;
+    const totalRows = Math.ceil(results.length / columnCount);
+    const visibleStartRow = Math.max(0, Math.floor(viewportSize.scrollTop / rowHeight) - overscanRows);
+    const visibleEndRow = Math.min(
+      totalRows,
+      Math.ceil((viewportSize.scrollTop + viewportSize.height) / rowHeight) + overscanRows
+    );
+    const startIndex = visibleStartRow * columnCount;
+    const endIndex = Math.min(results.length, visibleEndRow * columnCount);
+
+    return {
+      startIndex,
+      endIndex,
+      topPadding: visibleStartRow * rowHeight,
+      bottomPadding: Math.max(0, (totalRows - visibleEndRow) * rowHeight),
+      columnCount,
+    };
+  }, [isVirtualized, results.length, viewportSize.height, viewportSize.scrollTop, viewportSize.width]);
+
+  const visibleResults = isVirtualized
+    ? results.slice(virtualizedWindow.startIndex, virtualizedWindow.endIndex)
+    : results;
+
   const handleDownload = (mode) => {
     onDownloadAll(mode);
     setIsMenuOpen(false);
   };
 
   if (results.length === 0 && !isProcessing) return null;
+
+  const showSkeletons = isProcessing && results.length === 0;
 
   return (
     <div className="wm-gallery-section">
@@ -186,17 +255,53 @@ export default function WatermarkGallery({
         </div>
       )}
 
-      <div className="wm-result-grid">
-        {results.map((r, i) => (
-          <ResultCard
-            key={i}
-            result={r}
-            index={i}
-            onRenameFile={onRenameFile}
-            onPreview={() => openPreview(r, i)}
-          />
-        ))}
-      </div>
+      {showSkeletons ? (
+        <div className="wm-result-grid wm-result-grid--skeleton" aria-hidden="true">
+          {Array.from({ length: 8 }).map((_, index) => (
+            <SkeletonResultCard key={index} />
+          ))}
+        </div>
+      ) : (
+        <div
+          ref={viewportRef}
+          className={`wm-result-viewport${isVirtualized ? ' is-virtualized' : ''}`}
+          style={isVirtualized ? { maxHeight: 'min(82vh, 920px)' } : undefined}
+        >
+          <div
+            className="wm-result-grid"
+            style={isVirtualized ? { gridTemplateColumns: `repeat(${virtualizedWindow.columnCount || 1}, minmax(0, 1fr))` } : undefined}
+          >
+            {isVirtualized && virtualizedWindow.topPadding > 0 && (
+              <div
+                className="wm-result-grid-spacer"
+                style={{ height: `${virtualizedWindow.topPadding}px`, gridColumn: '1 / -1' }}
+                aria-hidden="true"
+              />
+            )}
+
+            {visibleResults.map((r, i) => {
+              const index = isVirtualized ? virtualizedWindow.startIndex + i : i;
+              return (
+                <ResultCard
+                  key={`${index}-${r.url}`}
+                  result={r}
+                  index={index}
+                  onRenameFile={onRenameFile}
+                  onPreview={() => openPreview(r, index)}
+                />
+              );
+            })}
+
+            {isVirtualized && virtualizedWindow.bottomPadding > 0 && (
+              <div
+                className="wm-result-grid-spacer"
+                style={{ height: `${virtualizedWindow.bottomPadding}px`, gridColumn: '1 / -1' }}
+                aria-hidden="true"
+              />
+            )}
+          </div>
+        </div>
+      )}
 
       {previewResult && (
         <ImagePreviewModal
@@ -274,6 +379,27 @@ function ResultCard({ result, index, onPreview, onRenameFile }) {
             placeholder="Nhập tên file mới"
           />
         </label>
+      </div>
+    </div>
+  );
+}
+
+function SkeletonResultCard() {
+  return (
+    <div className="wm-result-card wm-result-card--skeleton">
+      <div className="wm-result-img-wrap">
+        <div className="wm-skeleton wm-skeleton--image" />
+        <div className="wm-result-overlay wm-result-overlay--skeleton">
+          <div className="wm-skeleton wm-skeleton--button" />
+          <div className="wm-skeleton wm-skeleton--button" />
+        </div>
+      </div>
+      <div className="wm-result-meta">
+        <div className="wm-result-meta-row">
+          <div className="wm-skeleton wm-skeleton--line wm-skeleton--name" />
+          <div className="wm-skeleton wm-skeleton--chip" />
+        </div>
+        <div className="wm-skeleton wm-skeleton--input" />
       </div>
     </div>
   );
