@@ -83,7 +83,7 @@ export default function Header() {
 
   const navItems = [
     {
-      label: 'Trang Chu',
+      label: 'Trang Chủ',
       path: '/',
       icon: '🏠',
     },

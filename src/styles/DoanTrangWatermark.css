@@ -148,6 +148,11 @@
   overflow: hidden;
 }
 
+.dtw-hero-preview.is-loading .dtw-hero-photo-inner::before,
+.dtw-hero-preview.is-loading .dtw-hero-photo-inner::after {
+  opacity: 0;
+}
+
 .dtw-hero-preview.has-image .dtw-hero-photo-inner::before,
 .dtw-hero-preview.has-image .dtw-hero-photo-inner::after {
   display: block;
@@ -205,6 +210,104 @@
   font-size: 28px;
   font-weight: 800;
   text-shadow: 0 2px 14px rgba(255, 255, 255, 0.68);
+}
+
+.dtw-hero-skeleton {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  display: grid;
+  gap: 14px;
+  padding: 14px;
+}
+
+.dtw-hero-skeleton__card {
+  position: relative;
+  min-height: 100%;
+  border-radius: 22px;
+  overflow: hidden;
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.72), rgba(252, 231, 243, 0.86));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.6);
+}
+
+.dtw-hero-skeleton__overlay {
+  position: absolute;
+  inset: auto 14px 14px 14px;
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.dtw-hero-skeleton__meta {
+  display: grid;
+  gap: 10px;
+  align-self: end;
+  max-width: 76%;
+}
+
+.dtw-skeleton {
+  position: relative;
+  overflow: hidden;
+  background: linear-gradient(90deg, rgba(233, 30, 140, 0.08), rgba(255, 255, 255, 0.82), rgba(233, 30, 140, 0.08));
+  background-size: 240% 100%;
+  animation: dtwSkeletonShimmer 1.3s ease-in-out infinite;
+}
+
+.dtw-skeleton::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.28), transparent);
+  transform: translateX(-100%);
+  animation: dtwSkeletonSweep 1.3s ease-in-out infinite;
+}
+
+.dtw-skeleton--hero-image {
+  position: absolute;
+  inset: 0;
+  border-radius: 22px;
+}
+
+.dtw-skeleton--hero-chip {
+  width: 86px;
+  height: 30px;
+  border-radius: 999px;
+}
+
+.dtw-skeleton--hero-line {
+  height: 12px;
+  border-radius: 999px;
+}
+
+.dtw-skeleton--hero-line-lg {
+  width: 78%;
+  height: 18px;
+}
+
+.dtw-skeleton--hero-button {
+  width: 140px;
+  height: 40px;
+  border-radius: 999px;
+}
+
+@keyframes dtwSkeletonShimmer {
+  0% {
+    background-position: 200% 0;
+  }
+
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+@keyframes dtwSkeletonSweep {
+  0% {
+    transform: translateX(-110%);
+  }
+
+  100% {
+    transform: translateX(110%);
+  }
 }
 
 .dtw-hero-file-input {
@@ -369,7 +472,9 @@
   .dtw-hero-photo,
   .dtw-hero-image-button img,
   .dtw-hero-preview.has-image .dtw-hero-photo-inner::before,
-  .dtw-hero-preview.has-image .dtw-hero-photo-inner::after {
+  .dtw-hero-preview.has-image .dtw-hero-photo-inner::after,
+  .dtw-skeleton,
+  .dtw-skeleton::after {
     animation: none;
   }
 }

@@ -9,7 +9,7 @@ export default function LogoUploader({ logoUrl, logoName, onLogoChange, onImageP
   useEffect(() => {
     loadLogo()
       .then((result) => {
-        if (result) onLogoChange(result.url, result.name);
+        if (result) onLogoChange(result.url, result.name, result.blob);
       })
       .catch(() => {});
   }, [onLogoChange]);
@@ -20,7 +20,7 @@ export default function LogoUploader({ logoUrl, logoName, onLogoChange, onImageP
     try {
       await saveLogo(file);
       const url = URL.createObjectURL(file);
-      onLogoChange(url, file.name);
+      onLogoChange(url, file.name, file);
     } catch {
       alert('Không thể lưu logo vào IndexedDB.');
     }
@@ -28,7 +28,7 @@ export default function LogoUploader({ logoUrl, logoName, onLogoChange, onImageP
 
   const handleClear = async () => {
     await clearLogo();
-    onLogoChange(null, null);
+    onLogoChange(null, null, null);
     if (fileRef.current) fileRef.current.value = '';
   };
 

@@ -42,7 +42,38 @@ async function loadAsset(key) {
         const { data, type, name } = e.target.result;
         const blob = new Blob([data], { type });
         const url = URL.createObjectURL(blob);
-        resolve({ url, name });
+        resolve({ url, name, blob });
+      } else {
+        resolve(null);
+      }
+    };
+    req.onerror = (e) => reject(e.target.error);
+  });
+}
+
+async function saveValue(key, value) {
+  const db = await openDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(STORE_NAME, 'readwrite');
+    tx.objectStore(STORE_NAME).put({
+      key,
+      data: value,
+      type: 'application/json',
+      name: key,
+    });
+    tx.oncomplete = () => resolve();
+    tx.onerror = (e) => reject(e.target.error);
+  });
+}
+
+async function loadValue(key) {
+  const db = await openDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(STORE_NAME, 'readonly');
+    const req = tx.objectStore(STORE_NAME).get(key);
+    req.onsuccess = (e) => {
+      if (e.target.result) {
+        resolve(e.target.result.data ?? null);
       } else {
         resolve(null);
       }
@@ -83,4 +114,16 @@ export function loadDoanTrangHeroImage() {
 
 export function clearDoanTrangHeroImage() {
   return clearAsset('doan-trang-hero-image');
+}
+
+export function saveDoanTrangWatermarkOptions(options) {
+  return saveValue('doan-trang-watermark-options', options);
+}
+
+export function loadDoanTrangWatermarkOptions() {
+  return loadValue('doan-trang-watermark-options');
+}
+
+export function clearDoanTrangWatermarkOptions() {
+  return clearAsset('doan-trang-watermark-options');
 }
