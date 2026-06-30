@@ -1,47 +1,56 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { createPortal } from 'react-dom';
-import { Helmet } from 'react-helmet-async';
-import { Link } from 'react-router-dom';
-import { AnimatePresence, animate, motion, useMotionValue, useTransform } from 'framer-motion';
-import JSZip from 'jszip';
-import LogoUploader from '../components/watermark/LogoUploader';
-import ImageUploader from '../components/watermark/ImageUploader';
-import WatermarkControls from '../components/watermark/WatermarkControls';
-import WatermarkGallery from '../components/watermark/WatermarkGallery';
+import React, { useCallback, useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
+import { Helmet } from "react-helmet-async";
+import { Link } from "react-router-dom";
+import {
+  AnimatePresence,
+  animate,
+  motion,
+  useMotionValue,
+  useTransform,
+} from "framer-motion";
+import JSZip from "jszip";
+import LogoUploader from "../components/watermark/LogoUploader";
+import ImageUploader from "../components/watermark/ImageUploader";
+import WatermarkControls from "../components/watermark/WatermarkControls";
+import WatermarkGallery from "../components/watermark/WatermarkGallery";
 import {
   buildFileName,
   compressAndResizeBlob,
   processWatermark,
   resizeBlob,
-} from '../hooks/useWatermarkProcessor';
-import { useAuth } from '../hooks/useAuth.js';
-import { getUserDisplayName } from '../utils/userProfile.js';
+} from "../hooks/useWatermarkProcessor";
+import { useAuth } from "../hooks/useAuth.js";
+import { getUserDisplayName } from "../utils/userProfile.js";
 import {
   createWatermarkImageCount,
   getWatermarkImageCountTotal,
-} from '../services/watermarkImageCountService.js';
-import { getOrCreateWatermarkVisitorId } from '../utils/watermarkVisitor.js';
-import { uploadDoanTrangHeroPreview } from '../services/uploadService.js';
+} from "../services/watermarkImageCountService.js";
+import { getOrCreateWatermarkVisitorId } from "../utils/watermarkVisitor.js";
+import { uploadDoanTrangHeroPreview } from "../services/uploadService.js";
 import {
   loadDoanTrangWatermarkOptions,
   loadDoanTrangHeroImage,
   saveDoanTrangWatermarkOptions,
   saveDoanTrangHeroImage,
-} from '../hooks/useIndexedDB.js';
-import '../styles/Watermark-girly-pink-complete.css';
-import '../styles/DoanTrangWatermark.css';
+} from "../hooks/useIndexedDB.js";
+import "../styles/Watermark-girly-pink-complete.css";
+import "../styles/DoanTrangWatermark.css";
 
 const DEFAULT_OPTIONS = {
   size: 60,
   opacity: 60,
   tiled: false,
-  productName: 'doan-trang',
-  logoPosition: 'center',
+  productName: "doan-trang",
+  logoPosition: "center",
 };
-const DOANTRANG_COUNT_SOURCE_PAGE = 'watermark/doantrang';
-const DOANTRANG_IMAGE_MILESTONES = [800, 1000, 1200, 1500, 2000, 2500, 3000, 4000, 5000, 6000, 7000, 8000, 9000, 10000];
+const DOANTRANG_COUNT_SOURCE_PAGE = "watermark/doantrang";
+const DOANTRANG_IMAGE_MILESTONES = [
+  800, 1000, 1200, 1500, 2000, 2500, 3000, 4000, 5000, 6000, 7000, 8000, 9000,
+  10000,
+];
 const buttonVariants = {
-  hover: { scale: 1.05, boxShadow: '0px 5px 15px rgba(219, 39, 119, 0.4)' },
+  hover: { scale: 1.05, boxShadow: "0px 5px 15px rgba(219, 39, 119, 0.4)" },
   tap: { scale: 0.95 },
 };
 const heartVariants = {
@@ -51,18 +60,22 @@ const heartVariants = {
   },
 };
 const containerVariants = {
-  idle: { scale: 1, borderColor: '#f472b6', backgroundColor: 'rgba(255, 255, 255, 0.96)' },
+  idle: {
+    scale: 1,
+    borderColor: "#f472b6",
+    backgroundColor: "rgba(255, 255, 255, 0.96)",
+  },
   dragging: {
     scale: 1.02,
-    borderColor: '#db2777',
-    backgroundColor: 'rgba(251, 207, 232, 0.3)',
-    transition: { repeat: Infinity, repeatType: 'reverse', duration: 0.8 },
+    borderColor: "#db2777",
+    backgroundColor: "rgba(251, 207, 232, 0.3)",
+    transition: { repeat: Infinity, repeatType: "reverse", duration: 0.8 },
   },
 };
 const iconVariants = {
   dragging: {
     y: [0, -10, 0],
-    transition: { repeat: Infinity, duration: 1, ease: 'easeInOut' },
+    transition: { repeat: Infinity, duration: 1, ease: "easeInOut" },
   },
 };
 const galleryVariants = {
@@ -79,11 +92,18 @@ const imageCardVariants = {
   visible: {
     opacity: 1,
     y: 0,
-    transition: { type: 'spring', stiffness: 100, damping: 15 },
+    transition: { type: "spring", stiffness: 100, damping: 15 },
   },
 };
-const exportConfettiColors = ['#db2777', '#f472b6', '#ffffff'];
-const milestoneFireworkColors = ['#fb7185', '#f97316', '#facc15', '#60a5fa', '#34d399', '#f472b6'];
+const exportConfettiColors = ["#db2777", "#f472b6", "#ffffff"];
+const milestoneFireworkColors = [
+  "#fb7185",
+  "#f97316",
+  "#facc15",
+  "#60a5fa",
+  "#34d399",
+  "#f472b6",
+];
 
 // Some lint setups in this repo do not count JSX tag usage for namespace imports.
 void motion;
@@ -109,8 +129,10 @@ function buildExportConfettiPieces(itemCount = 1) {
   return Array.from({ length: pieceCount }, (_, index) => {
     const angle = (index / pieceCount) * Math.PI * 2;
     const distance = (180 + Math.random() * 140) * burstScale;
-    const driftX = Math.cos(angle) * distance + (Math.random() * 90 - 45) * burstScale;
-    const driftY = Math.sin(angle) * distance * 0.5 + 120 + Math.random() * 120 * burstScale;
+    const driftX =
+      Math.cos(angle) * distance + (Math.random() * 90 - 45) * burstScale;
+    const driftY =
+      Math.sin(angle) * distance * 0.5 + 120 + Math.random() * 120 * burstScale;
 
     return {
       id: `${Date.now()}-${index}-${Math.random().toString(16).slice(2)}`,
@@ -150,7 +172,10 @@ function buildMilestoneFireworkBursts(milestone) {
 
         return {
           id: `${milestone}-${burstIndex}-${index}`,
-          color: milestoneFireworkColors[(burstIndex + index) % milestoneFireworkColors.length],
+          color:
+            milestoneFireworkColors[
+              (burstIndex + index) % milestoneFireworkColors.length
+            ],
           x: Math.cos(angle) * distance + drift,
           y: Math.sin(angle) * distance * 0.9 + drift * 0.5,
           size: 5 + rand() * 5,
@@ -162,25 +187,27 @@ function buildMilestoneFireworkBursts(milestone) {
   });
 }
 
-function normalizeFileName(fileName, fallbackBase = 'image') {
-  const trimmed = (fileName || '').trim();
-  const baseName = trimmed ? trimmed.replace(/\.[^.]+$/, '') : fallbackBase;
+function normalizeFileName(fileName, fallbackBase = "image") {
+  const trimmed = (fileName || "").trim();
+  const baseName = trimmed ? trimmed.replace(/\.[^.]+$/, "") : fallbackBase;
   return `${baseName || fallbackBase}.jpg`;
 }
 
-function getDownloadFileName(fileName, suffix = '') {
+function getDownloadFileName(fileName, suffix = "") {
   const normalized = normalizeFileName(fileName);
-  const baseName = normalized.replace(/\.jpg$/i, '');
+  const baseName = normalized.replace(/\.jpg$/i, "");
   return `${baseName}${suffix}.jpg`;
 }
 
 function formatCount(value) {
-  return new Intl.NumberFormat('vi-VN').format(Number(value) || 0);
+  return new Intl.NumberFormat("vi-VN").format(Number(value) || 0);
 }
 
 function AnimatedCount({ value, duration = 1.5, shouldAnimate }) {
   const count = useMotionValue(0);
-  const rounded = useTransform(count, (latest) => Math.round(latest).toLocaleString('vi-VN'));
+  const rounded = useTransform(count, (latest) =>
+    Math.round(latest).toLocaleString("vi-VN"),
+  );
 
   useEffect(() => {
     if (!shouldAnimate) {
@@ -188,7 +215,10 @@ function AnimatedCount({ value, duration = 1.5, shouldAnimate }) {
       return undefined;
     }
 
-    const animation = animate(count, Number(value) || 0, { duration, ease: 'easeOut' });
+    const animation = animate(count, Number(value) || 0, {
+      duration,
+      ease: "easeOut",
+    });
     return animation.stop;
   }, [count, duration, shouldAnimate, value]);
 
@@ -201,9 +231,9 @@ function getReachedImageMilestone(previousCount, nextCount) {
 
   if (next <= previous) return null;
 
-  const fixedMilestone = DOANTRANG_IMAGE_MILESTONES
-    .filter((milestone) => previous < milestone && next >= milestone)
-    .at(-1);
+  const fixedMilestone = DOANTRANG_IMAGE_MILESTONES.filter(
+    (milestone) => previous < milestone && next >= milestone,
+  ).at(-1);
 
   if (fixedMilestone) {
     return fixedMilestone;
@@ -246,7 +276,7 @@ function DoanTrangCountBoard({
       },
       {
         threshold: 0.35,
-      }
+      },
     );
 
     observer.observe(boardElement);
@@ -258,25 +288,30 @@ function DoanTrangCountBoard({
 
   const rows = [
     {
-      label: 'Tổng ảnh đã tạo',
+      label: "Tổng ảnh đã tạo",
       value: totalCreated,
       isLoading,
-      note: error ? 'Chưa tải được dữ liệu Supabase' : 'Chỉ tính trang Watermark Đoan Trang',
-      tone: error ? 'warning' : 'primary',
+      note: error
+        ? "Chưa tải được dữ liệu Supabase"
+        : "Chỉ tính trang Watermark Đoan Trang",
+      tone: error ? "warning" : "primary",
     },
     {
-      label: 'Ảnh của bạn',
+      label: "Ảnh của bạn",
       value: personalCreated,
       isLoading,
-      note: 'Số ảnh bạn đã tạo trên trình duyệt này',
-      tone: 'success',
+      note: "Số ảnh bạn đã tạo trên trình duyệt này",
+      tone: "success",
     },
     {
-      label: 'Lần tạo gần nhất',
+      label: "Lần tạo gần nhất",
       value: lastCreated,
       isLoading,
-      note: selectedCount > 0 ? `${formatCount(selectedCount)} ảnh đang chọn` : 'Chưa chọn ảnh',
-      tone: 'neutral',
+      note:
+        selectedCount > 0
+          ? `${formatCount(selectedCount)} ảnh đang chọn`
+          : "Chưa chọn ảnh",
+      tone: "neutral",
     },
   ];
 
@@ -294,10 +329,15 @@ function DoanTrangCountBoard({
 
       <div className="dtw-count-grid">
         {rows.map((row) => (
-          <article className={`dtw-count-card dtw-count-card--${row.tone}`} key={row.label}>
+          <article
+            className={`dtw-count-card dtw-count-card--${row.tone}`}
+            key={row.label}
+          >
             <span className="dtw-count-card__label">{row.label}</span>
             <strong>
-              {row.isLoading ? '...' : (
+              {row.isLoading ? (
+                "..."
+              ) : (
                 <AnimatedCount value={row.value} shouldAnimate={isInView} />
               )}
             </strong>
@@ -314,7 +354,11 @@ function DoanTrangMilestoneCelebration({ milestone, justCreated, onClose }) {
   const fireworkBursts = buildMilestoneFireworkBursts(milestone);
 
   return createPortal(
-    <div className="dtw-milestone-backdrop" role="presentation" onPointerDown={onClose}>
+    <div
+      className="dtw-milestone-backdrop"
+      role="presentation"
+      onPointerDown={onClose}
+    >
       <div className="dtw-milestone-fireworks" aria-hidden="true">
         {fireworkBursts.map((burst) => (
           <span
@@ -323,8 +367,8 @@ function DoanTrangMilestoneCelebration({ milestone, justCreated, onClose }) {
             style={{
               left: `${burst.left}%`,
               top: `${burst.top}%`,
-              '--dtw-firework-delay': `${burst.delay}s`,
-              '--dtw-firework-scale': burst.scale,
+              "--dtw-firework-delay": `${burst.delay}s`,
+              "--dtw-firework-scale": burst.scale,
             }}
           >
             {burst.particles.map((particle) => (
@@ -332,9 +376,9 @@ function DoanTrangMilestoneCelebration({ milestone, justCreated, onClose }) {
                 key={particle.id}
                 className="dtw-milestone-spark"
                 style={{
-                  '--dtw-spark-color': particle.color,
-                  '--dtw-spark-size': `${particle.size}px`,
-                  '--dtw-spark-delay': `${particle.delay}s`,
+                  "--dtw-spark-color": particle.color,
+                  "--dtw-spark-size": `${particle.size}px`,
+                  "--dtw-spark-delay": `${particle.delay}s`,
                 }}
                 initial={{
                   x: 0,
@@ -353,7 +397,7 @@ function DoanTrangMilestoneCelebration({ milestone, justCreated, onClose }) {
                 transition={{
                   duration: 1.55,
                   delay: burst.delay + particle.delay,
-                  ease: 'easeOut',
+                  ease: "easeOut",
                 }}
               />
             ))}
@@ -373,7 +417,7 @@ function DoanTrangMilestoneCelebration({ milestone, justCreated, onClose }) {
             <span
               key={index}
               style={{
-                '--dtw-confetti-angle': `${index * 20}deg`,
+                "--dtw-confetti-angle": `${index * 20}deg`,
                 animationDelay: `${index * 28}ms`,
               }}
             />
@@ -385,14 +429,19 @@ function DoanTrangMilestoneCelebration({ milestone, justCreated, onClose }) {
           Bạn đã đạt cột mốc {formatCount(milestone)} ảnh!
         </strong>
         <p>
-          Vừa tạo thêm {formatCount(justCreated)} ảnh watermark. Bộ sưu tập Đoan Trang đang lên mood rất xịn.
+          Vừa tạo thêm {formatCount(justCreated)} ảnh watermark. Bộ sưu tập Đoan
+          Trang đang lên mood rất xịn.
         </p>
-        <button className="dtw-milestone-button" type="button" onClick={onClose}>
+        <button
+          className="dtw-milestone-button"
+          type="button"
+          onClick={onClose}
+        >
           Tiếp tục tạo ảnh
         </button>
       </div>
     </div>,
-    document.body
+    document.body,
   );
 }
 
@@ -407,12 +456,12 @@ function DoanTrangExportSuccessCelebration({ burst, onClose }) {
           className="dtw-export-success-backdrop"
           role="presentation"
           style={{
-            position: 'fixed',
+            position: "fixed",
             inset: 0,
             zIndex: 1150,
-            overflow: 'hidden',
-            background: 'rgba(136, 14, 79, 0.08)',
-            pointerEvents: 'auto',
+            overflow: "hidden",
+            background: "rgba(136, 14, 79, 0.08)",
+            pointerEvents: "auto",
           }}
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
@@ -426,15 +475,15 @@ function DoanTrangExportSuccessCelebration({ burst, onClose }) {
               className="dtw-export-confetti"
               aria-hidden="true"
               style={{
-                position: 'absolute',
-                left: '50%',
-                top: '44%',
+                position: "absolute",
+                left: "50%",
+                top: "44%",
                 width: `${piece.size}px`,
                 height: `${piece.size * 1.45}px`,
                 background: piece.color,
-                borderRadius: '999px',
-                boxShadow: '0 0 0 1px rgba(255, 255, 255, 0.16)',
-                pointerEvents: 'none',
+                borderRadius: "999px",
+                boxShadow: "0 0 0 1px rgba(255, 255, 255, 0.16)",
+                pointerEvents: "none",
               }}
               initial={{
                 x: 0,
@@ -454,7 +503,7 @@ function DoanTrangExportSuccessCelebration({ burst, onClose }) {
               transition={{
                 duration: 1.4,
                 delay: piece.delay,
-                ease: 'easeOut',
+                ease: "easeOut",
               }}
             />
           ))}
@@ -492,7 +541,7 @@ function DoanTrangExportSuccessCelebration({ burst, onClose }) {
         </motion.div>
       )}
     </AnimatePresence>,
-    document.body
+    document.body,
   );
 }
 
@@ -514,7 +563,9 @@ function WatermarkImageZoom({ image, onClose }) {
       >
         <div className="wm-preview-header">
           <div className="wm-preview-title-wrap">
-            <span className="wm-preview-kicker">{image.kicker || 'Xem ảnh'}</span>
+            <span className="wm-preview-kicker">
+              {image.kicker || "Xem ảnh"}
+            </span>
             <strong className="wm-preview-title" title={image.title}>
               {image.title}
             </strong>
@@ -534,7 +585,7 @@ function WatermarkImageZoom({ image, onClose }) {
         </div>
       </div>
     </div>,
-    document.body
+    document.body,
   );
 }
 
@@ -574,7 +625,10 @@ export default function DoanTrangWatermarkPage() {
   const [options, setOptions] = useState(DEFAULT_OPTIONS);
   const [results, setResults] = useState([]);
   const [processing, setProcessing] = useState(false);
-  const [processingProgress, setProcessingProgress] = useState({ current: 0, total: 0 });
+  const [processingProgress, setProcessingProgress] = useState({
+    current: 0,
+    total: 0,
+  });
   const [downloadProgress, setDownloadProgress] = useState(null);
   const [totalCreated, setTotalCreated] = useState(0);
   const [personalCreated, setPersonalCreated] = useState(0);
@@ -582,12 +636,12 @@ export default function DoanTrangWatermarkPage() {
   const [statsLoading, setStatsLoading] = useState(true);
   const [statsError, setStatsError] = useState(null);
   const [zoomImage, setZoomImage] = useState(null);
-  const [heroImageUrl, setHeroImageUrl] = useState('');
-  const [heroImageName, setHeroImageName] = useState('');
-  const [heroImageError, setHeroImageError] = useState('');
+  const [heroImageUrl, setHeroImageUrl] = useState("");
+  const [heroImageName, setHeroImageName] = useState("");
+  const [heroImageError, setHeroImageError] = useState("");
   const [heroImageLoading, setHeroImageLoading] = useState(true);
   const [heroImageUploading, setHeroImageUploading] = useState(false);
-  const [heroImageStorageUrl, setHeroImageStorageUrl] = useState('');
+  const [heroImageStorageUrl, setHeroImageStorageUrl] = useState("");
   const [milestoneCelebration, setMilestoneCelebration] = useState(null);
   const [exportSuccessBurst, setExportSuccessBurst] = useState(null);
   const [createButtonHovered, setCreateButtonHovered] = useState(false);
@@ -617,10 +671,10 @@ export default function DoanTrangWatermarkPage() {
   }, []);
 
   useEffect(() => {
-    document.body.classList.add('dtw-watermark-theme');
+    document.body.classList.add("dtw-watermark-theme");
 
     return () => {
-      document.body.classList.remove('dtw-watermark-theme');
+      document.body.classList.remove("dtw-watermark-theme");
     };
   }, []);
 
@@ -633,7 +687,10 @@ export default function DoanTrangWatermarkPage() {
         setOptions((current) => ({ ...current, ...storedOptions }));
       })
       .catch((error) => {
-        console.warn('[DoanTrangWatermark] Could not load watermark options', error);
+        console.warn(
+          "[DoanTrangWatermark] Could not load watermark options",
+          error,
+        );
       });
 
     return () => {
@@ -644,7 +701,10 @@ export default function DoanTrangWatermarkPage() {
   useEffect(() => {
     const timer = window.setTimeout(() => {
       saveDoanTrangWatermarkOptions(options).catch((error) => {
-        console.warn('[DoanTrangWatermark] Could not save watermark options', error);
+        console.warn(
+          "[DoanTrangWatermark] Could not save watermark options",
+          error,
+        );
       });
     }, 180);
 
@@ -666,7 +726,7 @@ export default function DoanTrangWatermarkPage() {
         }
       })
       .catch((error) => {
-        console.warn('[DoanTrangWatermark] Could not load hero image', error);
+        console.warn("[DoanTrangWatermark] Could not load hero image", error);
       })
       .finally(() => {
         if (isActive) {
@@ -715,17 +775,17 @@ export default function DoanTrangWatermarkPage() {
     if (!zoomImage) return undefined;
 
     const handleEscape = (event) => {
-      if (event.key === 'Escape') {
+      if (event.key === "Escape") {
         closeZoom();
       }
     };
 
-    document.addEventListener('keydown', handleEscape);
-    document.body.classList.add('wm-modal-open');
+    document.addEventListener("keydown", handleEscape);
+    document.body.classList.add("wm-modal-open");
 
     return () => {
-      document.removeEventListener('keydown', handleEscape);
-      document.body.classList.remove('wm-modal-open');
+      document.removeEventListener("keydown", handleEscape);
+      document.body.classList.remove("wm-modal-open");
     };
   }, [closeZoom, zoomImage]);
 
@@ -733,27 +793,30 @@ export default function DoanTrangWatermarkPage() {
     if (!milestoneCelebration) return undefined;
 
     const handleEscape = (event) => {
-      if (event.key === 'Escape') {
+      if (event.key === "Escape") {
         closeMilestoneCelebration();
       }
     };
 
     const timeoutId = window.setTimeout(closeMilestoneCelebration, 6800);
-    document.addEventListener('keydown', handleEscape);
-    document.body.classList.add('wm-modal-open');
+    document.addEventListener("keydown", handleEscape);
+    document.body.classList.add("wm-modal-open");
 
     return () => {
       window.clearTimeout(timeoutId);
-      document.removeEventListener('keydown', handleEscape);
-      document.body.classList.remove('wm-modal-open');
+      document.removeEventListener("keydown", handleEscape);
+      document.body.classList.remove("wm-modal-open");
     };
   }, [closeMilestoneCelebration, milestoneCelebration]);
 
-  useEffect(() => () => {
-    if (heroImageUrl) {
-      URL.revokeObjectURL(heroImageUrl);
-    }
-  }, [heroImageUrl]);
+  useEffect(
+    () => () => {
+      if (heroImageUrl) {
+        URL.revokeObjectURL(heroImageUrl);
+      }
+    },
+    [heroImageUrl],
+  );
 
   useEffect(() => {
     if (!exportSuccessBurst) return undefined;
@@ -768,14 +831,17 @@ export default function DoanTrangWatermarkPage() {
   }, [exportSuccessBurst]);
 
   useEffect(() => {
-    if (typeof Worker === 'undefined') {
+    if (typeof Worker === "undefined") {
       return undefined;
     }
 
     const pendingTasks = pendingWorkerTasksRef.current;
-    const worker = new Worker(new URL('../workers/doanTrangWatermarkWorker.js', import.meta.url), {
-      type: 'module',
-    });
+    const worker = new Worker(
+      new URL("../workers/doanTrangWatermarkWorker.js", import.meta.url),
+      {
+        type: "module",
+      },
+    );
 
     workerRef.current = worker;
 
@@ -792,13 +858,18 @@ export default function DoanTrangWatermarkPage() {
       if (ok) {
         task.resolve(blob);
       } else {
-        task.reject(new Error(error || 'Worker processing failed'));
+        task.reject(new Error(error || "Worker processing failed"));
       }
     };
 
     worker.onerror = (event) => {
-      console.error('[DoanTrangWatermark] Watermark worker failed', event.error || event.message);
-      pendingTasks.forEach(({ reject }) => reject(new Error('Watermark worker crashed')));
+      console.error(
+        "[DoanTrangWatermark] Watermark worker failed",
+        event.error || event.message,
+      );
+      pendingTasks.forEach(({ reject }) =>
+        reject(new Error("Watermark worker crashed")),
+      );
       pendingTasks.clear();
       workerRef.current = null;
     };
@@ -806,84 +877,97 @@ export default function DoanTrangWatermarkPage() {
     return () => {
       worker.terminate();
       workerRef.current = null;
-      pendingTasks.forEach(({ reject }) => reject(new Error('Watermark worker stopped')));
+      pendingTasks.forEach(({ reject }) =>
+        reject(new Error("Watermark worker stopped")),
+      );
       pendingTasks.clear();
     };
   }, []);
 
-  const processWatermarkWithWorker = useCallback(async (sourceFile, activeOptions) => {
-    let activeLogoBlob = logoBlob;
+  const processWatermarkWithWorker = useCallback(
+    async (sourceFile, activeOptions) => {
+      let activeLogoBlob = logoBlob;
 
-    if (!activeLogoBlob && logoUrl) {
-      try {
-        activeLogoBlob = await fetch(logoUrl).then((response) => response.blob());
-      } catch (error) {
-        console.warn('[DoanTrangWatermark] Could not hydrate logo blob for worker', error);
+      if (!activeLogoBlob && logoUrl) {
+        try {
+          activeLogoBlob = await fetch(logoUrl).then((response) =>
+            response.blob(),
+          );
+        } catch (error) {
+          console.warn(
+            "[DoanTrangWatermark] Could not hydrate logo blob for worker",
+            error,
+          );
+        }
       }
-    }
 
-    if (!workerRef.current || !activeLogoBlob) {
-      return processWatermark(sourceFile, logoUrl, activeOptions);
-    }
-
-    const taskId = `dtw-watermark-${Date.now()}-${workerTaskIdRef.current += 1}`;
-
-    return new Promise((resolve, reject) => {
-      pendingWorkerTasksRef.current.set(taskId, { resolve, reject });
-
-      try {
-        workerRef.current.postMessage({
-          id: taskId,
-          type: 'process',
-          payload: {
-            sourceFile,
-            logoBlob: activeLogoBlob,
-            options: activeOptions,
-          },
-        });
-      } catch (error) {
-        pendingWorkerTasksRef.current.delete(taskId);
-        reject(error);
+      if (!workerRef.current || !activeLogoBlob) {
+        return processWatermark(sourceFile, logoUrl, activeOptions);
       }
-    });
-  }, [logoBlob, logoUrl]);
 
-  const resizeBlobWithWorker = useCallback(async (sourceBlob, width, height) => {
-    if (!workerRef.current) {
-      return resizeBlob(sourceBlob, width, height);
-    }
+      const taskId = `dtw-watermark-${Date.now()}-${(workerTaskIdRef.current += 1)}`;
 
-    const taskId = `dtw-resize-${Date.now()}-${workerTaskIdRef.current += 1}`;
+      return new Promise((resolve, reject) => {
+        pendingWorkerTasksRef.current.set(taskId, { resolve, reject });
 
-    return new Promise((resolve, reject) => {
-      pendingWorkerTasksRef.current.set(taskId, { resolve, reject });
+        try {
+          workerRef.current.postMessage({
+            id: taskId,
+            type: "process",
+            payload: {
+              sourceFile,
+              logoBlob: activeLogoBlob,
+              options: activeOptions,
+            },
+          });
+        } catch (error) {
+          pendingWorkerTasksRef.current.delete(taskId);
+          reject(error);
+        }
+      });
+    },
+    [logoBlob, logoUrl],
+  );
 
-      try {
-        workerRef.current.postMessage({
-          id: taskId,
-          type: 'resize',
-          payload: {
-            blob: sourceBlob,
-            width,
-            height,
-          },
-        });
-      } catch (error) {
-        pendingWorkerTasksRef.current.delete(taskId);
-        reject(error);
+  const resizeBlobWithWorker = useCallback(
+    async (sourceBlob, width, height) => {
+      if (!workerRef.current) {
+        return resizeBlob(sourceBlob, width, height);
       }
-    });
-  }, []);
+
+      const taskId = `dtw-resize-${Date.now()}-${(workerTaskIdRef.current += 1)}`;
+
+      return new Promise((resolve, reject) => {
+        pendingWorkerTasksRef.current.set(taskId, { resolve, reject });
+
+        try {
+          workerRef.current.postMessage({
+            id: taskId,
+            type: "resize",
+            payload: {
+              blob: sourceBlob,
+              width,
+              height,
+            },
+          });
+        } catch (error) {
+          pendingWorkerTasksRef.current.delete(taskId);
+          reject(error);
+        }
+      });
+    },
+    [],
+  );
 
   const handleHeroImageChange = async (event) => {
     const file = event.target.files?.[0];
-    setHeroImageError('');
+    setHeroImageError("");
 
     if (!file) return;
 
-    if (!file.type.startsWith('image/')) {
-      setHeroImageError('Vui lòng chọn file ảnh hợp lệ.');
-      event.target.value = '';
+    if (!file.type.startsWith("image/")) {
+      setHeroImageError("Vui lòng chọn file ảnh hợp lệ.");
+      event.target.value = "";
       return;
     }
 
@@ -897,7 +981,7 @@ export default function DoanTrangWatermarkPage() {
 
       setHeroImageUrl(nextUrl);
       setHeroImageName(file.name);
-      setHeroImageStorageUrl('');
+      setHeroImageStorageUrl("");
       setHeroImageUploading(true);
       const uploadResult = await uploadDoanTrangHeroPreview({
         userId: user?.id,
@@ -909,20 +993,23 @@ export default function DoanTrangWatermarkPage() {
         return;
       }
 
-      setHeroImageStorageUrl(uploadResult.data?.image_url || '');
+      setHeroImageStorageUrl(uploadResult.data?.image_url || "");
     } catch (error) {
-      console.error('[DoanTrangWatermark] Could not save hero image', error);
-      setHeroImageError('Chưa lưu được ảnh preview vào IndexedDB. Bạn thử lại nhé.');
+      console.error("[DoanTrangWatermark] Could not save hero image", error);
+      setHeroImageError(
+        "Chưa lưu được ảnh preview vào IndexedDB. Bạn thử lại nhé.",
+      );
     } finally {
       setHeroImageUploading(false);
-      event.target.value = '';
+      event.target.value = "";
     }
   };
 
   const handleCreate = async () => {
-    if (!logoUrl) return alert('Vui lòng chọn logo trước.');
-    if (!images.length) return alert('Vui lòng chọn ít nhất 1 ảnh.');
-    if (!visitorId) return alert('Đang khởi tạo mã người dùng, bạn thử lại sau vài giây.');
+    if (!logoUrl) return alert("Vui lòng chọn logo trước.");
+    if (!images.length) return alert("Vui lòng chọn ít nhất 1 ảnh.");
+    if (!visitorId)
+      return alert("Đang khởi tạo mã người dùng, bạn thử lại sau vài giây.");
 
     setProcessing(true);
     setProcessingProgress({ current: 0, total: images.length });
@@ -935,7 +1022,10 @@ export default function DoanTrangWatermarkPage() {
         const fileName = buildFileName(options.productName, i, images.length);
         newResults.push({ url, blob, fileName });
       } catch (error) {
-        console.error(`[DoanTrangWatermark] Error processing image ${i}:`, error);
+        console.error(
+          `[DoanTrangWatermark] Error processing image ${i}:`,
+          error,
+        );
       }
 
       setProcessingProgress({ current: i + 1, total: images.length });
@@ -958,10 +1048,16 @@ export default function DoanTrangWatermarkPage() {
       });
 
       if (result.error) {
-        console.warn('[DoanTrangWatermark] Could not save image count', result.error);
+        console.warn(
+          "[DoanTrangWatermark] Could not save image count",
+          result.error,
+        );
       } else {
         const nextPersonalCreated = personalCreated + newResults.length;
-        const reachedMilestone = getReachedImageMilestone(personalCreated, nextPersonalCreated);
+        const reachedMilestone = getReachedImageMilestone(
+          personalCreated,
+          nextPersonalCreated,
+        );
 
         setTotalCreated((current) => current + newResults.length);
         setPersonalCreated(nextPersonalCreated);
@@ -978,144 +1074,159 @@ export default function DoanTrangWatermarkPage() {
     }
 
     setTimeout(() => {
-      document.getElementById('dtw-gallery')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      document
+        .getElementById("dtw-gallery")
+        ?.scrollIntoView({ behavior: "smooth", block: "start" });
     }, 150);
   };
 
-  const handleDownloadAll = useCallback(async (mode) => {
-    if (!results.length) return;
+  const handleDownloadAll = useCallback(
+    async (mode) => {
+      if (!results.length) return;
 
-    const shouldZip = results.length > 5;
-    const exportBurst = {
-      id: `${Date.now()}-${mode}-${results.length}`,
-      count: results.length,
-      mode,
-    };
+      const shouldZip = results.length > 5;
+      const exportBurst = {
+        id: `${Date.now()}-${mode}-${results.length}`,
+        count: results.length,
+        mode,
+      };
 
-    const prepareBlob = async (result) => {
-      let blob = result.blob;
-      let fileName = getDownloadFileName(result.fileName);
+      const prepareBlob = async (result) => {
+        let blob = result.blob;
+        let fileName = getDownloadFileName(result.fileName);
 
-      if (mode === '800x600') {
-        try {
-          blob = await resizeBlobWithWorker(blob, 800, 600);
-          fileName = getDownloadFileName(result.fileName);
-        } catch {
-          /* Use original blob. */
+        if (mode === "800x600") {
+          try {
+            blob = await resizeBlobWithWorker(blob, 800, 600);
+            fileName = getDownloadFileName(result.fileName);
+          } catch {
+            /* Use original blob. */
+          }
+        } else if (mode === "ImageCompress") {
+          try {
+            blob = await compressAndResizeBlob(blob, 800, 600, 100);
+            fileName = getDownloadFileName(result.fileName);
+          } catch {
+            /* Use original blob. */
+          }
         }
-      } else if (mode === 'ImageCompress') {
-        try {
-          blob = await compressAndResizeBlob(blob, 800, 600, 100);
-          fileName = getDownloadFileName(result.fileName);
-        } catch {
-          /* Use original blob. */
-        }
-      }
 
-      return { blob, fileName };
-    };
+        return { blob, fileName };
+      };
 
-    try {
-      if (shouldZip) {
-        const zip = new JSZip();
-        const total = results.length;
+      try {
+        if (shouldZip) {
+          const zip = new JSZip();
+          const total = results.length;
 
-        setDownloadProgress({
-          current: 0,
-          total,
-          phase: 'preparing',
-          percent: 0,
-          message: 'Đang gom ảnh vào một file .zip',
-        });
-
-        for (let i = 0; i < results.length; i++) {
-          const prepared = await prepareBlob(results[i]);
-          zip.file(prepared.fileName, prepared.blob);
           setDownloadProgress({
-            current: i + 1,
+            current: 0,
             total,
-            phase: 'preparing',
-            percent: Math.round(((i + 1) / total) * 100),
-            message: `Đã thêm ${i + 1}/${total} ảnh vào gói tải`,
+            phase: "preparing",
+            percent: 0,
+            message: "Đang gom ảnh vào một file .zip",
           });
-        }
 
-        const zipBlob = await zip.generateAsync(
-          { type: 'blob', compression: 'DEFLATE', compressionOptions: { level: 6 } },
-          (metadata) => {
+          for (let i = 0; i < results.length; i++) {
+            const prepared = await prepareBlob(results[i]);
+            zip.file(prepared.fileName, prepared.blob);
             setDownloadProgress({
-              current: total,
+              current: i + 1,
               total,
-              phase: 'compressing',
-              percent: Math.max(0, Math.min(100, Math.round(metadata.percent || 0))),
-              message: 'Đang nén file .zip trước khi tải xuống',
+              phase: "preparing",
+              percent: Math.round(((i + 1) / total) * 100),
+              message: `Đã thêm ${i + 1}/${total} ảnh vào gói tải`,
             });
           }
-        );
 
-        const zipName = `doan-trang-watermark-${new Date().toISOString().slice(0, 10)}.zip`;
-        const anchor = document.createElement('a');
-        anchor.href = URL.createObjectURL(zipBlob);
-        anchor.download = zipName;
-        anchor.click();
-        window.setTimeout(() => URL.revokeObjectURL(anchor.href), 1500);
-        setDownloadProgress({
-          current: total,
-          total,
-          phase: 'complete',
-          percent: 100,
-          message: 'Đã tạo file zip, trình duyệt đang tải xuống',
-        });
-      } else {
-        const total = results.length;
+          const zipBlob = await zip.generateAsync(
+            {
+              type: "blob",
+              compression: "DEFLATE",
+              compressionOptions: { level: 6 },
+            },
+            (metadata) => {
+              setDownloadProgress({
+                current: total,
+                total,
+                phase: "compressing",
+                percent: Math.max(
+                  0,
+                  Math.min(100, Math.round(metadata.percent || 0)),
+                ),
+                message: "Đang nén file .zip trước khi tải xuống",
+              });
+            },
+          );
 
-        setDownloadProgress({
-          current: 0,
-          total,
-          phase: 'downloading',
-          percent: 0,
-          message: 'Đang tải từng ảnh xuống',
-        });
-
-        for (let i = 0; i < results.length; i++) {
-          const prepared = await prepareBlob(results[i]);
-          const anchor = document.createElement('a');
-          const objectUrl = URL.createObjectURL(prepared.blob);
-          anchor.href = objectUrl;
-          anchor.download = prepared.fileName;
+          const zipName = `doan-trang-watermark-${Date.now()}.zip`;
+          const anchor = document.createElement("a");
+          anchor.href = URL.createObjectURL(zipBlob);
+          anchor.download = zipName;
           anchor.click();
-          window.setTimeout(() => URL.revokeObjectURL(objectUrl), 1500);
+          window.setTimeout(() => URL.revokeObjectURL(anchor.href), 1500);
+          setDownloadProgress({
+            current: total,
+            total,
+            phase: "complete",
+            percent: 100,
+            message: "Đã tạo file zip, trình duyệt đang tải xuống",
+          });
+        } else {
+          const total = results.length;
 
           setDownloadProgress({
-            current: i + 1,
+            current: 0,
             total,
-            phase: 'downloading',
-            percent: Math.round(((i + 1) / total) * 100),
-            message: `Đã tải ${i + 1}/${total} ảnh`,
+            phase: "downloading",
+            percent: 0,
+            message: "Đang tải từng ảnh xuống",
           });
 
-          await new Promise((resolve) => setTimeout(resolve, 80));
-        }
-      }
+          for (let i = 0; i < results.length; i++) {
+            const prepared = await prepareBlob(results[i]);
+            const anchor = document.createElement("a");
+            const objectUrl = URL.createObjectURL(prepared.blob);
+            anchor.href = objectUrl;
+            anchor.download = prepared.fileName;
+            anchor.click();
+            window.setTimeout(() => URL.revokeObjectURL(objectUrl), 1500);
 
-      setExportSuccessBurst(exportBurst);
-    } finally {
+            setDownloadProgress({
+              current: i + 1,
+              total,
+              phase: "downloading",
+              percent: Math.round(((i + 1) / total) * 100),
+              message: `Đã tải ${i + 1}/${total} ảnh`,
+            });
+
+            await new Promise((resolve) => setTimeout(resolve, 80));
+          }
+        }
+
+        setExportSuccessBurst(exportBurst);
+      } finally {
+        if (downloadProgressTimerRef.current) {
+          window.clearTimeout(downloadProgressTimerRef.current);
+        }
+
+        downloadProgressTimerRef.current = window.setTimeout(() => {
+          setDownloadProgress(null);
+          downloadProgressTimerRef.current = null;
+        }, 1400);
+      }
+    },
+    [results, resizeBlobWithWorker],
+  );
+
+  useEffect(
+    () => () => {
       if (downloadProgressTimerRef.current) {
         window.clearTimeout(downloadProgressTimerRef.current);
       }
-
-      downloadProgressTimerRef.current = window.setTimeout(() => {
-        setDownloadProgress(null);
-        downloadProgressTimerRef.current = null;
-      }, 1400);
-    }
-  }, [results, resizeBlobWithWorker]);
-
-  useEffect(() => () => {
-    if (downloadProgressTimerRef.current) {
-      window.clearTimeout(downloadProgressTimerRef.current);
-    }
-  }, []);
+    },
+    [],
+  );
 
   const handleClear = useCallback(() => {
     results.forEach((result) => URL.revokeObjectURL(result.url));
@@ -1123,26 +1234,30 @@ export default function DoanTrangWatermarkPage() {
   }, [results]);
 
   const handleRenameResult = useCallback((index, nextName) => {
-    setResults((current) => current.map((result, resultIndex) => (
-      resultIndex === index ? { ...result, fileName: nextName } : result
-    )));
+    setResults((current) =>
+      current.map((result, resultIndex) =>
+        resultIndex === index ? { ...result, fileName: nextName } : result,
+      ),
+    );
   }, []);
 
   useEffect(() => {
     const shell = imageDropzoneShellRef.current;
     if (!shell) return undefined;
 
-    const dropzoneIcon = shell.querySelector('.wm-dropzone-icon');
+    const dropzoneIcon = shell.querySelector(".wm-dropzone-icon");
     if (!dropzoneIcon) return undefined;
 
     if (isDragging) {
       const animation = dropzoneIcon.animate(
-        iconVariants.dragging.y.map((position) => ({ transform: `translateY(${position}px)` })),
+        iconVariants.dragging.y.map((position) => ({
+          transform: `translateY(${position}px)`,
+        })),
         {
           duration: iconVariants.dragging.transition.duration * 1000,
           iterations: Infinity,
-          easing: 'ease-in-out',
-        }
+          easing: "ease-in-out",
+        },
       );
 
       return () => animation.cancel();
@@ -1177,14 +1292,14 @@ export default function DoanTrangWatermarkPage() {
           {
             duration: 340,
             delay: index * 80,
-            fill: 'both',
-            easing: 'cubic-bezier(0.16, 1, 0.3, 1)',
-          }
+            fill: "both",
+            easing: "cubic-bezier(0.16, 1, 0.3, 1)",
+          },
         );
       });
     };
 
-    applyStaggerReveal('.wm-thumb');
+    applyStaggerReveal(".wm-thumb");
     return undefined;
   }, [images]);
 
@@ -1192,7 +1307,7 @@ export default function DoanTrangWatermarkPage() {
     const shell = galleryShellRef.current;
     if (!shell) return undefined;
 
-    const cards = Array.from(shell.querySelectorAll('.wm-result-card'));
+    const cards = Array.from(shell.querySelectorAll(".wm-result-card"));
     cards.forEach((card, index) => {
       card.animate(
         [
@@ -1208,9 +1323,9 @@ export default function DoanTrangWatermarkPage() {
         {
           duration: 340,
           delay: index * 80,
-          fill: 'both',
-          easing: 'cubic-bezier(0.16, 1, 0.3, 1)',
-        }
+          fill: "both",
+          easing: "cubic-bezier(0.16, 1, 0.3, 1)",
+        },
       );
     });
 
@@ -1219,46 +1334,60 @@ export default function DoanTrangWatermarkPage() {
 
   const isImageDrag = useCallback((event) => {
     const types = Array.from(event.dataTransfer?.types || []);
-    return types.includes('Files');
+    return types.includes("Files");
   }, []);
 
-  const handleImageDropzoneDragEnter = useCallback((event) => {
-    if (!isImageDrag(event)) return;
-    event.preventDefault();
-    imageDragDepthRef.current += 1;
-    setIsDragging(true);
-  }, [isImageDrag]);
+  const handleImageDropzoneDragEnter = useCallback(
+    (event) => {
+      if (!isImageDrag(event)) return;
+      event.preventDefault();
+      imageDragDepthRef.current += 1;
+      setIsDragging(true);
+    },
+    [isImageDrag],
+  );
 
-  const handleImageDropzoneDragOver = useCallback((event) => {
-    if (!isImageDrag(event)) return;
-    event.preventDefault();
-    setIsDragging(true);
-  }, [isImageDrag]);
+  const handleImageDropzoneDragOver = useCallback(
+    (event) => {
+      if (!isImageDrag(event)) return;
+      event.preventDefault();
+      setIsDragging(true);
+    },
+    [isImageDrag],
+  );
 
-  const handleImageDropzoneDragLeave = useCallback((event) => {
-    if (!isImageDrag(event)) return;
-    event.preventDefault();
-    imageDragDepthRef.current = Math.max(0, imageDragDepthRef.current - 1);
-    if (imageDragDepthRef.current === 0) {
+  const handleImageDropzoneDragLeave = useCallback(
+    (event) => {
+      if (!isImageDrag(event)) return;
+      event.preventDefault();
+      imageDragDepthRef.current = Math.max(0, imageDragDepthRef.current - 1);
+      if (imageDragDepthRef.current === 0) {
+        setIsDragging(false);
+      }
+    },
+    [isImageDrag],
+  );
+
+  const handleImageDropzoneDrop = useCallback(
+    (event) => {
+      if (!isImageDrag(event)) return;
+      event.preventDefault();
+      imageDragDepthRef.current = 0;
       setIsDragging(false);
-    }
-  }, [isImageDrag]);
-
-  const handleImageDropzoneDrop = useCallback((event) => {
-    if (!isImageDrag(event)) return;
-    event.preventDefault();
-    imageDragDepthRef.current = 0;
-    setIsDragging(false);
-  }, [isImageDrag]);
+    },
+    [isImageDrag],
+  );
 
   const hasCreateInputs = Boolean(logoUrl && images.length > 0);
   const canCreate = hasCreateInputs && !processing;
-  const createHeartIcon = hasCreateInputs && createButtonHovered ? '♥' : '♡';
+  const createHeartIcon = hasCreateInputs && createButtonHovered ? "♥" : "♡";
+  const shouldShowGallery =
+    results.length > 0 || processing || Boolean(downloadProgress);
 
   return (
     <>
       <Helmet>
-        <title>Watermark just for Đoan Trang</title>  
+        <title>Watermark just for Đoan Trang</title>
         <meta
           name="description"
           content="Tạo watermark ảnh phong cách nữ tính, màu hồng tinh tế, dễ dùng và tải xuống nhanh chóng."
@@ -1295,7 +1424,8 @@ export default function DoanTrangWatermarkPage() {
                 <span> Đoan Trang</span>
               </h1>
               <p>
-                Chọn logo, chọn nhiều ảnh, tinh chỉnh vị trí và xuất gallery giống trang watermark chính.
+                Chọn logo, chọn nhiều ảnh, tinh chỉnh vị trí và xuất gallery
+                giống trang watermark chính.
               </p>
               <div className="dtw-hero-chips" aria-hidden="true">
                 <span>Logo watermark</span>
@@ -1304,7 +1434,9 @@ export default function DoanTrangWatermarkPage() {
               </div>
             </div>
 
-            <div className={`dtw-hero-preview ${heroImageUrl ? 'has-image' : 'is-empty'}${heroImageLoading ? ' is-loading' : ''}`}>
+            <div
+              className={`dtw-hero-preview ${heroImageUrl ? "has-image" : "is-empty"}${heroImageLoading ? " is-loading" : ""}`}
+            >
               <input
                 ref={heroInputRef}
                 className="dtw-hero-file-input"
@@ -1320,14 +1452,19 @@ export default function DoanTrangWatermarkPage() {
                       <button
                         className="dtw-hero-image-button"
                         type="button"
-                        onClick={() => openZoom({
-                          url: heroImageUrl,
-                          title: heroImageName || 'Ảnh preview Đoan Trang',
-                          kicker: 'Hero preview',
-                        })}
+                        onClick={() =>
+                          openZoom({
+                            url: heroImageUrl,
+                            title: heroImageName || "Ảnh preview Đoan Trang",
+                            kicker: "Hero preview",
+                          })
+                        }
                         aria-label="Phóng to ảnh preview Đoan Trang"
                       >
-                        <img src={heroImageUrl} alt={heroImageName || 'Ảnh preview Đoan Trang'} />
+                        <img
+                          src={heroImageUrl}
+                          alt={heroImageName || "Ảnh preview Đoan Trang"}
+                        />
                       </button>
                       <button
                         className="dtw-hero-change-button"
@@ -1341,7 +1478,9 @@ export default function DoanTrangWatermarkPage() {
                     <HeroPreviewSkeleton />
                   ) : (
                     <div className="dtw-hero-empty">
-                      <span className="dtw-hero-empty-mark" aria-hidden="true">DT</span>
+                      <span className="dtw-hero-empty-mark" aria-hidden="true">
+                        DT
+                      </span>
                       <strong>Chưa có ảnh preview</strong>
                       <button
                         className="dtw-hero-upload-button"
@@ -1362,14 +1501,14 @@ export default function DoanTrangWatermarkPage() {
                   {heroImageError && heroImageUrl
                     ? heroImageError
                     : heroImageUploading
-                    ? 'Đang tải preview lên Supabase'
-                    : heroImageStorageUrl
-                      ? 'Preview đã lưu Supabase'
-                      : heroImageUrl
-                        ? 'Ảnh preview đã lưu trình duyệt'
-                        : logoUrl
-                          ? 'Logo đã sẵn sàng'
-                          : 'Chưa chọn logo'}
+                      ? "Đang tải preview lên Supabase"
+                      : heroImageStorageUrl
+                        ? "Preview đã lưu Supabase"
+                        : heroImageUrl
+                          ? "Ảnh preview đã lưu trình duyệt"
+                          : logoUrl
+                            ? "Logo đã sẵn sàng"
+                            : "Chưa chọn logo"}
                 </span>
               </div>
             </div>
@@ -1385,7 +1524,10 @@ export default function DoanTrangWatermarkPage() {
             dashboardHref="/watermark/dashboard"
           />
 
-          <section className="wm-layout dtw-layout" aria-label="Công cụ tạo watermark Đoan Trang">
+          <section
+            className="wm-layout dtw-layout"
+            aria-label="Công cụ tạo watermark Đoan Trang"
+          >
             <div className="wm-panel-column wm-panel-column--narrow">
               <motion.div
                 ref={imageDropzoneShellRef}
@@ -1403,13 +1545,13 @@ export default function DoanTrangWatermarkPage() {
 
               <motion.div
                 ref={imageDropzoneShellRef}
-                className={`wm-card dtw-dropzone-shell${isDragging ? ' dtw-dropzone-shell--dragging' : ''}`}
+                className={`wm-card dtw-dropzone-shell${isDragging ? " dtw-dropzone-shell--dragging" : ""}`}
                 onDragEnter={handleImageDropzoneDragEnter}
                 onDragOver={handleImageDropzoneDragOver}
                 onDragLeave={handleImageDropzoneDragLeave}
                 onDrop={handleImageDropzoneDrop}
                 variants={containerVariants}
-                animate={isDragging ? 'dragging' : 'idle'}
+                animate={isDragging ? "dragging" : "idle"}
               >
                 <ImageUploader
                   images={images}
@@ -1434,14 +1576,18 @@ export default function DoanTrangWatermarkPage() {
                     onClick={handleCreate}
                     disabled={!canCreate}
                     variants={buttonVariants}
-                    whileHover={canCreate ? 'hover' : undefined}
-                    whileTap={canCreate ? 'tap' : undefined}
+                    whileHover={canCreate ? "hover" : undefined}
+                    whileTap={canCreate ? "tap" : undefined}
                     onHoverStart={() => setCreateButtonHovered(true)}
                     onHoverEnd={() => setCreateButtonHovered(false)}
                   >
                     {processing ? (
                       <>
-                        <span className="wm-spinner" role="status" aria-label="Đang xử lý" />
+                        <span
+                          className="wm-spinner"
+                          role="status"
+                          aria-label="Đang xử lý"
+                        />
                         Đang xử lý...
                       </>
                     ) : (
@@ -1459,15 +1605,20 @@ export default function DoanTrangWatermarkPage() {
                   </motion.button>
 
                   <span className="wm-create-hint">
-                    {!logoUrl && 'Chưa có logo · '}
-                    {images.length === 0 ? 'Chưa có ảnh nào' : `${images.length} ảnh đã chọn`}
+                    {!logoUrl && "Chưa có logo · "}
+                    {images.length === 0
+                      ? "Chưa có ảnh nào"
+                      : `${images.length} ảnh đã chọn`}
                   </span>
                 </div>
 
                 {!logoUrl && (
                   <div className="wm-tip-alert">
-                    <span className="wm-inline-icon" aria-hidden="true">◇</span>
-                    Logo sẽ được lưu tự động vào trình duyệt để lần sau mở trang vẫn còn sẵn.
+                    <span className="wm-inline-icon" aria-hidden="true">
+                      ◇
+                    </span>
+                    Logo sẽ được lưu tự động vào trình duyệt để lần sau mở trang
+                    vẫn còn sẵn.
                   </div>
                 )}
               </div>
@@ -1479,7 +1630,7 @@ export default function DoanTrangWatermarkPage() {
               ref={galleryShellRef}
               variants={galleryVariants}
               initial="hidden"
-              animate={results.length > 0 ? 'visible' : 'hidden'}
+              animate={shouldShowGallery ? "visible" : "hidden"}
             >
               <WatermarkGallery
                 results={results}
