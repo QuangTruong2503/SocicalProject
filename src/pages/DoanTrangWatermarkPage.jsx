@@ -812,6 +812,12 @@ export default function DoanTrangWatermarkPage() {
   const handleDownloadAll = useCallback(async (mode) => {
     if (!results.length) return;
 
+    setExportSuccessBurst({
+      id: `${Date.now()}-${mode}-${results.length}`,
+      count: results.length,
+      mode,
+    });
+
     for (const result of results) {
       let blob = result.blob;
       let fileName = getDownloadFileName(result.fileName);
@@ -838,12 +844,6 @@ export default function DoanTrangWatermarkPage() {
       anchor.click();
       await new Promise((resolve) => setTimeout(resolve, 80));
     }
-
-    setExportSuccessBurst({
-      id: `${Date.now()}-${mode}-${results.length}`,
-      count: results.length,
-      mode,
-    });
   }, [results]);
 
   const handleClear = useCallback(() => {
