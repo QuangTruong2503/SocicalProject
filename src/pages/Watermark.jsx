@@ -58,7 +58,6 @@ function WatermarkCountBoard({
   selectedCount,
   isLoading,
   error,
-  dashboardHref,
 }) {
   const rows = [
     {
@@ -87,16 +86,6 @@ function WatermarkCountBoard({
         <div>
           <span className="wm-count-board__kicker">Ảnh Đã Tạo</span>
           <h2>Ảnh Đã Tạo</h2>
-        </div>
-        <div className="wm-count-board__actions">
-          {dashboardHref && (
-            <Link className="wm-count-board__link" to={dashboardHref}>
-              Mở dashboard
-            </Link>
-          )}
-          <span className={`wm-count-board__status ${error ? 'is-warning' : 'is-live'}`}>
-            {error ? 'Chưa đồng bộ' : 'Đang đồng bộ'}
-          </span>
         </div>
       </div>
 

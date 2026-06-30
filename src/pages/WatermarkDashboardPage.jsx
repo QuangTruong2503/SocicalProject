@@ -205,9 +205,6 @@ export default function WatermarkDashboardPage() {
                 <Link className="wd-solid-btn" to="/watermark">
                   Mở Watermark
                 </Link>
-                <Link className="wd-ghost-btn" to="/watermark/doantrang">
-                  Mở Đoan Trang
-                </Link>
               </div>
             </div>
 

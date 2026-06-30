@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { Helmet } from 'react-helmet-async';
 import { Link } from 'react-router-dom';
 import { AnimatePresence, animate, motion, useMotionValue, useTransform } from 'framer-motion';
+import JSZip from 'jszip';
 import LogoUploader from '../components/watermark/LogoUploader';
 import ImageUploader from '../components/watermark/ImageUploader';
 import WatermarkControls from '../components/watermark/WatermarkControls';
@@ -564,6 +565,7 @@ export default function DoanTrangWatermarkPage() {
   const workerRef = useRef(null);
   const workerTaskIdRef = useRef(0);
   const pendingWorkerTasksRef = useRef(new Map());
+  const downloadProgressTimerRef = useRef(null);
   const imageDragDepthRef = useRef(0);
   const [logoUrl, setLogoUrl] = useState(null);
   const [logoName, setLogoName] = useState(null);
@@ -572,6 +574,8 @@ export default function DoanTrangWatermarkPage() {
   const [options, setOptions] = useState(DEFAULT_OPTIONS);
   const [results, setResults] = useState([]);
   const [processing, setProcessing] = useState(false);
+  const [processingProgress, setProcessingProgress] = useState({ current: 0, total: 0 });
+  const [downloadProgress, setDownloadProgress] = useState(null);
   const [totalCreated, setTotalCreated] = useState(0);
   const [personalCreated, setPersonalCreated] = useState(0);
   const [lastCreated, setLastCreated] = useState(0);
@@ -921,6 +925,7 @@ export default function DoanTrangWatermarkPage() {
     if (!visitorId) return alert('Đang khởi tạo mã người dùng, bạn thử lại sau vài giây.');
 
     setProcessing(true);
+    setProcessingProgress({ current: 0, total: images.length });
     const newResults = [];
 
     for (let i = 0; i < images.length; i++) {
@@ -932,6 +937,8 @@ export default function DoanTrangWatermarkPage() {
       } catch (error) {
         console.error(`[DoanTrangWatermark] Error processing image ${i}:`, error);
       }
+
+      setProcessingProgress({ current: i + 1, total: images.length });
     }
 
     setResults((current) => {
@@ -978,13 +985,14 @@ export default function DoanTrangWatermarkPage() {
   const handleDownloadAll = useCallback(async (mode) => {
     if (!results.length) return;
 
-    setExportSuccessBurst({
+    const shouldZip = results.length > 5;
+    const exportBurst = {
       id: `${Date.now()}-${mode}-${results.length}`,
       count: results.length,
       mode,
-    });
+    };
 
-    for (const result of results) {
+    const prepareBlob = async (result) => {
       let blob = result.blob;
       let fileName = getDownloadFileName(result.fileName);
 
@@ -1004,13 +1012,110 @@ export default function DoanTrangWatermarkPage() {
         }
       }
 
-      const anchor = document.createElement('a');
-      anchor.href = URL.createObjectURL(blob);
-      anchor.download = fileName;
-      anchor.click();
-      await new Promise((resolve) => setTimeout(resolve, 80));
+      return { blob, fileName };
+    };
+
+    try {
+      if (shouldZip) {
+        const zip = new JSZip();
+        const total = results.length;
+
+        setDownloadProgress({
+          current: 0,
+          total,
+          phase: 'preparing',
+          percent: 0,
+          message: 'Đang gom ảnh vào một file .zip',
+        });
+
+        for (let i = 0; i < results.length; i++) {
+          const prepared = await prepareBlob(results[i]);
+          zip.file(prepared.fileName, prepared.blob);
+          setDownloadProgress({
+            current: i + 1,
+            total,
+            phase: 'preparing',
+            percent: Math.round(((i + 1) / total) * 100),
+            message: `Đã thêm ${i + 1}/${total} ảnh vào gói tải`,
+          });
+        }
+
+        const zipBlob = await zip.generateAsync(
+          { type: 'blob', compression: 'DEFLATE', compressionOptions: { level: 6 } },
+          (metadata) => {
+            setDownloadProgress({
+              current: total,
+              total,
+              phase: 'compressing',
+              percent: Math.max(0, Math.min(100, Math.round(metadata.percent || 0))),
+              message: 'Đang nén file .zip trước khi tải xuống',
+            });
+          }
+        );
+
+        const zipName = `doan-trang-watermark-${new Date().toISOString().slice(0, 10)}.zip`;
+        const anchor = document.createElement('a');
+        anchor.href = URL.createObjectURL(zipBlob);
+        anchor.download = zipName;
+        anchor.click();
+        window.setTimeout(() => URL.revokeObjectURL(anchor.href), 1500);
+        setDownloadProgress({
+          current: total,
+          total,
+          phase: 'complete',
+          percent: 100,
+          message: 'Đã tạo file zip, trình duyệt đang tải xuống',
+        });
+      } else {
+        const total = results.length;
+
+        setDownloadProgress({
+          current: 0,
+          total,
+          phase: 'downloading',
+          percent: 0,
+          message: 'Đang tải từng ảnh xuống',
+        });
+
+        for (let i = 0; i < results.length; i++) {
+          const prepared = await prepareBlob(results[i]);
+          const anchor = document.createElement('a');
+          const objectUrl = URL.createObjectURL(prepared.blob);
+          anchor.href = objectUrl;
+          anchor.download = prepared.fileName;
+          anchor.click();
+          window.setTimeout(() => URL.revokeObjectURL(objectUrl), 1500);
+
+          setDownloadProgress({
+            current: i + 1,
+            total,
+            phase: 'downloading',
+            percent: Math.round(((i + 1) / total) * 100),
+            message: `Đã tải ${i + 1}/${total} ảnh`,
+          });
+
+          await new Promise((resolve) => setTimeout(resolve, 80));
+        }
+      }
+
+      setExportSuccessBurst(exportBurst);
+    } finally {
+      if (downloadProgressTimerRef.current) {
+        window.clearTimeout(downloadProgressTimerRef.current);
+      }
+
+      downloadProgressTimerRef.current = window.setTimeout(() => {
+        setDownloadProgress(null);
+        downloadProgressTimerRef.current = null;
+      }, 1400);
     }
   }, [results, resizeBlobWithWorker]);
+
+  useEffect(() => () => {
+    if (downloadProgressTimerRef.current) {
+      window.clearTimeout(downloadProgressTimerRef.current);
+    }
+  }, []);
 
   const handleClear = useCallback(() => {
     results.forEach((result) => URL.revokeObjectURL(result.url));
@@ -1310,6 +1415,8 @@ export default function DoanTrangWatermarkPage() {
                   images={images}
                   onImagesChange={setImages}
                   onImagePreview={openZoom}
+                  logoUrl={logoUrl}
+                  options={options}
                 />
               </motion.div>
             </div>
@@ -1380,6 +1487,8 @@ export default function DoanTrangWatermarkPage() {
                 onDownloadAll={handleDownloadAll}
                 onRenameFile={handleRenameResult}
                 isProcessing={processing}
+                processingProgress={processingProgress}
+                downloadProgress={downloadProgress}
               />
             </motion.div>
           </div>

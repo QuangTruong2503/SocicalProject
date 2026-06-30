@@ -14,6 +14,8 @@ export default function WatermarkGallery({
   onDownloadAll,
   onRenameFile,
   isProcessing,
+  processingProgress,
+  downloadProgress,
 }) {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [previewResult, setPreviewResult] = useState(null);
@@ -119,7 +121,7 @@ export default function WatermarkGallery({
   }, [isVirtualized, results.length]);
 
   const virtualizedWindow = useMemo(() => {
-    if (!isVirtualized) {
+    if (!isVirtualized || viewportSize.width === 0 || viewportSize.height === 0) {
       return {
         startIndex: 0,
         endIndex: results.length,
@@ -155,6 +157,20 @@ export default function WatermarkGallery({
   const visibleResults = isVirtualized
     ? results.slice(virtualizedWindow.startIndex, virtualizedWindow.endIndex)
     : results;
+  const progressTotal = Number(processingProgress?.total) || 0;
+  const progressCurrent = Math.min(
+    Number(processingProgress?.current) || 0,
+    progressTotal || Number(processingProgress?.current) || 0
+  );
+  const progressPercent = progressTotal > 0 ? Math.round((progressCurrent / progressTotal) * 100) : 0;
+  const downloadTotal = Number(downloadProgress?.total) || 0;
+  const downloadCurrent = Math.min(
+    Number(downloadProgress?.current) || 0,
+    downloadTotal || Number(downloadProgress?.current) || 0
+  );
+  const downloadPercent = Number(downloadProgress?.percent) || (downloadTotal > 0
+    ? Math.round((downloadCurrent / downloadTotal) * 100)
+    : 0);
 
   const handleDownload = (mode) => {
     onDownloadAll(mode);
@@ -250,8 +266,39 @@ export default function WatermarkGallery({
 
       {isProcessing && (
         <div className="wm-processing-bar">
-          <div className="wm-processing-inner" />
-          <span>Đang tạo ảnh watermark…</span>
+          <div className="wm-processing-track" aria-hidden="true">
+            <div
+              className="wm-processing-inner"
+              style={{ width: `${progressPercent}%` }}
+            />
+          </div>
+          <div className="wm-processing-copy">
+            <strong>
+              {progressCurrent}/{progressTotal || results.length || '?'} ảnh đã xong
+            </strong>
+            <span>
+              {progressTotal > 0
+                ? `Đang tạo ảnh watermark, khoảng ${progressPercent}%`
+                : 'Đang tạo ảnh watermark…'}
+            </span>
+          </div>
+        </div>
+      )}
+
+      {downloadProgress && (
+        <div className="wm-processing-bar wm-download-progress">
+          <div className="wm-processing-track" aria-hidden="true">
+            <div
+              className="wm-processing-inner"
+              style={{ width: `${downloadPercent}%` }}
+            />
+          </div>
+          <div className="wm-processing-copy">
+            <strong>
+              {downloadCurrent}/{downloadTotal || '?'} đã sẵn sàng
+            </strong>
+            <span>{downloadProgress.message || 'Đang chuẩn bị file tải xuống…'}</span>
+          </div>
         </div>
       )}
 

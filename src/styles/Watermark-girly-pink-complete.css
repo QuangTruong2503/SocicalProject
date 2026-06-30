@@ -267,17 +267,76 @@
 
 .dtw-wm-page .wm-thumb {
   position: relative;
+  display: block;
   aspect-ratio: 1;
   overflow: hidden;
   border: 1px solid var(--wm-border);
   border-radius: 14px;
   background: var(--wm-surface);
+  cursor: grab;
 }
 
 .dtw-wm-page .wm-thumb img {
   width: 100%;
   height: 100%;
   object-fit: cover;
+}
+
+.dtw-wm-page .wm-thumb.is-dragging {
+  opacity: 0.55;
+  transform: scale(0.97);
+  cursor: grabbing;
+}
+
+.dtw-wm-page .wm-thumb.is-drop-target {
+  border-color: var(--wm-primary);
+  box-shadow: 0 0 0 3px rgba(233, 30, 140, 0.12);
+}
+
+.dtw-wm-page .wm-thumb-watermark {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+}
+
+.dtw-wm-page .wm-thumb-watermark.is-single {
+  display: grid;
+  place-items: center;
+}
+
+.dtw-wm-page .wm-thumb-watermark.is-single img {
+  display: block;
+  max-height: 100%;
+  object-fit: contain;
+  filter: drop-shadow(0 2px 8px rgba(62, 0, 32, 0.28));
+  mix-blend-mode: multiply;
+}
+
+.dtw-wm-page .wm-thumb-watermark.is-tiled {
+  border-radius: inherit;
+  background-position: center;
+  background-origin: content-box;
+  mix-blend-mode: soft-light;
+}
+
+.dtw-wm-page .wm-thumb-order-badge {
+  position: absolute;
+  left: 6px;
+  top: 6px;
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 22px;
+  height: 22px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: rgba(62, 0, 32, 0.72);
+  color: #ffffff;
+  font-size: 11px;
+  font-weight: 800;
+  box-shadow: 0 6px 14px rgba(62, 0, 32, 0.16);
 }
 
 .dtw-wm-page .wm-thumb-remove {
@@ -905,7 +964,8 @@ body.dtw-watermark-theme .wm-preview-backdrop.is-closing .wm-preview-modal {
 
 .dtw-wm-page .wm-processing-bar {
   display: flex;
-  align-items: center;
+  flex-direction: column;
+  align-items: stretch;
   gap: 0.75rem;
   margin-bottom: 1rem;
   padding: 0.8rem 1rem;
@@ -918,13 +978,37 @@ body.dtw-watermark-theme .wm-preview-backdrop.is-closing .wm-preview-modal {
   font-weight: 800;
 }
 
+.dtw-wm-page .wm-processing-track {
+  width: 100%;
+  height: 10px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(233, 30, 140, 0.12);
+}
+
 .dtw-wm-page .wm-processing-inner {
-  width: 20px;
-  height: 20px;
-  border: 2px solid rgba(233, 30, 140, 0.18);
-  border-top-color: var(--wm-primary);
-  border-radius: 50%;
-  animation: dtwWmSpin 0.7s linear infinite;
+  width: 0;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #f06292, var(--wm-primary));
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.18) inset;
+  transition: width 180ms ease;
+}
+
+.dtw-wm-page .wm-processing-copy {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.dtw-wm-page .wm-processing-copy strong {
+  font-weight: 900;
+}
+
+.dtw-wm-page .wm-processing-copy span {
+  font-weight: 700;
+  color: var(--wm-text-muted);
 }
 
 .dtw-wm-page .wm-dropdown {
@@ -1071,6 +1155,17 @@ body.dtw-watermark-theme .wm-preview-backdrop.is-closing .wm-preview-modal {
   .dtw-wm-page .wm-card {
     padding: 18px;
     border-radius: 20px;
+  }
+
+  .dtw-wm-page .wm-processing-copy {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .dtw-wm-page .wm-thumb-order-badge {
+    min-width: 20px;
+    height: 20px;
+    font-size: 10px;
   }
 
   .dtw-wm-page .wm-result-grid {
