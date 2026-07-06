@@ -31,18 +31,10 @@ export default function NotificationModal({
   storageKey = 'read_notifications',
   onAcknowledge,
 }) {
-  const [isVisible, setIsVisible] = useState(false);
+  const [dismissedId, setDismissedId] = useState(null);
   const readIds = useMemo(() => safeReadIds(storageKey), [storageKey]);
   const isRead = !!notification?.id && readIds.includes(notification.id);
-
-  useEffect(() => {
-    if (!notification || !notification.id) {
-      setIsVisible(false);
-      return;
-    }
-
-    setIsVisible(!isRead);
-  }, [notification, isRead]);
+  const isVisible = Boolean(notification?.id) && !isRead && dismissedId !== notification.id;
 
   useEffect(() => {
     if (!isVisible) return;
@@ -58,7 +50,7 @@ export default function NotificationModal({
 
     const nextIds = Array.from(new Set([...readIds, notification.id]));
     safeSaveIds(storageKey, nextIds);
-    setIsVisible(false);
+    setDismissedId(notification.id);
     onAcknowledge?.(notification);
   };
 
