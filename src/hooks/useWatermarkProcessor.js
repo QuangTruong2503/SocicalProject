@@ -5,11 +5,22 @@
  */
 import imageCompression from 'browser-image-compression';
 
-export async function processWatermark(sourceFile, logoUrl, options) {
-  const { size, opacity, tiled, logoPosition = 'bottom-right' } = options;
+export async function processWatermark(sourceFile, logoUrl, options = {}) {
+  const {
+    size = 60,
+    opacity = 60,
+    tiled = false,
+    logoPosition = 'bottom-right',
+  } = options;
 
   return new Promise((resolve, reject) => {
+    const sourceUrl = URL.createObjectURL(sourceFile);
     const img = new Image();
+
+    const cleanup = () => {
+      URL.revokeObjectURL(sourceUrl);
+    };
+
     img.onload = () => {
       const logo = new Image();
       logo.onload = () => {
@@ -18,10 +29,8 @@ export async function processWatermark(sourceFile, logoUrl, options) {
         canvas.height = img.naturalHeight;
         const ctx = canvas.getContext('2d');
 
-        // Draw base image
         ctx.drawImage(img, 0, 0);
 
-        // Compute scaled logo dimensions
         const scaleFactor = size / 100;
         const logoW = Math.round(img.naturalWidth * 0.2 * scaleFactor);
         const logoH = Math.round((logo.naturalHeight / logo.naturalWidth) * logoW);
@@ -34,21 +43,18 @@ export async function processWatermark(sourceFile, logoUrl, options) {
           const cols = Math.ceil(canvas.width / gapX) + 1;
           const rows = Math.ceil(canvas.height / gapY) + 1;
 
-          ctx.save();
-          for (let r = 0; r < rows; r++) {
-            for (let c = 0; c < cols; c++) {
+          for (let r = 0; r < rows; r += 1) {
+            for (let c = 0; c < cols; c += 1) {
               const x = c * gapX - (r % 2 === 0 ? 0 : gapX / 2);
               const y = r * gapY;
               ctx.drawImage(logo, x, y, logoW, logoH);
             }
           }
-          ctx.restore();
         } else {
-          // Draw logo at specified position
           const pad = Math.round(img.naturalWidth * 0.02);
-          let x = 0, y = 0;
+          let x = 0;
+          let y = 0;
 
-          // Calculate x position
           if (logoPosition.includes('left')) {
             x = pad;
           } else if (logoPosition.includes('right')) {
@@ -57,7 +63,6 @@ export async function processWatermark(sourceFile, logoUrl, options) {
             x = (canvas.width - logoW) / 2;
           }
 
-          // Calculate y position
           if (logoPosition.includes('top')) {
             y = pad;
           } else if (logoPosition.includes('bottom')) {
@@ -70,9 +75,14 @@ export async function processWatermark(sourceFile, logoUrl, options) {
         }
 
         ctx.globalAlpha = 1;
+        ctx.shadowColor = 'transparent';
+        ctx.shadowBlur = 0;
+        ctx.shadowOffsetX = 0;
+        ctx.shadowOffsetY = 0;
 
         canvas.toBlob(
           (blob) => {
+            cleanup();
             if (blob) resolve(blob);
             else reject(new Error('Canvas toBlob failed'));
           },
@@ -80,11 +90,21 @@ export async function processWatermark(sourceFile, logoUrl, options) {
           0.92
         );
       };
-      logo.onerror = () => reject(new Error('Logo load error'));
+
+      logo.onerror = () => {
+        cleanup();
+        reject(new Error('Logo load error'));
+      };
+
       logo.src = logoUrl;
     };
-    img.onerror = () => reject(new Error('Image load error'));
-    img.src = URL.createObjectURL(sourceFile);
+
+    img.onerror = () => {
+      cleanup();
+      reject(new Error('Image load error'));
+    };
+
+    img.src = sourceUrl;
   });
 }
 

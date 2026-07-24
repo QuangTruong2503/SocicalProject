@@ -1,32 +1,59 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { saveLogo, loadLogo, clearLogo } from '../../hooks/useIndexedDB';
 import '../../styles/LogoUploader.css';
 
 export default function LogoUploader({ logoUrl, logoName, onLogoChange, onImagePreview }) {
   const fileRef = useRef();
+  const currentObjectUrlRef = useRef(null);
+  const [errorMessage, setErrorMessage] = useState('');
+
+  const revokeCurrentObjectUrl = () => {
+    if (currentObjectUrlRef.current) {
+      URL.revokeObjectURL(currentObjectUrlRef.current);
+      currentObjectUrlRef.current = null;
+    }
+  };
 
   // Load logo from IndexedDB on mount
   useEffect(() => {
+    let isActive = true;
+
     loadLogo()
       .then((result) => {
-        if (result) onLogoChange(result.url, result.name, result.blob);
+        if (!isActive || !result) return;
+
+        revokeCurrentObjectUrl();
+        currentObjectUrlRef.current = result.url;
+        onLogoChange(result.url, result.name, result.blob);
       })
       .catch(() => {});
+
+    return () => {
+      isActive = false;
+      revokeCurrentObjectUrl();
+    };
   }, [onLogoChange]);
 
   const handleFile = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
     try {
+      setErrorMessage('');
       await saveLogo(file);
+      revokeCurrentObjectUrl();
       const url = URL.createObjectURL(file);
+      currentObjectUrlRef.current = url;
       onLogoChange(url, file.name, file);
     } catch {
-      alert('Không thể lưu logo vào IndexedDB.');
+      setErrorMessage('Không thể lưu logo vào IndexedDB.');
+    } finally {
+      e.target.value = '';
     }
   };
 
   const handleClear = async () => {
+    setErrorMessage('');
+    revokeCurrentObjectUrl();
     await clearLogo();
     onLogoChange(null, null, null);
     if (fileRef.current) fileRef.current.value = '';
@@ -78,6 +105,13 @@ export default function LogoUploader({ logoUrl, logoName, onLogoChange, onImageP
           <span className="wm-dropzone-icon" aria-hidden="true">▧</span>
           <p className="wm-dropzone-title">Chọn file logo</p>
           <small className="wm-muted-text">PNG, SVG, WebP – nền trong suốt tốt nhất</small>
+        </div>
+      )}
+
+      {errorMessage && (
+        <div className="wm-inline-banner wm-inline-banner--error" role="alert">
+          <span className="wm-inline-icon" aria-hidden="true">!</span>
+          <span>{errorMessage}</span>
         </div>
       )}
 

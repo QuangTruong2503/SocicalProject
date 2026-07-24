@@ -127,3 +127,15 @@ export function loadDoanTrangWatermarkOptions() {
 export function clearDoanTrangWatermarkOptions() {
   return clearAsset('doan-trang-watermark-options');
 }
+
+export function saveWatermarkOptions(options) {
+  return saveValue('watermark-options', options);
+}
+
+export function loadWatermarkOptions() {
+  return loadValue('watermark-options');
+}
+
+export function clearWatermarkOptions() {
+  return clearAsset('watermark-options');
+}
