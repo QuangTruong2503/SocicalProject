@@ -1,0 +1,14 @@
+[
+  {
+    "id": "zep-lao",
+    "name": "Công ty TNHH Zep Lào",
+    "shortName": "Zep Lào",
+    "taxCode": "0312345678",
+    "taxAddress": "123 Nguyễn Huệ, Phường Bến Nghé, Quận 1, TP. Hồ Chí Minh",
+    "phone": "0909 123 456",
+    "email": "sales@zeplao.vn",
+    "bankAccount": "0123456789",
+    "bankName": "Vietcombank",
+    "representative": "Nguyễn Văn A"
+  }
+]

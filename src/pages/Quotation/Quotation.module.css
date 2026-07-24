@@ -1,0 +1,886 @@
+.quotationPage {
+  width: min(calc(100% - 32px), 1320px);
+  margin: 0 auto;
+  padding: 32px 0 72px;
+}
+
+.quotationHero {
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(280px, 0.9fr);
+  gap: 24px;
+  align-items: stretch;
+  margin-bottom: 24px;
+}
+
+.quotationHeroCard,
+.quotationCard {
+  border: 1px solid var(--color-border);
+  border-radius: 20px;
+  background: var(--color-surface);
+  box-shadow: var(--shadow-hover);
+}
+
+.quotationHeroCard {
+  padding: 28px;
+  background:
+    radial-gradient(circle at top right, rgba(99, 102, 241, 0.08), transparent 22%),
+    radial-gradient(circle at bottom left, rgba(16, 185, 129, 0.08), transparent 18%),
+    var(--color-surface);
+}
+
+.quotationHeroBadge,
+.quotationKicker,
+.quotationCard__badge {
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.quotationHeroBadge {
+  display: inline-flex;
+  padding: 8px 12px;
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.75);
+  color: var(--color-text-secondary);
+}
+
+.quotationHeroTitle {
+  margin: 16px 0 12px;
+  font-size: clamp(2.2rem, 5vw, 4.2rem);
+  line-height: 0.95;
+  letter-spacing: -0.05em;
+}
+
+.quotationHeroTitle span {
+  color: var(--color-primary);
+}
+
+.quotationHeroDescription {
+  margin: 0;
+  max-width: 720px;
+  color: var(--color-text-secondary);
+  line-height: 1.7;
+}
+
+.quotationHeroStats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 20px;
+}
+
+.quotationHeroStat {
+  padding: 16px;
+  border: 1px solid var(--color-border);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.72);
+}
+
+.quotationHeroStat strong {
+  display: block;
+  margin-top: 6px;
+  font-size: 20px;
+  letter-spacing: -0.03em;
+}
+
+.quotationHeroVisual {
+  display: grid;
+  align-items: stretch;
+  padding: 20px;
+  border: 1px solid var(--color-border);
+  border-radius: 20px;
+  background:
+    linear-gradient(180deg, rgba(248, 250, 252, 0.9), rgba(255, 255, 255, 0.96)),
+    radial-gradient(circle at top left, rgba(99, 102, 241, 0.12), transparent 24%),
+    radial-gradient(circle at bottom right, rgba(16, 185, 129, 0.1), transparent 18%);
+}
+
+.quotationHeroVisualInner {
+  display: grid;
+  gap: 14px;
+  padding: 22px;
+  border-radius: 18px;
+  border: 1px solid rgba(148, 163, 184, 0.25);
+  background: rgba(255, 255, 255, 0.82);
+}
+
+.quotationHeroVisualChip {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  min-height: 30px;
+  padding: 0 12px;
+  border-radius: 999px;
+  background: rgba(99, 102, 241, 0.08);
+  color: var(--color-primary);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.quotationHeroVisualLine {
+  height: 16px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, rgba(99, 102, 241, 0.18), rgba(16, 185, 129, 0.18));
+}
+
+.quotationToolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 18px;
+}
+
+.quotationToolbar__group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.quotationBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 38px;
+  padding: 0 16px;
+  border-radius: 10px;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 160ms ease, border-color 160ms ease, box-shadow 160ms ease, background 160ms ease;
+}
+
+.quotationBtn:hover {
+  transform: translateY(-1px);
+  border-color: rgba(99, 102, 241, 0.35);
+  box-shadow: 0 10px 20px rgba(15, 23, 42, 0.06);
+}
+
+.quotationBtn:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+  transform: none;
+  box-shadow: none;
+}
+
+.quotationBtn--primary {
+  background: var(--color-primary);
+  color: #fff;
+  border-color: var(--color-primary);
+}
+
+.quotationBtn--secondary {
+  background: transparent;
+}
+
+.quotationGrid {
+  display: grid;
+  grid-template-columns: minmax(0, 0.98fr) minmax(320px, 0.42fr);
+  gap: 24px;
+  align-items: start;
+}
+
+.quotationStack {
+  display: grid;
+  gap: 24px;
+}
+
+.quotationCard {
+  padding: 22px;
+}
+
+.quotationCompanyPanel {
+  display: grid;
+  gap: 14px;
+  margin-bottom: 18px;
+  padding: 16px;
+  border: 1px solid var(--color-border);
+  border-radius: 16px;
+  background: rgba(248, 250, 252, 0.85);
+}
+
+.quotationCompanyPanel__header {
+  display: grid;
+  gap: 6px;
+}
+
+.quotationCompanyPanel__header strong {
+  font-size: 18px;
+  letter-spacing: -0.02em;
+}
+
+.quotationCompanySelect {
+  width: 100%;
+  min-height: 38px;
+  padding: 0 12px;
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  background: #fff;
+  color: var(--color-text);
+}
+
+.quotationCompanyMeta {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px 12px;
+}
+
+.quotationCompanyMeta div {
+  display: grid;
+  gap: 4px;
+  padding: 12px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.8);
+  border: 1px solid rgba(148, 163, 184, 0.18);
+}
+
+.quotationCompanyMeta span {
+  color: var(--color-text-secondary);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.quotationCompanyMeta strong {
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.quotationCard__header {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: flex-start;
+  margin-bottom: 18px;
+}
+
+.quotationCard__header--stacked {
+  align-items: center;
+}
+
+.quotationCard__header h2 {
+  margin: 4px 0 0;
+  font-size: 26px;
+  line-height: 1.1;
+  letter-spacing: -0.03em;
+}
+
+.quotationCard__badge {
+  display: inline-flex;
+  align-items: center;
+  min-height: 30px;
+  padding: 0 10px;
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  color: var(--color-text-secondary);
+  background: rgba(248, 250, 252, 0.8);
+}
+
+.quotationCustomerGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.quotationField {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+}
+
+.quotationField--span-2 {
+  grid-column: span 2;
+}
+
+.quotationField__label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.quotationField__label-inner {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.quotationField__required {
+  color: var(--color-error);
+}
+
+.quotationField__input {
+  width: 100%;
+  min-height: 38px;
+  padding: 0 12px;
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  background: #fff;
+  color: var(--color-text);
+  outline: none;
+  transition: border-color 160ms ease, box-shadow 160ms ease;
+}
+
+.quotationField__input::placeholder {
+  color: #9ca3af;
+}
+
+.quotationField__input:focus {
+  border-color: rgba(99, 102, 241, 0.5);
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.08);
+}
+
+.quotationField__input--textarea {
+  min-height: 92px;
+  padding-top: 10px;
+  resize: vertical;
+}
+
+.quotationField__input--compact {
+  min-height: 36px;
+  border-radius: 8px;
+}
+
+.quotationField__input--center {
+  text-align: center;
+}
+
+.quotationField__input--right {
+  text-align: right;
+}
+
+.quotationField__error {
+  color: var(--color-error);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.quotationCustomerNote {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  margin-top: 16px;
+  padding: 14px 16px;
+  border-radius: 14px;
+  background: rgba(248, 250, 252, 0.85);
+  border: 1px dashed var(--color-border);
+  color: var(--color-text-secondary);
+}
+
+.quotationPreviewMeta {
+  margin-top: 10px;
+  font-size: 12px;
+  color: var(--color-text-secondary);
+}
+
+.quotationTableWrap {
+  overflow-x: auto;
+}
+
+.quotationTable {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 1020px;
+}
+
+.quotationTable th,
+.quotationTable td {
+  border: 1px solid var(--color-border);
+  padding: 10px 8px;
+  vertical-align: top;
+}
+
+.quotationTable thead th {
+  background: #f5f5f5;
+  font-weight: 700;
+  font-size: 13px;
+  text-align: center;
+}
+
+.quotationCell {
+  position: relative;
+  background: #fff;
+}
+
+.quotationCell--index,
+.quotationCell--quantity,
+.quotationCell--vat,
+.quotationCell--delete {
+  text-align: center;
+}
+
+.quotationCell--price,
+.quotationCell--total {
+  text-align: right;
+}
+
+.quotationCell__subtext {
+  display: block;
+  margin-top: 4px;
+  color: var(--color-text-secondary);
+  font-size: 12px;
+}
+
+.quotationAutocomplete {
+  position: relative;
+}
+
+.quotationInputIcon {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--color-text-secondary);
+  pointer-events: none;
+}
+
+.quotationSuggestions {
+  position: absolute;
+  z-index: 20;
+  left: 0;
+  right: 0;
+  top: calc(100% + 6px);
+  display: grid;
+  gap: 6px;
+  padding: 8px;
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.98);
+  box-shadow: var(--shadow-lg);
+}
+
+.quotationSuggestion {
+  display: grid;
+  gap: 2px;
+  padding: 10px 12px;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  background: #fff;
+  text-align: left;
+  cursor: pointer;
+}
+
+.quotationSuggestion:hover {
+  border-color: rgba(99, 102, 241, 0.22);
+  background: rgba(99, 102, 241, 0.04);
+}
+
+.quotationSuggestion strong {
+  font-size: 13px;
+}
+
+.quotationSuggestion span,
+.quotationSuggestion small {
+  color: var(--color-text-secondary);
+  font-size: 12px;
+}
+
+.quotationIconButton {
+  display: inline-grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  border: 1px solid var(--color-border);
+  background: #fff;
+  color: var(--color-text);
+  cursor: pointer;
+}
+
+.quotationIconButton--danger {
+  color: var(--color-error);
+}
+
+.quotationSummaryStrip {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.quotationSummaryStrip__item {
+  display: grid;
+  gap: 6px;
+  padding: 14px;
+  border: 1px solid var(--color-border);
+  border-radius: 14px;
+  background: rgba(248, 250, 252, 0.75);
+}
+
+.quotationSummaryStrip__item span {
+  color: var(--color-text-secondary);
+  font-size: 12px;
+}
+
+.quotationSummaryStrip__item strong {
+  font-size: 20px;
+  letter-spacing: -0.03em;
+}
+
+.quotationSummaryStrip__item--total {
+  background: rgba(99, 102, 241, 0.06);
+}
+
+.quotationSummaryWording {
+  display: flex;
+  gap: 12px;
+  margin-top: 14px;
+  padding: 14px 16px;
+  border: 1px dashed var(--color-border);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.88);
+}
+
+.quotationSummaryWording span {
+  white-space: nowrap;
+  color: var(--color-text-secondary);
+}
+
+.quotationSummaryWording strong {
+  font-weight: 700;
+}
+
+.quotationTableFootnote {
+  margin-top: 10px;
+  font-size: 12px;
+  color: var(--color-text-secondary);
+}
+
+.quotationSummaryCard {
+  position: sticky;
+  top: 20px;
+}
+
+.quotationSummaryList {
+  display: grid;
+  gap: 10px;
+}
+
+.quotationSummaryItem {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: center;
+  padding: 14px 16px;
+  border: 1px solid var(--color-border);
+  border-radius: 14px;
+  background: rgba(248, 250, 252, 0.78);
+}
+
+.quotationSummaryItem--emphasis {
+  background: rgba(99, 102, 241, 0.06);
+}
+
+.quotationSummaryItem span {
+  color: var(--color-text-secondary);
+  font-size: 13px;
+}
+
+.quotationSummaryItem strong {
+  font-size: 18px;
+}
+
+.quotationSummaryWords {
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid var(--color-border);
+}
+
+.quotationSummaryWords span {
+  display: block;
+  margin-bottom: 6px;
+  color: var(--color-text-secondary);
+  font-size: 13px;
+}
+
+.quotationSummaryWords p {
+  margin: 0;
+  line-height: 1.75;
+}
+
+.quotationPrintSheet {
+  position: absolute;
+  left: -99999px;
+  top: 0;
+  width: 210mm;
+  min-height: 297mm;
+  padding: 16mm 14mm;
+  background: #fff;
+  color: #111827;
+  font-size: 12px;
+}
+
+.quotationPrintHeader {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: flex-start;
+  margin-bottom: 14px;
+}
+
+.quotationPrintIssuer {
+  display: grid;
+  gap: 6px;
+  flex: 1;
+}
+
+.quotationPrintIssuer h1 {
+  margin: 0;
+  font-size: 24px;
+  line-height: 1.1;
+}
+
+.quotationPrintIssuerMeta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 16px;
+  color: #4b5563;
+  font-size: 11px;
+}
+
+.quotationPrintHeader h1 {
+  margin: 0;
+  font-size: 24px;
+  line-height: 1;
+}
+
+.quotationPrintKicker,
+.quotationPrintSubtitle,
+.quotationPrintCode span,
+.quotationPrintCustomer span,
+.quotationPrintWords span,
+.quotationPrintFooter span,
+.quotationPrintNote span {
+  color: #6b7280;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.quotationPrintSubtitle {
+  margin: 6px 0 0;
+}
+
+.quotationPrintCode {
+  min-width: 180px;
+  padding: 12px;
+  border: 1px solid #d1d5db;
+  border-radius: 12px;
+}
+
+.quotationPrintCode strong {
+  display: block;
+  margin-top: 8px;
+  font-size: 16px;
+}
+
+.quotationPrintCustomer {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px 16px;
+  padding: 14px;
+  border: 1px solid #d1d5db;
+  border-radius: 12px;
+  margin-bottom: 14px;
+}
+
+.quotationPrintCompanyBlock {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px 16px;
+  margin-bottom: 14px;
+  padding: 14px;
+  border: 1px solid #d1d5db;
+  border-radius: 12px;
+  background: #fafafa;
+}
+
+.quotationPrintCompanyBlock div {
+  display: grid;
+  gap: 4px;
+}
+
+.quotationPrintCompanyBlock strong {
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.quotationPrintCustomer div {
+  display: grid;
+  gap: 4px;
+}
+
+.quotationPrintCustomer strong {
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.quotationPrintTable {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.quotationPrintTable th,
+.quotationPrintTable td {
+  border: 1px solid #d1d5db;
+  padding: 8px 6px;
+  font-size: 11px;
+}
+
+.quotationPrintTable thead th {
+  background: #f5f5f5;
+  text-align: center;
+}
+
+.quotationPrintAlignLeft {
+  text-align: left;
+}
+
+.quotationPrintAlignRight {
+  text-align: right;
+}
+
+.quotationPrintSummary {
+  display: grid;
+  gap: 8px;
+  justify-content: end;
+  margin-top: 14px;
+  margin-left: auto;
+  width: min(320px, 100%);
+}
+
+.quotationPrintSummary div {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
+  border: 1px solid #d1d5db;
+  border-radius: 10px;
+}
+
+.quotationPrintSummary--total {
+  background: #eef2ff;
+}
+
+.quotationPrintWords {
+  margin-top: 12px;
+  padding: 12px;
+  border: 1px dashed #d1d5db;
+  border-radius: 12px;
+}
+
+.quotationPrintWords strong {
+  display: block;
+  margin-top: 6px;
+  line-height: 1.6;
+}
+
+.quotationPrintFooter {
+  display: flex;
+  justify-content: space-between;
+  gap: 24px;
+  margin-top: 24px;
+  padding-top: 18px;
+}
+
+.quotationPrintFooter div {
+  display: grid;
+  gap: 10px;
+  text-align: center;
+  min-width: 180px;
+}
+
+.quotationPrintFooter strong {
+  font-size: 13px;
+}
+
+.quotationPrintNote {
+  margin-top: 16px;
+  padding: 12px;
+  border: 1px solid #d1d5db;
+  border-radius: 12px;
+}
+
+.quotationPrintNote p {
+  margin: 8px 0 0;
+  line-height: 1.6;
+}
+
+@media (max-width: 1180px) {
+  .quotationHero,
+  .quotationGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .quotationSummaryCard {
+    position: static;
+  }
+}
+
+@media (max-width: 900px) {
+  .quotationPage {
+    width: min(calc(100% - 20px), 1320px);
+    padding: 20px 0 56px;
+  }
+
+  .quotationHeroStats,
+  .quotationCustomerGrid,
+  .quotationCompanyMeta,
+  .quotationSummaryStrip {
+    grid-template-columns: 1fr;
+  }
+
+  .quotationField--span-2 {
+    grid-column: span 1;
+  }
+
+  .quotationCard {
+    padding: 18px;
+  }
+
+  .quotationCard__header {
+    flex-direction: column;
+  }
+
+  .quotationPrintHeader,
+  .quotationPrintCompanyBlock {
+    grid-template-columns: 1fr;
+    flex-direction: column;
+  }
+
+  .quotationPrintCompanyBlock {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media print {
+  :global(body) {
+    background: #fff;
+  }
+
+  .quotationHero,
+  .quotationToolbar,
+  .quotationGrid,
+  .quotationSummaryCard,
+  .quotationCard,
+  .quotationBtn,
+  .quotationToolbar__group,
+  .quotationCard__badge {
+    display: none !important;
+  }
+
+  .quotationPrintSheet {
+    position: static;
+    left: auto;
+    top: auto;
+    width: auto;
+    min-height: auto;
+    padding: 0;
+  }
+}
