@@ -13,6 +13,7 @@ export default function WatermarkGallery({
   onClear,
   onDownloadAll,
   onRenameFile,
+  onRemoveResult,
   isProcessing,
   processingProgress,
   downloadProgress,
@@ -334,7 +335,9 @@ export default function WatermarkGallery({
                   result={r}
                   index={index}
                   onRenameFile={onRenameFile}
+                  onRemoveResult={onRemoveResult}
                   onPreview={() => openPreview(r, index)}
+                  style={{ animationDelay: `${index * 50}ms` }}
                 />
               );
             })}
@@ -361,7 +364,7 @@ export default function WatermarkGallery({
   );
 }
 
-function ResultCard({ result, index, onPreview, onRenameFile }) {
+function ResultCard({ result, index, onPreview, onRenameFile, onRemoveResult, style }) {
   const handleDownload = () => {
     const a = document.createElement('a');
     a.href = result.url;
@@ -370,7 +373,7 @@ function ResultCard({ result, index, onPreview, onRenameFile }) {
   };
 
   return (
-    <div className="wm-result-card">
+    <div className="wm-result-card wm-result-card--enter" style={style}>
       <div className="wm-result-img-wrap">
         <button
           className="wm-result-image-trigger"
@@ -382,30 +385,20 @@ function ResultCard({ result, index, onPreview, onRenameFile }) {
         </button>
         <div className="wm-result-overlay">
           <div className="wm-result-action-row">
-            <button
-              className="wm-result-icon-btn"
-              onClick={onPreview}
-              type="button"
-              aria-label={`Xem ảnh ${result.fileName}`}
-              title="Xem ảnh"
-            >
-              <svg
-                aria-hidden="true"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z" />
-                <circle cx="12" cy="12" r="3" />
-              </svg>
-            </button>
             <button className="wm-result-dl-btn" onClick={handleDownload} type="button">
               <span className="wm-inline-icon" aria-hidden="true">↓</span>
               Tải xuống
             </button>
+            {onRemoveResult && (
+              <button
+                className="wm-result-remove-btn"
+                onClick={() => onRemoveResult(index)}
+                type="button"
+              >
+                <span className="wm-inline-icon" aria-hidden="true">×</span>
+                Xóa
+              </button>
+            )}
           </div>
         </div>
       </div>

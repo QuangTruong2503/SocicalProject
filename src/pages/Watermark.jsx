@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { Helmet } from 'react-helmet-async';
 import { Link } from 'react-router-dom';
@@ -10,6 +10,11 @@ import { processWatermark, resizeBlob, buildFileName, compressAndResizeBlob } fr
 import NotificationModal from '../components/NotificationModal';
 import { useAuth } from '../hooks/useAuth.js';
 import { getUserDisplayName } from '../utils/userProfile.js';
+import {
+  loadWatermarkOptions,
+  saveWatermarkOptions,
+} from '../hooks/useIndexedDB.js';
+import { buildThemeAccentVars } from '../utils/colorTools.js';
 import {
   createWatermarkImageCount,
   getWatermarkImageCountTotal,
@@ -25,13 +30,14 @@ const DEFAULT_OPTIONS = {
   tiled: false,
   productName: '',
   logoPosition: 'center',
+  accentColor: '#2563EB',
 };
-const notification = {
-  id: 'watermark-update-110526',
-  title: 'Cập nhật mới',
-  content: 'Đã thêm tính năng mới cho trang watermark.',
-  imageUrl: 'https://psqfbcgkgafqtsmrgjqu.supabase.co/storage/v1/object/public/ZepLao/asset/notify.png',
-};
+// const notification = {
+//   id: 'watermark-update-110526',
+//   title: 'Cập nhật mới',
+//   content: 'Đã thêm tính năng mới cho trang watermark.',
+//   imageUrl: 'https://psqfbcgkgafqtsmrgjqu.supabase.co/storage/v1/object/public/ZepLao/asset/notify.png',
+// };
 const WATERMARK_COUNT_SOURCE_PAGE = 'watermark';
 // const headerAnchors = Array.from({ length: 5 }, (_, index) => index);
 
@@ -58,6 +64,7 @@ function WatermarkCountBoard({
   selectedCount,
   isLoading,
   error,
+  dashboardHref,
 }) {
   const rows = [
     {
@@ -69,7 +76,7 @@ function WatermarkCountBoard({
     {
       label: 'Ảnh của bạn',
       value: isLoading ? '...' : formatCount(personalCreated),
-      note: 'Số ảnh bạn đã tạo trên trình duyệt này',
+      note: 'Tổng số ảnh bạn đã tạo từ trước đến nay theo visitor_id này',
       tone: 'success',
     },
     { 
@@ -146,23 +153,32 @@ function WatermarkImageZoom({ image, onClose }) {
 
 export default function Watermark() {
   const { user } = useAuth();
+  const resultsRef = React.useRef([]);
+  const createButtonRippleIdRef = React.useRef(0);
   const [logoUrl, setLogoUrl]   = useState(null);
   const [logoName, setLogoName] = useState(null);
   const [images, setImages]     = useState([]);
   const [options, setOptions]   = useState(DEFAULT_OPTIONS);
   const [results, setResults]   = useState([]);
   const [processing, setProcessing] = useState(false);
+  const [processingProgress, setProcessingProgress] = useState({ current: 0, total: 0 });
+  const [downloadProgress, setDownloadProgress] = useState(null);
   const [totalCreated, setTotalCreated] = useState(0);
   const [personalCreated, setPersonalCreated] = useState(0);
   const [lastCreated, setLastCreated] = useState(0);
   const [statsLoading, setStatsLoading] = useState(true);
   const [statsError, setStatsError] = useState(null);
+  const [createError, setCreateError] = useState('');
+  const [optionsHydrated, setOptionsHydrated] = useState(false);
   const [zoomImage, setZoomImage] = useState(null);
+  const [buttonRipples, setButtonRipples] = useState([]);
   const [visitorId] = useState(() => getOrCreateWatermarkVisitorId());
+  const pageThemeVars = useMemo(() => buildThemeAccentVars(options.accentColor), [options.accentColor]);
 
   const handleLogoChange = useCallback((url, name) => {
     setLogoUrl(url);
     setLogoName(name);
+    setCreateError('');
   }, []);
 
   const openZoom = useCallback((image) => {
@@ -173,6 +189,26 @@ export default function Watermark() {
     setZoomImage(null);
   }, []);
 
+  const handleCreateButtonPointerDown = useCallback((event) => {
+    if (event.button !== 0) {
+      return;
+    }
+
+    const targetRect = event.currentTarget.getBoundingClientRect();
+    const id = `${Date.now()}-${(createButtonRippleIdRef.current += 1)}`;
+    const ripple = {
+      id,
+      x: event.clientX - targetRect.left,
+      y: event.clientY - targetRect.top,
+    };
+
+    setButtonRipples((current) => [...current, ripple]);
+
+    window.setTimeout(() => {
+      setButtonRipples((current) => current.filter((item) => item.id !== id));
+    }, 720);
+  }, []);
+
   useEffect(() => {
     document.body.classList.add('wm-watermark-theme');
 
@@ -180,6 +216,46 @@ export default function Watermark() {
       document.body.classList.remove('wm-watermark-theme');
     };
   }, []);
+
+  useEffect(() => {
+    let isActive = true;
+
+    loadWatermarkOptions()
+      .then((savedOptions) => {
+        if (!isActive) {
+          return;
+        }
+
+        if (savedOptions && typeof savedOptions === 'object') {
+          setOptions((current) => ({
+            ...current,
+            ...savedOptions,
+          }));
+        }
+      })
+      .catch(() => {})
+      .finally(() => {
+        if (isActive) {
+          setOptionsHydrated(true);
+        }
+      });
+
+    return () => {
+      isActive = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!optionsHydrated) {
+      return undefined;
+    }
+
+    saveWatermarkOptions(options).catch((error) => {
+      console.warn('[Watermark] Could not save watermark options', error);
+    });
+
+    return undefined;
+  }, [options, optionsHydrated]);
 
   useEffect(() => {
     if (!visitorId) {
@@ -233,13 +309,39 @@ export default function Watermark() {
     };
   }, [closeZoom, zoomImage]);
 
+  useEffect(() => {
+    resultsRef.current = results;
+  }, [results]);
+
+  useEffect(() => () => {
+    resultsRef.current.forEach((result) => URL.revokeObjectURL(result.url));
+  }, []);
+
+  useEffect(() => {
+    setCreateError("");
+  }, [images, logoUrl, options]);
+
   // ── Create watermarked images ──────────────────────────────────────
   const handleCreate = async () => {
-    if (!logoUrl) return alert('Vui lòng chọn logo trước.');
-    if (!images.length) return alert('Vui lòng chọn ít nhất 1 ảnh.');
-    if (!visitorId) return alert('Đang khởi tạo mã người dùng, bạn thử lại sau vài giây.');
+    if (!logoUrl) {
+      setCreateError('Vui lòng chọn logo trước.');
+      return;
+    }
 
+    if (!images.length) {
+      setCreateError('Vui lòng chọn ít nhất 1 ảnh.');
+      return;
+    }
+
+    if (!visitorId) {
+      setCreateError('Đang khởi tạo mã người dùng, bạn thử lại sau vài giây.');
+      return;
+    }
+
+    setCreateError('');
     setProcessing(true);
+    setProcessingProgress({ current: 0, total: images.length });
+    setDownloadProgress(null);
     const newResults = [];
 
     for (let i = 0; i < images.length; i++) {
@@ -251,10 +353,15 @@ export default function Watermark() {
       } catch (err) {
         console.error(`Error processing image ${i}:`, err);
       }
+
+      setProcessingProgress({ current: i + 1, total: images.length });
     }
 
+    resultsRef.current.forEach((result) => URL.revokeObjectURL(result.url));
+    resultsRef.current = newResults;
     setResults(newResults);
     setProcessing(false);
+    setProcessingProgress({ current: newResults.length, total: newResults.length });
 
     if (newResults.length > 0) {
       const displayName = user ? getUserDisplayName(user, null) : null;
@@ -284,7 +391,20 @@ export default function Watermark() {
 
   // ── Download all ───────────────────────────────────────────────────
   const handleDownloadAll = useCallback(async (mode) => {
-    for (const r of results) {
+    if (!results.length) {
+      return;
+    }
+
+    const total = results.length;
+    setDownloadProgress({
+      current: 0,
+      total,
+      percent: 0,
+      message: 'Đang chuẩn bị file tải xuống…',
+    });
+
+    for (let index = 0; index < results.length; index += 1) {
+      const r = results[index];
       let blob = r.blob;
       let fileName = getDownloadFileName(r.fileName);
 
@@ -301,18 +421,46 @@ export default function Watermark() {
       }
 
       const a = document.createElement('a');
-      a.href = URL.createObjectURL(blob);
+      const objectUrl = URL.createObjectURL(blob);
+      a.href = objectUrl;
       a.download = fileName;
       a.click();
-      await new Promise((r) => setTimeout(r, 80)); // slight delay between downloads
+      window.setTimeout(() => URL.revokeObjectURL(objectUrl), 1500);
+
+      setDownloadProgress({
+        current: index + 1,
+        total,
+        percent: Math.round(((index + 1) / total) * 100),
+        message: `Đã chuẩn bị ${index + 1}/${total} ảnh`,
+      });
+
+      await new Promise((resolve) => setTimeout(resolve, 80)); // slight delay between downloads
     }
+
+    window.setTimeout(() => setDownloadProgress(null), 1000);
   }, [results]);
 
   // ── Clear results ──────────────────────────────────────────────────
   const handleClear = useCallback(() => {
-    results.forEach((r) => URL.revokeObjectURL(r.url));
+    resultsRef.current.forEach((r) => URL.revokeObjectURL(r.url));
+    resultsRef.current = [];
     setResults([]);
-  }, [results]);
+    setDownloadProgress(null);
+    setProcessingProgress({ current: 0, total: 0 });
+  }, []);
+
+  const handleRemoveResult = useCallback((index) => {
+    setResults((current) => {
+      const removed = current[index];
+      if (removed?.url) {
+        URL.revokeObjectURL(removed.url);
+      }
+
+      const next = current.filter((_, itemIndex) => itemIndex !== index);
+      resultsRef.current = next;
+      return next;
+    });
+  }, []);
 
   const handleRenameResult = useCallback((index, nextName) => {
     setResults((prev) => prev.map((result, i) => (
@@ -327,7 +475,7 @@ export default function Watermark() {
       <Helmet>
         <title>Watermark - Thêm Logo Vào Ảnh</title>
       </Helmet>
-      <div className="wm-page">
+      <div className="wm-page" style={pageThemeVars}>
         <div className="wm-container">
 
           {/* ── Header ── */}
@@ -427,7 +575,18 @@ export default function Watermark() {
           {/* Right column: controls */}
           <div className="wm-panel-column wm-panel-column--wide">
             <div className="wm-card wm-card--full">
-              <WatermarkControls options={options} onChange={setOptions} />
+              <WatermarkControls
+                options={options}
+                onChange={setOptions}
+                enableAccentOptions
+              />
+
+              {createError && (
+                <div className="wm-inline-banner wm-inline-banner--error" role="alert">
+                  <span className="wm-inline-icon" aria-hidden="true">!</span>
+                  <span>{createError}</span>
+                </div>
+              )}
 
               <hr className="wm-divider" />
 
@@ -435,9 +594,19 @@ export default function Watermark() {
               <div className="wm-action-bar">
                 <button
                   className="wm-btn-primary wm-create-btn"
+                  type="button"
                   onClick={handleCreate}
+                  onPointerDown={handleCreateButtonPointerDown}
                   disabled={!canCreate}
                 >
+                  {buttonRipples.map((ripple) => (
+                    <span
+                      key={ripple.id}
+                      className="wm-btn-ripple"
+                      style={{ left: ripple.x, top: ripple.y }}
+                      aria-hidden="true"
+                    />
+                  ))}
                   {processing ? (
                     <>
                       <span className="wm-spinner" role="status" aria-label="Đang xử lý" />
@@ -477,15 +646,18 @@ export default function Watermark() {
             onClear={handleClear}
             onDownloadAll={handleDownloadAll}
             onRenameFile={handleRenameResult}
+            onRemoveResult={handleRemoveResult}
             isProcessing={processing}
+            processingProgress={processingProgress}
+            downloadProgress={downloadProgress}
           />
         </div>
 
       </div>
     </div>
-    <NotificationModal
+    {/* <NotificationModal
       notification={notification}
-    />
+    /> */}
     <WatermarkImageZoom image={zoomImage} onClose={closeZoom} />
     </>
   );

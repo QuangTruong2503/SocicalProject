@@ -489,6 +489,94 @@
   margin-bottom: 0.5rem;
 }
 
+.wm-page .wm-color-picker-row {
+  display: grid;
+  grid-template-columns: 56px minmax(0, 1fr);
+  gap: 0.75rem;
+  align-items: center;
+  margin-top: 0.75rem;
+}
+
+.wm-page .wm-input--hex {
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.wm-page .wm-color-preset-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+}
+
+.wm-page .wm-color-preset {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  min-width: 0;
+  padding: 0.5rem 0.65rem;
+  border: 1px solid var(--wm-border);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.78);
+  color: var(--wm-text);
+  font-size: 0.78rem;
+  font-weight: 800;
+  transition: all 0.22s ease;
+}
+
+.wm-page .wm-color-preset:hover {
+  transform: translateY(-1px);
+  border-color: var(--wm-primary);
+  box-shadow: 0 12px 22px rgba(15, 23, 42, 0.08);
+}
+
+.wm-page .wm-color-preset.is-active {
+  border-color: var(--wm-primary);
+  background: var(--wm-primary-soft);
+  color: var(--wm-primary-deep);
+}
+
+.wm-page .wm-color-preset__swatch {
+  width: 0.9rem;
+  height: 0.9rem;
+  flex-shrink: 0;
+  border-radius: 999px;
+  background: var(--wm-swatch, var(--wm-primary));
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.9), 0 0 0 3px rgba(148, 163, 184, 0.16);
+}
+
+.wm-page .wm-preset-note,
+.wm-page .wm-inline-banner {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.55rem;
+  margin-top: 0.9rem;
+  padding: 0.75rem 0.9rem;
+  border: 1px solid rgba(37, 99, 235, 0.18);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.76);
+  color: var(--wm-text);
+  font-size: 0.92rem;
+  line-height: 1.45;
+}
+
+.wm-page .wm-preset-note {
+  margin-top: 0;
+  margin-bottom: 1rem;
+  color: var(--wm-text-muted);
+}
+
+.wm-page .wm-inline-banner--error {
+  border-color: rgba(239, 68, 68, 0.18);
+  background: rgba(254, 242, 242, 0.96);
+  color: #991b1b;
+}
+
+.wm-page .wm-inline-banner--error .wm-inline-icon {
+  color: var(--wm-danger);
+  margin-top: 0.05rem;
+}
+
 .wm-page .wm-dropzone {
   min-height: 220px;
   display: flex;
@@ -503,7 +591,26 @@
   background:
     linear-gradient(135deg, rgba(219, 234, 254, 0.82), rgba(191, 219, 254, 0.42)),
     var(--wm-surface);
-  transition: transform 0.2s ease, border-color 0.2s ease, background 0.2s ease, box-shadow 0.2s ease;
+  position: relative;
+  overflow: hidden;
+  transition: all 0.3s ease;
+}
+
+.wm-page .wm-dropzone::before {
+  content: '';
+  position: absolute;
+  inset: 8px;
+  border: 2px dashed rgba(37, 99, 235, 0.28);
+  border-radius: inherit;
+  background-image: repeating-linear-gradient(
+    90deg,
+    rgba(37, 99, 235, 0.16) 0 14px,
+    transparent 14px 28px
+  );
+  background-size: 28px 100%;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.18s ease;
 }
 
 .wm-page .wm-dropzone:hover,
@@ -514,6 +621,17 @@
     linear-gradient(135deg, rgba(219, 234, 254, 0.96), rgba(147, 197, 253, 0.2)),
     var(--wm-surface);
   box-shadow: var(--wm-focus-ring);
+}
+
+.wm-page .wm-dropzone.is-dragging {
+  transform: translateY(-4px) scale(1.015);
+  border-color: var(--wm-primary);
+  box-shadow: var(--wm-focus-ring), 0 20px 38px rgba(37, 99, 235, 0.14);
+}
+
+.wm-page .wm-dropzone.is-dragging::before {
+  opacity: 1;
+  animation: wmMarchingAnts 1.1s linear infinite;
 }
 
 .wm-page .wm-dropzone-icon {
@@ -634,6 +752,10 @@
   border-bottom: 1px solid var(--wm-border);
 }
 
+.wm-page .wm-control-group--accent {
+  padding-top: 0;
+}
+
 .wm-page .wm-control-group:last-child {
   padding-bottom: 0;
   border-bottom: none;
@@ -669,6 +791,21 @@
   border-color: var(--wm-primary);
   background: #ffffff;
   box-shadow: var(--wm-focus-ring);
+}
+
+.wm-page .wm-select {
+  appearance: none;
+  -webkit-appearance: none;
+  padding-right: 2.75rem;
+  background-image:
+    linear-gradient(45deg, transparent 50%, var(--wm-primary-deep) 50%),
+    linear-gradient(135deg, var(--wm-primary-deep) 50%, transparent 50%);
+  background-position:
+    calc(100% - 1.1rem) 50%,
+    calc(100% - 0.8rem) 50%;
+  background-size: 0.42rem 0.42rem, 0.42rem 0.42rem;
+  background-repeat: no-repeat;
+  cursor: pointer;
 }
 
 .wm-page .wm-input::placeholder,
@@ -845,6 +982,37 @@
   min-height: 3rem;
   padding: 0.8rem 1.6rem;
   font-size: 1rem;
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+  background-image: linear-gradient(115deg, var(--wm-primary), var(--wm-primary-hover), var(--wm-primary), var(--wm-primary-deep));
+  background-size: 200% 200%;
+  animation: wmGradientFlow 8s ease-in-out infinite;
+  transition: transform 0.28s ease, box-shadow 0.28s ease, background-position 0.6s ease;
+}
+
+.wm-page .wm-create-btn:hover:not(:disabled) {
+  transform: translateY(-2px) scale(1.05);
+  box-shadow: 0 20px 40px rgba(37, 99, 235, 0.24);
+}
+
+.wm-page .wm-create-btn > * {
+  position: relative;
+  z-index: 1;
+}
+
+.wm-page .wm-btn-ripple {
+  position: absolute;
+  width: 12px;
+  height: 12px;
+  margin-left: -6px;
+  margin-top: -6px;
+  border-radius: 999px;
+  background: radial-gradient(circle, rgba(255, 255, 255, 0.76) 0%, rgba(255, 255, 255, 0.22) 35%, transparent 70%);
+  transform: scale(0);
+  opacity: 0.9;
+  pointer-events: none;
+  animation: wmRipple 0.72s ease-out forwards;
 }
 
 .wm-page .wm-btn-small {
@@ -964,8 +1132,13 @@
   animation: wmFadeInUp 0.32s ease both;
 }
 
+.wm-page .wm-result-card--enter {
+  will-change: transform, opacity;
+  animation: wmResultEnter 0.42s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
 .wm-page .wm-result-card:hover {
-  transform: translateY(-6px);
+  transform: translateY(-6px) scale(1.015);
   border-color: var(--wm-border-strong);
 }
 
@@ -985,7 +1158,7 @@
 }
 
 .wm-page .wm-result-card:hover .wm-result-img-wrap img {
-  transform: scale(1.04);
+  transform: scale(1.05);
 }
 
 .wm-page .wm-result-image-trigger,
@@ -1012,8 +1185,11 @@
   justify-content: center;
   opacity: 0;
   pointer-events: none;
-  background: linear-gradient(180deg, rgba(15, 23, 42, 0.12), rgba(15, 23, 42, 0.72));
-  transition: opacity 0.22s ease;
+  background:
+    linear-gradient(180deg, rgba(15, 23, 42, 0.08), rgba(15, 23, 42, 0.72)),
+    radial-gradient(circle at 50% 40%, rgba(255, 255, 255, 0.1), transparent 32%);
+  backdrop-filter: blur(6px);
+  transition: opacity 0.22s ease, backdrop-filter 0.22s ease;
 }
 
 .wm-page .wm-result-card:hover .wm-result-overlay,
@@ -1028,7 +1204,7 @@
   gap: 0.5rem;
   opacity: 0;
   pointer-events: auto;
-  transform: translateY(8px) scale(0.98);
+  transform: translateY(10px) scale(0.95);
   transition: opacity 0.22s ease, transform 0.22s ease;
 }
 
@@ -1036,6 +1212,26 @@
 .wm-page .wm-result-card:focus-within .wm-result-action-row {
   opacity: 1;
   transform: translateY(0) scale(1);
+}
+
+.wm-page .wm-result-dl-btn,
+.wm-page .wm-result-remove-btn {
+  min-width: 108px;
+  padding: 0.62rem 0.9rem;
+  border: 0;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.92);
+  color: var(--wm-text);
+  font-size: 0.84rem;
+  font-weight: 800;
+  box-shadow: 0 14px 30px rgba(15, 23, 42, 0.2);
+  backdrop-filter: blur(10px);
+  transition: transform 0.18s ease, box-shadow 0.18s ease, background 0.18s ease, color 0.18s ease;
+}
+
+.wm-page .wm-result-dl-btn:hover,
+.wm-page .wm-result-remove-btn:hover {
+  transform: translateY(-1px) scale(1.04);
 }
 
 .wm-page .wm-result-icon-btn {
@@ -1052,6 +1248,25 @@
 .wm-page .wm-result-icon-btn:hover {
   color: #ffffff;
   background: var(--wm-primary);
+}
+
+.wm-page .wm-result-dl-btn {
+  background: linear-gradient(135deg, var(--wm-primary), var(--wm-primary-hover));
+  color: #ffffff;
+}
+
+.wm-page .wm-result-dl-btn:hover {
+  box-shadow: 0 18px 36px rgba(37, 99, 235, 0.26);
+}
+
+.wm-page .wm-result-remove-btn {
+  background: rgba(255, 255, 255, 0.92);
+  color: var(--wm-danger);
+}
+
+.wm-page .wm-result-remove-btn:hover {
+  background: rgba(239, 68, 68, 0.1);
+  box-shadow: 0 18px 36px rgba(239, 68, 68, 0.16);
 }
 
 .wm-page .wm-result-icon-btn svg {
@@ -1518,6 +1733,54 @@ body.wm-watermark-theme .wm-preview-backdrop.is-closing .wm-preview-modal {
 @keyframes wmFadeInUp {
   from { opacity: 0; transform: translateY(14px); }
   to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes wmResultEnter {
+  from {
+    opacity: 0;
+    transform: translateY(18px) scale(0.97);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes wmMarchingAnts {
+  from {
+    background-position: 0 0;
+  }
+
+  to {
+    background-position: 28px 0;
+  }
+}
+
+@keyframes wmGradientFlow {
+  0% {
+    background-position: 0% 50%;
+  }
+
+  50% {
+    background-position: 100% 50%;
+  }
+
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+@keyframes wmRipple {
+  0% {
+    transform: scale(0);
+    opacity: 0.55;
+  }
+
+  100% {
+    transform: scale(36);
+    opacity: 0;
+  }
 }
 
 @keyframes wmBackdropIn {

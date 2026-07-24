@@ -2,6 +2,7 @@ import { supabase } from '../lib/supabase.js';
 import { createServiceResult, normalizeServiceError } from './serviceHelpers.js';
 
 const WATERMARK_IMAGE_COUNTS_TABLE = 'watermark_image_counts';
+const WATERMARK_VISITOR_STATS_VIEW = 'watermark_visitor_stats';
 
 /**
  * @param {{ userId?: string | null, visitorId?: string | null, displayName?: string | null, imageCount: number, sourcePage?: string }} payload
@@ -82,6 +83,39 @@ export async function getWatermarkDashboardRows({ sourcePage = null } = {}) {
   } catch (error) {
     console.error('[watermarkImageCountService] getWatermarkDashboardRows exception', { error, sourcePage });
     return createServiceResult(null, normalizeServiceError(error, 'Không thể tải dữ liệu dashboard watermark.'));
+  }
+}
+
+/**
+ * Fetch grouped watermark stats by visitor_id for the dashboard.
+ *
+ * @param {{ sourcePage?: string | null }} options
+ */
+export async function getWatermarkVisitorStatsRows({ sourcePage = null } = {}) {
+  try {
+    const { data, error } = await supabase
+      .from(WATERMARK_VISITOR_STATS_VIEW)
+      .select('visitor_id, user_id, display_name, total_images, entry_count, source_pages, last_seen_at');
+
+    if (error) {
+      console.error('[watermarkImageCountService] getWatermarkVisitorStatsRows error', { error, sourcePage });
+      return createServiceResult(null, normalizeServiceError(error, 'Không thể tải dữ liệu thống kê watermark.'));
+    }
+
+    const rows = (data || []).filter((row) => {
+      if (!sourcePage || sourcePage === 'all') {
+        return true;
+      }
+
+      return Array.isArray(row.source_pages)
+        ? row.source_pages.includes(sourcePage)
+        : row.source_page === sourcePage;
+    });
+
+    return createServiceResult(rows);
+  } catch (error) {
+    console.error('[watermarkImageCountService] getWatermarkVisitorStatsRows exception', { error, sourcePage });
+    return createServiceResult(null, normalizeServiceError(error, 'Không thể tải dữ liệu thống kê watermark.'));
   }
 }
 

@@ -5,6 +5,7 @@ import './styles/auth.css';
 import Watermark from './pages/Watermark.jsx';
 import DoanTrangWatermarkPage from './pages/DoanTrangWatermarkPage.jsx';
 import WatermarkDashboardPage from './pages/WatermarkDashboardPage.jsx';
+import Quotation from './pages/Quotation/Quotation.jsx';
 import Footer from './components/Footer.jsx';
 import Header from './components/Header.jsx';
 import ScrollToTopButton from './components/ScrollToTopButton.jsx';
@@ -98,6 +99,15 @@ function HomePage() {
       link: '/watermark',
       badge: null,
       delay: 300,
+    },
+    {
+      icon: '🧾',
+      title: 'Quotation Builder',
+      description: 'Tạo phiếu báo giá / đơn hàng, tự tính VAT, lưu draft và in hóa đơn A4.',
+      buttonText: 'Mo Tool',
+      link: '/quotation',
+      badge: 'New',
+      delay: 325,
     },
   ];
 
@@ -315,6 +325,7 @@ export default function App() {
             <Route path="/watermark" element={<Watermark />} />
             <Route path="/watermark/doantrang" element={<DoanTrangWatermarkPage />} />
             <Route path="/watermark/dashboard" element={<WatermarkDashboardPage />} />
+            <Route path="/quotation" element={<Quotation />} />
             <Route path="/seo-excel-generator" element={<SeoExcelGenerator />} />
             <Route
               path="/auth"

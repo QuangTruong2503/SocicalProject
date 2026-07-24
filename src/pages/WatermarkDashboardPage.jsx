@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { Link } from 'react-router-dom';
 import {
-  getWatermarkDashboardRows,
+  getWatermarkVisitorStatsRows,
 } from '../services/watermarkImageCountService.js';
 import '../styles/WatermarkDashboard.css';
 
@@ -41,52 +41,22 @@ function getVisitorLabel(row) {
     || 'Khách';
 }
 
-function buildVisitorGroups(rows) {
-  const groups = new Map();
-
-  rows.forEach((row) => {
-    const visitorKey = row.visitor_id || row.user_id || 'unknown';
-    const existing = groups.get(visitorKey);
-
-    if (!existing) {
-      groups.set(visitorKey, {
-        visitorId: row.visitor_id || '',
-        userId: row.user_id || '',
-        displayName: row.display_name || '',
-        totalImages: Number(row.image_count) || 0,
-        entryCount: 1,
-        sourcePages: new Set([row.source_page || 'watermark']),
-        lastSeenAt: row.created_at || '',
-      });
-      return;
-    }
-
-    existing.totalImages += Number(row.image_count) || 0;
-    existing.entryCount += 1;
-    existing.sourcePages.add(row.source_page || 'watermark');
-
-    if (!existing.displayName && row.display_name) {
-      existing.displayName = row.display_name;
-    }
-
-    if (!existing.visitorId && row.visitor_id) {
-      existing.visitorId = row.visitor_id;
-    }
-
-    if (!existing.userId && row.user_id) {
-      existing.userId = row.user_id;
-    }
-
-    if (!existing.lastSeenAt) {
-      existing.lastSeenAt = row.created_at || '';
-    }
-  });
-
-  return Array.from(groups.values())
-    .map((group) => ({
-      ...group,
-      sourcePages: Array.from(group.sourcePages),
-      displayName: group.displayName || getVisitorLabel(group),
+function normalizeVisitorStatsRows(rows) {
+  return (rows || [])
+    .map((row) => ({
+      visitorId: row.visitor_id || row.visitorId || '',
+      userId: row.user_id || row.userId || '',
+      displayName: row.display_name || row.displayName || getVisitorLabel(row),
+      totalImages: Number(row.total_images ?? row.totalImages ?? 0) || 0,
+      entryCount: Number(row.entry_count ?? row.entryCount ?? 0) || 0,
+      sourcePages: Array.isArray(row.source_pages)
+        ? row.source_pages
+        : Array.isArray(row.sourcePages)
+          ? row.sourcePages
+          : row.source_page
+            ? [row.source_page]
+            : [],
+      lastSeenAt: row.last_seen_at || row.lastSeenAt || '',
     }))
     .sort((left, right) => (
       right.totalImages - left.totalImages
@@ -118,7 +88,7 @@ export default function WatermarkDashboardPage() {
       setLoading(true);
       setError('');
 
-      const result = await getWatermarkDashboardRows();
+      const result = await getWatermarkVisitorStatsRows();
 
       if (!isActive) {
         return;
@@ -146,7 +116,8 @@ export default function WatermarkDashboardPage() {
     const normalizedSearch = search.trim().toLowerCase();
 
     return rows.filter((row) => {
-      const matchesSource = sourcePage === 'all' || row.source_page === sourcePage;
+      const matchesSource = sourcePage === 'all'
+        || (Array.isArray(row.source_pages) && row.source_pages.includes(sourcePage));
 
       if (!matchesSource) {
         return false;
@@ -157,21 +128,23 @@ export default function WatermarkDashboardPage() {
       }
 
       return [
-        row.visitor_id,
-        row.user_id,
-        row.display_name,
-        row.source_page,
+        row.visitorId,
+        row.userId,
+        row.displayName,
+        row.sourcePages?.join(' '),
       ].some((value) => String(value || '').toLowerCase().includes(normalizedSearch));
     });
   }, [rows, search, sourcePage]);
 
-  const visitorGroups = useMemo(() => buildVisitorGroups(filteredRows), [filteredRows]);
+  const visitorGroups = useMemo(() => normalizeVisitorStatsRows(filteredRows), [filteredRows]);
 
   const summary = useMemo(() => {
-    const totalImages = filteredRows.reduce((sum, row) => sum + (Number(row.image_count) || 0), 0);
+    const totalImages = filteredRows.reduce((sum, row) => sum + (Number(row.totalImages) || 0), 0);
     const uniqueVisitors = visitorGroups.length;
-    const totalEntries = filteredRows.length;
-    const uniqueSources = new Set(filteredRows.map((row) => row.source_page || 'watermark')).size;
+    const totalEntries = filteredRows.reduce((sum, row) => sum + (Number(row.entryCount) || 0), 0);
+    const uniqueSources = new Set(
+      filteredRows.flatMap((row) => row.sourcePages || [])
+    ).size;
 
     return {
       totalImages,
@@ -293,8 +266,8 @@ export default function WatermarkDashboardPage() {
                     <th>Visitor ID</th>
                     <th>Display name</th>
                     <th>User ID</th>
-                    <th>Ảnh</th>
-                    <th>Entries</th>
+                    <th>Tổng ảnh</th>
+                    <th>Lần tạo</th>
                     <th>Sources</th>
                     <th>Last seen</th>
                   </tr>

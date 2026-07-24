@@ -1,5 +1,384 @@
 /* ==================== WATERMARK CONTROLS STYLES ==================== */
 
+.wm-controls {
+  position: relative;
+}
+
+.wm-control-group--accent {
+  position: relative;
+}
+
+.wm-accent-launcher {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+  padding: 0.95rem 1rem;
+  border: 1px solid rgba(37, 99, 235, 0.16);
+  border-radius: 18px;
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.96), rgba(248, 250, 252, 0.9)),
+    linear-gradient(135deg, rgba(37, 99, 235, 0.06), rgba(14, 165, 233, 0.04));
+  color: var(--wm-text, var(--color-text));
+  text-align: left;
+  cursor: pointer;
+  box-shadow: 0 14px 28px rgba(15, 23, 42, 0.08);
+  transition: transform 180ms ease, box-shadow 180ms ease, border-color 180ms ease, background 180ms ease;
+}
+
+.wm-accent-launcher:hover {
+  transform: translateY(-1px);
+  border-color: rgba(37, 99, 235, 0.28);
+  box-shadow: 0 18px 34px rgba(37, 99, 235, 0.12);
+}
+
+.wm-accent-launcher:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.16), 0 18px 34px rgba(37, 99, 235, 0.12);
+}
+
+.wm-accent-launcher__swatch {
+  width: 3rem;
+  height: 3rem;
+  flex: 0 0 auto;
+  border-radius: 16px;
+  background:
+    linear-gradient(135deg, var(--wm-swatch), color-mix(in srgb, var(--wm-swatch) 72%, #ffffff 28%));
+  box-shadow:
+    0 12px 20px color-mix(in srgb, var(--wm-swatch) 28%, transparent),
+    inset 0 1px 0 rgba(255, 255, 255, 0.4);
+}
+
+.wm-accent-launcher__text {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  flex: 1;
+}
+
+.wm-accent-launcher__text strong {
+  font-size: 0.95rem;
+  font-weight: 800;
+  color: var(--wm-text-strong, var(--color-text));
+}
+
+.wm-accent-launcher__text small {
+  color: var(--wm-text-muted, var(--color-text-secondary));
+  font-size: 0.8rem;
+}
+
+.wm-accent-launcher__icon {
+  color: var(--wm-primary, var(--color-primary));
+  font-size: 1.15rem;
+  font-weight: 800;
+}
+
+.wm-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 2200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  background:
+    radial-gradient(circle at 20% 12%, rgba(37, 99, 235, 0.12), transparent 30%),
+    radial-gradient(circle at 82% 18%, rgba(14, 165, 233, 0.12), transparent 32%),
+    rgba(15, 23, 42, 0.62);
+  backdrop-filter: blur(16px) saturate(1.1);
+}
+
+.wm-modal {
+  width: min(100%, 720px);
+  max-height: min(90vh, 780px);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.45);
+  border-radius: 26px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(248, 250, 252, 0.92)),
+    radial-gradient(circle at 10% 0%, rgba(219, 234, 254, 0.9), transparent 30%);
+  box-shadow:
+    0 34px 90px rgba(2, 6, 23, 0.34),
+    0 0 0 1px rgba(255, 255, 255, 0.28) inset;
+}
+
+.wm-modal__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1.2rem 1.25rem 1rem;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.18);
+}
+
+.wm-modal__header h3 {
+  margin: 0.1rem 0 0;
+  color: var(--wm-text-strong, var(--color-text));
+  font-family: var(--wm-font-display, inherit);
+  font-size: clamp(1.2rem, 2.2vw, 1.55rem);
+  line-height: 1.12;
+  letter-spacing: -0.02em;
+}
+
+.wm-modal__header p {
+  margin: 0.35rem 0 0;
+  color: var(--wm-text-muted, var(--color-text-secondary));
+  font-size: 0.92rem;
+  line-height: 1.55;
+}
+
+.wm-modal__kicker {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.26rem 0.55rem;
+  border-radius: 999px;
+  background: rgba(37, 99, 235, 0.1);
+  color: var(--wm-primary, var(--color-primary));
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.wm-modal__close {
+  width: 2.75rem;
+  height: 2.75rem;
+  flex: 0 0 auto;
+  border: 1px solid rgba(148, 163, 184, 0.24);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.82);
+  color: var(--wm-text, var(--color-text));
+  cursor: pointer;
+  font-size: 1.45rem;
+  line-height: 1;
+  transition: transform 160ms ease, border-color 160ms ease, color 160ms ease, background 160ms ease;
+}
+
+.wm-modal__close:hover {
+  transform: rotate(90deg);
+  border-color: rgba(239, 68, 68, 0.24);
+  background: rgba(254, 242, 242, 0.96);
+  color: #dc2626;
+}
+
+.wm-modal__close:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.16);
+}
+
+.wm-modal__body {
+  padding: 1rem 1.25rem 1.1rem;
+  display: grid;
+  gap: 1rem;
+  overflow: auto;
+}
+
+.wm-modal__preview {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem;
+  border: 1px solid rgba(37, 99, 235, 0.14);
+  border-radius: 22px;
+  background:
+    radial-gradient(circle at 24% 20%, rgba(219, 234, 254, 0.78), transparent 30%),
+    linear-gradient(135deg, rgba(255, 255, 255, 0.92), rgba(248, 250, 252, 0.94));
+}
+
+.wm-modal__swatch {
+  width: 4.5rem;
+  height: 4.5rem;
+  flex: 0 0 auto;
+  border-radius: 20px;
+  background:
+    linear-gradient(135deg, var(--wm-preview-color), color-mix(in srgb, var(--wm-preview-color) 70%, #ffffff 30%));
+  box-shadow:
+    0 18px 30px color-mix(in srgb, var(--wm-preview-color) 30%, transparent),
+    inset 0 1px 0 rgba(255, 255, 255, 0.38);
+}
+
+.wm-modal__preview-copy {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.wm-modal__preview-copy strong {
+  color: var(--wm-text-strong, var(--color-text));
+  font-family: var(--wm-font-display, inherit);
+  font-size: 1.2rem;
+  font-weight: 800;
+}
+
+.wm-modal__preview-copy span {
+  color: var(--wm-text-muted, var(--color-text-secondary));
+  font-size: 0.92rem;
+  line-height: 1.45;
+}
+
+.wm-modal__section {
+  padding: 1rem 0 0;
+  border-top: 1px solid rgba(148, 163, 184, 0.14);
+}
+
+.wm-modal__section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.85rem;
+}
+
+.wm-modal__section-head h4 {
+  margin: 0;
+  color: var(--wm-text-strong, var(--color-text));
+  font-size: 0.96rem;
+  font-weight: 800;
+}
+
+.wm-modal__section-head span {
+  color: var(--wm-text-muted, var(--color-text-secondary));
+  font-size: 0.76rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.wm-modal__palette {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.7rem;
+}
+
+.wm-palette-chip {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  min-width: 0;
+  padding: 0.8rem 0.85rem;
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.84);
+  color: var(--wm-text, var(--color-text));
+  font-size: 0.82rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: transform 160ms ease, border-color 160ms ease, box-shadow 160ms ease, background 160ms ease;
+}
+
+.wm-palette-chip:hover {
+  transform: translateY(-1px);
+  border-color: rgba(37, 99, 235, 0.28);
+  box-shadow: 0 14px 24px rgba(15, 23, 42, 0.08);
+}
+
+.wm-palette-chip.is-active {
+  border-color: rgba(37, 99, 235, 0.42);
+  background: rgba(37, 99, 235, 0.08);
+  color: var(--wm-primary-deep, var(--color-primary));
+}
+
+.wm-palette-chip__dot {
+  width: 0.95rem;
+  height: 0.95rem;
+  flex: 0 0 auto;
+  border-radius: 999px;
+  background: var(--wm-swatch, var(--wm-primary, var(--color-primary)));
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.86), 0 0 0 3px rgba(148, 163, 184, 0.15);
+}
+
+.wm-modal__creator {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.85rem;
+}
+
+.wm-modal__color-field,
+.wm-modal__hex-field {
+  display: grid;
+  gap: 0.45rem;
+  padding: 0.85rem;
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.82);
+}
+
+.wm-modal__color-field span,
+.wm-modal__hex-field span {
+  color: var(--wm-text-muted, var(--color-text-secondary));
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.wm-modal__color-input {
+  width: 100%;
+  min-height: 52px;
+  padding: 0;
+  border: 0;
+  border-radius: 14px;
+  background: transparent;
+  cursor: pointer;
+}
+
+.wm-modal__hex-input {
+  margin-top: 0;
+}
+
+.wm-modal__footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.7rem;
+  padding: 0 1.25rem 1.25rem;
+}
+
+.wm-modal__button {
+  min-width: 132px;
+  min-height: 46px;
+  padding: 0.72rem 1rem;
+  border: 1px solid transparent;
+  border-radius: 14px;
+  font-size: 0.92rem;
+  font-weight: 800;
+  cursor: pointer;
+  transition: transform 160ms ease, box-shadow 160ms ease, border-color 160ms ease, background 160ms ease;
+}
+
+.wm-modal__button:hover {
+  transform: translateY(-1px);
+}
+
+.wm-modal__button:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.16);
+}
+
+.wm-modal__button--ghost {
+  background: rgba(255, 255, 255, 0.88);
+  border-color: rgba(148, 163, 184, 0.24);
+  color: var(--wm-text, var(--color-text));
+}
+
+.wm-modal__button--ghost:hover {
+  border-color: rgba(37, 99, 235, 0.22);
+  background: rgba(37, 99, 235, 0.06);
+}
+
+.wm-modal__button--primary {
+  background: linear-gradient(135deg, var(--wm-primary, var(--color-primary)), color-mix(in srgb, var(--wm-primary, var(--color-primary)) 82%, #ffffff 18%));
+  color: #ffffff;
+  box-shadow: 0 16px 28px color-mix(in srgb, var(--wm-primary, var(--color-primary)) 24%, transparent);
+}
+
+.wm-modal__button--primary:hover {
+  box-shadow: 0 18px 30px color-mix(in srgb, var(--wm-primary, var(--color-primary)) 28%, transparent);
+}
+
 .wm-controls-section {
   display: flex;
   flex-direction: column;
@@ -160,6 +539,56 @@
   .wm-control-color {
     width: 50px;
     height: 36px;
+  }
+
+  .wm-accent-launcher {
+    padding: 0.85rem 0.9rem;
+  }
+
+  .wm-accent-launcher__swatch {
+    width: 2.75rem;
+    height: 2.75rem;
+    border-radius: 14px;
+  }
+
+  .wm-modal {
+    width: min(100%, 100%);
+    max-height: min(92vh, 760px);
+    border-radius: 22px;
+  }
+
+  .wm-modal__header,
+  .wm-modal__body,
+  .wm-modal__footer {
+    padding-left: 1rem;
+    padding-right: 1rem;
+  }
+
+  .wm-modal__preview {
+    gap: 0.85rem;
+    padding: 0.85rem;
+  }
+
+  .wm-modal__swatch {
+    width: 4rem;
+    height: 4rem;
+    border-radius: 18px;
+  }
+
+  .wm-modal__palette {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .wm-modal__creator {
+    grid-template-columns: 1fr;
+  }
+
+  .wm-modal__footer {
+    flex-direction: column-reverse;
+  }
+
+  .wm-modal__button {
+    width: 100%;
   }
 }
 

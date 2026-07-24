@@ -41,8 +41,10 @@ export default function ImageUploader({
   options,
 }) {
   const fileRef = useRef();
+  const dragDepthRef = useRef(0);
   const [draggedIndex, setDraggedIndex] = useState(null);
   const [dropIndex, setDropIndex] = useState(null);
+  const [isDraggingFiles, setIsDraggingFiles] = useState(false);
   const logoPreviewStyle = useMemo(() => {
     if (!logoUrl) return null;
 
@@ -72,10 +74,14 @@ export default function ImageUploader({
         opacity,
       },
     };
-  }, [logoUrl, options?.opacity, options?.size, options?.tiled]);
+  }, [
+    logoUrl,
+    options?.opacity,
+    options?.size,
+    options?.tiled,
+  ]);
 
-  const handleFiles = (e) => {
-    const files = Array.from(e.target.files).filter((f) => f.type.startsWith('image/'));
+  const applyFiles = (files) => {
     if (!files.length) return;
     images.forEach((img) => URL.revokeObjectURL(img.preview));
     const previews = files.map((file) => ({
@@ -84,20 +90,41 @@ export default function ImageUploader({
       name: file.name,
     }));
     onImagesChange(previews);
+  };
+
+  const handleFiles = (e) => {
+    const files = Array.from(e.target.files).filter((f) => f.type.startsWith('image/'));
+    applyFiles(files);
     e.target.value = '';
   };
 
   const handleDrop = (e) => {
     e.preventDefault();
+    dragDepthRef.current = 0;
+    setIsDraggingFiles(false);
     const files = Array.from(e.dataTransfer.files).filter((f) => f.type.startsWith('image/'));
-    if (!files.length) return;
-    images.forEach((img) => URL.revokeObjectURL(img.preview));
-    const previews = files.map((file) => ({
-      file,
-      preview: URL.createObjectURL(file),
-      name: file.name,
-    }));
-    onImagesChange(previews);
+    applyFiles(files);
+  };
+
+  const handleDragEnter = (e) => {
+    e.preventDefault();
+    if (!Array.from(e.dataTransfer.types || []).includes('Files')) return;
+    dragDepthRef.current += 1;
+    setIsDraggingFiles(true);
+  };
+
+  const handleDragOver = (e) => {
+    e.preventDefault();
+    if (!Array.from(e.dataTransfer.types || []).includes('Files')) return;
+    setIsDraggingFiles(true);
+  };
+
+  const handleDragLeave = (e) => {
+    e.preventDefault();
+    dragDepthRef.current = Math.max(0, dragDepthRef.current - 1);
+    if (dragDepthRef.current === 0) {
+      setIsDraggingFiles(false);
+    }
   };
 
   const removeImage = (idx) => {
@@ -156,10 +183,12 @@ export default function ImageUploader({
       </div>
 
       <div
-        className="wm-dropzone"
+        className={`wm-dropzone${isDraggingFiles ? ' is-dragging' : ''}`}
         onClick={() => fileRef.current?.click()}
+        onDragEnter={handleDragEnter}
+        onDragOver={handleDragOver}
+        onDragLeave={handleDragLeave}
         onDrop={handleDrop}
-        onDragOver={(e) => e.preventDefault()}
       >
         <span className="wm-dropzone-icon" aria-hidden="true">⇧</span>
         <p className="wm-dropzone-title">Kéo thả hoặc click để chọn ảnh</p>

@@ -645,6 +645,24 @@
   box-shadow: 0 0 0 3px rgba(233, 30, 140, 0.1);
 }
 
+.dtw-wm-page .dtw-dropzone-shell {
+  transform-origin: center;
+}
+
+.dtw-wm-page .dtw-dropzone-shell--dragging .wm-dropzone {
+  border-color: #db2777;
+  background: rgba(251, 207, 232, 0.3);
+  box-shadow: 0 0 0 4px rgba(219, 39, 119, 0.12);
+}
+
+.dtw-wm-page .dtw-dropzone-shell--dragging .wm-dropzone-title {
+  color: #880e4f;
+}
+
+.dtw-wm-page .dtw-dropzone-shell--dragging .wm-dropzone-icon {
+  color: #db2777;
+}
+
 .dtw-wm-page .wm-dropzone-icon,
 .dtw-wm-page .wm-value-badge,
 .dtw-wm-page {
