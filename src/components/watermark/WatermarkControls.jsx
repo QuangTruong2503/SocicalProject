@@ -12,6 +12,13 @@ const ACCENT_COLOR_PRESETS = [
   { label: 'Lime', value: '#65A30D' },
 ];
 
+const SEASONS = [
+  { value: 'spring', label: 'Mùa Xuân', icon: '🌸', description: 'Hoa xuân nhẹ nhàng' },
+  { value: 'summer', label: 'Mùa Hạ', icon: '☀️', description: 'Nắng hè rực rỡ' },
+  { value: 'autumn', label: 'Mùa Thu Lá Vàng Rơi', icon: '🍂', description: 'Lá vàng lãng mạn' },
+  { value: 'winter', label: 'Đông Sang Anh Nhớ Em', icon: '❄️', description: 'Tuyết trắng dịu êm' },
+];
+
 function normalizeHexInput(value, fallback) {
   const next = String(value || '').trim();
   if (!next) return fallback;
@@ -21,23 +28,26 @@ function normalizeHexInput(value, fallback) {
   return fallback;
 }
 
-function AccentColorModal({
+function PersonalizationModal({
   isOpen,
-  value,
+  options,
   onApply,
   onClose,
 }) {
-  const normalizedValue = ensureHexColor(value, '#2563EB');
+  const normalizedValue = ensureHexColor(options.accentColor, '#2563EB');
+  const [activeTab, setActiveTab] = useState('color');
   const [draftColor, setDraftColor] = useState(normalizedValue);
   const [draftInput, setDraftInput] = useState(normalizedValue);
+  const [seasonalEffect, setSeasonalEffect] = useState({
+    enabled: false,
+    season: 'spring',
+    density: 30,
+    duration: 12,
+    opacity: 70,
+    ...(options.seasonalEffect || {}),
+  });
 
   useEffect(() => {
-    if (!isOpen) return undefined;
-
-    const nextValue = ensureHexColor(value, '#2563EB');
-    setDraftColor(nextValue);
-    setDraftInput(nextValue);
-
     const handleKeyDown = (event) => {
       if (event.key === 'Escape') {
         onClose();
@@ -51,7 +61,7 @@ function AccentColorModal({
       document.body.classList.remove('wm-modal-open');
       document.removeEventListener('keydown', handleKeyDown);
     };
-  }, [isOpen, onClose, value]);
+  }, [onClose]);
 
   const handlePresetClick = (presetValue) => {
     const nextValue = ensureHexColor(presetValue, '#2563EB');
@@ -77,7 +87,7 @@ function AccentColorModal({
 
   const handleSave = () => {
     const nextValue = normalizeHexInput(draftInput, draftColor);
-    onApply(nextValue);
+    onApply({ accentColor: nextValue, seasonalEffect });
   };
 
   if (!isOpen || typeof document === 'undefined') {
@@ -90,27 +100,50 @@ function AccentColorModal({
         className="wm-modal"
         role="dialog"
         aria-modal="true"
-        aria-labelledby="wm-accent-modal-title"
+        aria-labelledby="wm-personalization-modal-title"
         onPointerDown={(event) => event.stopPropagation()}
       >
         <header className="wm-modal__header">
           <div>
-            <span className="wm-modal__kicker">Color studio</span>
-            <h3 id="wm-accent-modal-title">Chọn màu giao diện</h3>
-            <p>Chọn nhanh một màu có sẵn hoặc tạo màu riêng rồi áp dụng ngay.</p>
+            <span className="wm-modal__kicker">Personal studio</span>
+            <h3 id="wm-personalization-modal-title">Cá nhân hóa giao diện</h3>
+            <p>Tùy chỉnh màu sắc và hiệu ứng chuyển động theo phong cách của bạn.</p>
           </div>
 
           <button
             className="wm-modal__close"
             type="button"
             onClick={onClose}
-            aria-label="Đóng hộp chọn màu giao diện"
+            aria-label="Đóng hộp cá nhân hóa giao diện"
           >
             <span aria-hidden="true">×</span>
           </button>
         </header>
 
+        <div className="wm-modal__tabs" role="tablist" aria-label="Các tùy chọn cá nhân hóa">
+          <button
+            type="button"
+            role="tab"
+            aria-selected={activeTab === 'color'}
+            className={`wm-modal__tab${activeTab === 'color' ? ' is-active' : ''}`}
+            onClick={() => setActiveTab('color')}
+          >
+            <span aria-hidden="true">🎨</span> Chọn màu giao diện
+          </button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={activeTab === 'season'}
+            className={`wm-modal__tab${activeTab === 'season' ? ' is-active' : ''}`}
+            onClick={() => setActiveTab('season')}
+          >
+            <span aria-hidden="true">✨</span> Hiệu ứng theo mùa
+          </button>
+        </div>
+
         <div className="wm-modal__body">
+          {activeTab === 'color' ? (
+            <>
           <section className="wm-modal__preview">
             <div
               className="wm-modal__swatch"
@@ -185,6 +218,74 @@ function AccentColorModal({
               </label>
             </div>
           </section>
+            </>
+          ) : (
+            <div className="wm-season-panel">
+              <label className="wm-season-toggle">
+                <span>
+                  <strong>Hiệu ứng rơi</strong>
+                  <small>{seasonalEffect.enabled ? 'Đang hiển thị trên trang' : 'Hiện đang tắt'}</small>
+                </span>
+                <span className="wm-toggle-wrap">
+                  <input
+                    type="checkbox"
+                    className="wm-toggle-input"
+                    checked={seasonalEffect.enabled}
+                    onChange={(event) => setSeasonalEffect((current) => ({
+                      ...current,
+                      enabled: event.target.checked,
+                    }))}
+                    aria-label="Bật hoặc tắt hiệu ứng theo mùa"
+                  />
+                  <span className="wm-toggle" />
+                </span>
+              </label>
+
+              <section className="wm-modal__section">
+                <div className="wm-modal__section-head">
+                  <h4>Chọn mùa</h4>
+                  <span>4 hiệu ứng</span>
+                </div>
+                <div className="wm-season-grid">
+                  {SEASONS.map((season) => (
+                    <button
+                      key={season.value}
+                      type="button"
+                      className={`wm-season-card${seasonalEffect.season === season.value ? ' is-active' : ''}`}
+                      onClick={() => setSeasonalEffect((current) => ({ ...current, season: season.value }))}
+                      aria-pressed={seasonalEffect.season === season.value}
+                    >
+                      <span className="wm-season-card__icon" aria-hidden="true">{season.icon}</span>
+                      <span><strong>{season.label}</strong><small>{season.description}</small></span>
+                    </button>
+                  ))}
+                </div>
+              </section>
+
+              <section className="wm-modal__section wm-season-settings">
+                {[
+                  { key: 'density', label: 'Mật độ rơi', min: 10, max: 80, unit: '%' },
+                  { key: 'duration', label: 'Thời gian rơi', min: 5, max: 30, unit: ' giây' },
+                  { key: 'opacity', label: 'Độ trong suốt', min: 10, max: 100, unit: '%' },
+                ].map((setting) => (
+                  <label className="wm-season-range" key={setting.key}>
+                    <span><strong>{setting.label}</strong><b>{seasonalEffect[setting.key]}{setting.unit}</b></span>
+                    <input
+                      type="range"
+                      className="wm-slider"
+                      min={setting.min}
+                      max={setting.max}
+                      value={seasonalEffect[setting.key]}
+                      onChange={(event) => setSeasonalEffect((current) => ({
+                        ...current,
+                        [setting.key]: Number(event.target.value),
+                      }))}
+                    />
+                  </label>
+                ))}
+              </section>
+            </div>
+          )}
         </div>
 
         <footer className="wm-modal__footer">
@@ -192,7 +293,7 @@ function AccentColorModal({
             Hủy
           </button>
           <button className="wm-modal__button wm-modal__button--primary" type="button" onClick={handleSave}>
-            Áp dụng màu
+            Lưu thay đổi
           </button>
         </footer>
       </section>
@@ -239,25 +340,27 @@ export default function WatermarkControls({
               style={{ '--wm-swatch': currentAccentColor }}
             />
             <span className="wm-accent-launcher__text">
-              <strong>Chọn màu giao diện</strong>
-              <small>{currentAccentColor}</small>
+              <strong>Cá nhân hóa giao diện</strong>
+              <small>Màu sắc &amp; hiệu ứng theo mùa</small>
             </span>
             <span className="wm-accent-launcher__icon" aria-hidden="true">⌄</span>
           </button>
 
           <small className="wm-muted-text wm-block-text">
-            Màu này áp dụng cho toàn bộ giao diện trang watermark.
+            Tùy chỉnh màu giao diện và hiệu ứng rơi theo mùa.
           </small>
 
-          <AccentColorModal
-            isOpen={isAccentModalOpen}
-            value={currentAccentColor}
-            onApply={(nextColor) => {
-              update('accentColor', nextColor);
-              setIsAccentModalOpen(false);
-            }}
-            onClose={() => setIsAccentModalOpen(false)}
-          />
+          {isAccentModalOpen && (
+            <PersonalizationModal
+              isOpen
+              options={options || {}}
+              onApply={(nextOptions) => {
+                onChange({ ...(options || {}), ...nextOptions });
+                setIsAccentModalOpen(false);
+              }}
+              onClose={() => setIsAccentModalOpen(false)}
+            />
+          )}
         </div>
       )}
 

@@ -3,6 +3,7 @@ create table if not exists public.watermark_image_counts (
   user_id uuid references auth.users(id) on delete set null,
   visitor_id uuid,
   display_name text,
+  user_color text,
   source_page text default 'watermark',
   image_count integer not null check (image_count > 0),
   created_at timestamptz not null default now()
@@ -27,6 +28,9 @@ alter table public.watermark_image_counts
   add column if not exists display_name text;
 
 alter table public.watermark_image_counts
+  add column if not exists user_color text;
+
+alter table public.watermark_image_counts
   alter column source_page set default 'watermark';
 
 alter table public.watermark_image_counts enable row level security;
@@ -34,7 +38,7 @@ alter table public.watermark_image_counts enable row level security;
 grant insert on table public.watermark_image_counts to anon, authenticated;
 
 revoke select, update, delete on table public.watermark_image_counts from anon, authenticated;
-grant select (image_count, visitor_id, display_name, source_page, user_id, created_at) on table public.watermark_image_counts to anon, authenticated;
+grant select (image_count, visitor_id, display_name, user_color, source_page, user_id, created_at) on table public.watermark_image_counts to anon, authenticated;
 
 drop policy if exists "Web clients can create watermark image counts" on public.watermark_image_counts;
 create policy "Web clients can create watermark image counts"

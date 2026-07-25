@@ -6,6 +6,7 @@ import LogoUploader from '../components/watermark/LogoUploader';
 import ImageUploader from '../components/watermark/ImageUploader';
 import WatermarkControls from '../components/watermark/WatermarkControls';
 import WatermarkGallery from '../components/watermark/WatermarkGallery';
+import SeasonalEffectLayer from '../components/watermark/SeasonalEffectLayer';
 import { processWatermark, resizeBlob, buildFileName, compressAndResizeBlob } from '../hooks/useWatermarkProcessor';
 import NotificationModal from '../components/NotificationModal';
 import { useAuth } from '../hooks/useAuth.js';
@@ -31,6 +32,13 @@ const DEFAULT_OPTIONS = {
   productName: '',
   logoPosition: 'center',
   accentColor: '#2563EB',
+  seasonalEffect: {
+    enabled: false,
+    season: 'spring',
+    density: 30,
+    duration: 12,
+    opacity: 70,
+  },
 };
 // const notification = {
 //   id: 'watermark-update-110526',
@@ -369,6 +377,7 @@ export default function Watermark() {
         userId: user?.id,
         visitorId,
         displayName,
+        userColor: options.accentColor,
         imageCount: newResults.length,
         sourcePage: WATERMARK_COUNT_SOURCE_PAGE,
       });
@@ -476,6 +485,7 @@ export default function Watermark() {
         <title>Watermark - Thêm Logo Vào Ảnh</title>
       </Helmet>
       <div className="wm-page" style={pageThemeVars}>
+        <SeasonalEffectLayer settings={options.seasonalEffect} />
         <div className="wm-container">
 
           {/* ── Header ── */}

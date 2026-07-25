@@ -5,12 +5,13 @@ const WATERMARK_IMAGE_COUNTS_TABLE = 'watermark_image_counts';
 const WATERMARK_VISITOR_STATS_VIEW = 'watermark_visitor_stats';
 
 /**
- * @param {{ userId?: string | null, visitorId?: string | null, displayName?: string | null, imageCount: number, sourcePage?: string }} payload
+ * @param {{ userId?: string | null, visitorId?: string | null, displayName?: string | null, userColor?: string | null, imageCount: number, sourcePage?: string }} payload
  */
 export async function createWatermarkImageCount({
   userId,
   visitorId,
   displayName = null,
+  userColor = null,
   imageCount,
   sourcePage = 'watermark',
 }) {
@@ -19,6 +20,7 @@ export async function createWatermarkImageCount({
     const normalizedSourcePage = (sourcePage || 'watermark').trim();
     const normalizedVisitorId = (visitorId || '').trim();
     const normalizedDisplayName = (displayName || '').trim();
+    const normalizedUserColor = (userColor || '').trim();
 
     if (!Number.isFinite(normalizedCount) || normalizedCount <= 0) {
       return createServiceResult(null, 'Image count must be greater than zero.');
@@ -36,6 +38,7 @@ export async function createWatermarkImageCount({
       user_id: userId || null,
       visitor_id: normalizedVisitorId,
       display_name: normalizedDisplayName || null,
+      user_color: normalizedUserColor || null,
       source_page: normalizedSourcePage,
       image_count: Math.floor(normalizedCount),
     };

@@ -176,6 +176,117 @@
   overflow: auto;
 }
 
+.wm-modal__tabs {
+  display: flex;
+  gap: 0.5rem;
+  padding: 0.8rem 1.25rem 0;
+}
+
+.wm-modal__tab {
+  flex: 1;
+  min-height: 44px;
+  padding: 0.7rem 0.9rem;
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.62);
+  color: var(--wm-text-muted, var(--color-text-secondary));
+  font-size: 0.86rem;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.wm-modal__tab.is-active {
+  border-color: color-mix(in srgb, var(--wm-primary, #2563eb) 38%, transparent);
+  background: color-mix(in srgb, var(--wm-primary, #2563eb) 10%, white);
+  color: var(--wm-primary-deep, var(--color-primary));
+}
+
+.wm-season-panel {
+  display: grid;
+  gap: 1rem;
+}
+
+.wm-season-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1rem;
+  border: 1px solid rgba(37, 99, 235, 0.14);
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.8);
+}
+
+.wm-season-toggle > span:first-child,
+.wm-season-card > span:last-child {
+  display: grid;
+  gap: 0.2rem;
+}
+
+.wm-season-toggle strong,
+.wm-season-card strong {
+  color: var(--wm-text-strong, var(--color-text));
+}
+
+.wm-season-toggle small,
+.wm-season-card small {
+  color: var(--wm-text-muted, var(--color-text-secondary));
+}
+
+.wm-season-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.7rem;
+}
+
+.wm-season-card {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.85rem;
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  border-radius: 17px;
+  background: rgba(255, 255, 255, 0.82);
+  text-align: left;
+  cursor: pointer;
+}
+
+.wm-season-card.is-active {
+  border-color: color-mix(in srgb, var(--wm-primary, #2563eb) 45%, transparent);
+  background: color-mix(in srgb, var(--wm-primary, #2563eb) 9%, white);
+  box-shadow: 0 10px 24px color-mix(in srgb, var(--wm-primary, #2563eb) 12%, transparent);
+}
+
+.wm-season-card__icon {
+  font-size: 1.8rem;
+}
+
+.wm-season-card small {
+  font-size: 0.76rem;
+}
+
+.wm-season-settings {
+  display: grid;
+  gap: 1rem;
+}
+
+.wm-season-range {
+  display: grid;
+  gap: 0.65rem;
+}
+
+.wm-season-range > span {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  color: var(--wm-text, var(--color-text));
+  font-size: 0.86rem;
+}
+
+.wm-season-range b {
+  color: var(--wm-primary, var(--color-primary));
+}
+
 .wm-modal__preview {
   display: flex;
   align-items: center;
@@ -558,6 +669,7 @@
   }
 
   .wm-modal__header,
+  .wm-modal__tabs,
   .wm-modal__body,
   .wm-modal__footer {
     padding-left: 1rem;
@@ -577,6 +689,14 @@
 
   .wm-modal__palette {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .wm-modal__tabs {
+    flex-direction: column;
+  }
+
+  .wm-season-grid {
+    grid-template-columns: 1fr;
   }
 
   .wm-modal__creator {
