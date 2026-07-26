@@ -400,13 +400,6 @@ export default function Watermark() {
       autoClose: 3500,
       closeButton: true,
     });
-
-    window.setTimeout(() => {
-      document.getElementById('wm-gallery')?.scrollIntoView({
-        behavior: 'smooth',
-        block: 'start',
-      });
-    }, 150);
   };
 
   // ── Download all ───────────────────────────────────────────────────
