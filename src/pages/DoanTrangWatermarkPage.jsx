@@ -9,6 +9,7 @@ import {
   useTransform,
 } from "framer-motion";
 import JSZip from "jszip";
+import { toast } from "react-toastify";
 import LogoUploader from "../components/watermark/LogoUploader";
 import ImageUploader from "../components/watermark/ImageUploader";
 import WatermarkControls from "../components/watermark/WatermarkControls";
@@ -631,7 +632,7 @@ export default function DoanTrangWatermarkPage() {
   const [options, setOptions] = useState(DEFAULT_OPTIONS);
   const [results, setResults] = useState([]);
   const [processing, setProcessing] = useState(false);
-  const [processingProgress, setProcessingProgress] = useState({
+  const [, setProcessingProgress] = useState({
     current: 0,
     total: 0,
   });
@@ -908,14 +909,17 @@ export default function DoanTrangWatermarkPage() {
   );
 
   const handleCreate = async () => {
-    if (!logoUrl) return alert("Vui lòng chọn logo trước.");
-    if (!images.length) return alert("Vui lòng chọn ít nhất 1 ảnh.");
+    if (!logoUrl) return toast.warning("Vui lòng chọn logo trước.");
+    if (!images.length) return toast.warning("Vui lòng chọn ít nhất 1 ảnh.");
     if (!visitorId)
-      return alert("Đang khởi tạo mã người dùng, bạn thử lại sau vài giây.");
+      return toast.info("Đang khởi tạo mã người dùng, bạn thử lại sau vài giây.");
 
     setProcessing(true);
     setProcessingProgress({ current: 0, total: images.length });
     const newResults = [];
+    const loadingToastId = toast.loading(
+      `Đang tạo ảnh watermark (0/${images.length})…`,
+    );
 
     for (let i = 0; i < images.length; i++) {
       try {
@@ -931,6 +935,10 @@ export default function DoanTrangWatermarkPage() {
       }
 
       setProcessingProgress({ current: i + 1, total: images.length });
+      toast.update(loadingToastId, {
+        render: `Đang tạo ảnh watermark (${i + 1}/${images.length})…`,
+        progress: (i + 1) / images.length,
+      });
     }
 
     setResults((current) => {
@@ -948,7 +956,19 @@ export default function DoanTrangWatermarkPage() {
       });
     }
 
-    setTimeout(() => {
+    toast.update(loadingToastId, {
+      render:
+        newResults.length === images.length
+          ? `Đã tạo xong ${newResults.length} ảnh watermark.`
+          : `Đã tạo ${newResults.length}/${images.length} ảnh. Một số ảnh bị lỗi.`,
+      type: newResults.length === images.length ? "success" : "warning",
+      isLoading: false,
+      progress: undefined,
+      autoClose: 3500,
+      closeButton: true,
+    });
+
+    window.setTimeout(() => {
       document
         .getElementById("dtw-gallery")
         ?.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -960,12 +980,6 @@ export default function DoanTrangWatermarkPage() {
       if (!results.length) return;
 
       const shouldZip = results.length > 5;
-      const exportBurst = {
-        id: `${Date.now()}-${mode}-${results.length}`,
-        count: results.length,
-        mode,
-      };
-
       const prepareBlob = async (result) => {
         let blob = result.blob;
         let fileName = getDownloadFileName(result.fileName);
@@ -988,6 +1002,10 @@ export default function DoanTrangWatermarkPage() {
 
         return { blob, fileName };
       };
+
+      const loadingToastId = toast.loading(
+        `Đang chuẩn bị tải xuống (0/${results.length})…`,
+      );
 
       try {
         if (shouldZip) {
@@ -1012,6 +1030,10 @@ export default function DoanTrangWatermarkPage() {
               percent: Math.round(((i + 1) / total) * 100),
               message: `Đã thêm ${i + 1}/${total} ảnh vào gói tải`,
             });
+            toast.update(loadingToastId, {
+              render: `Đang gom ảnh vào file ZIP (${i + 1}/${total})…`,
+              progress: (i + 1) / total,
+            });
           }
 
           const zipBlob = await zip.generateAsync(
@@ -1030,6 +1052,10 @@ export default function DoanTrangWatermarkPage() {
                   Math.min(100, Math.round(metadata.percent || 0)),
                 ),
                 message: "Đang nén file .zip trước khi tải xuống",
+              });
+              toast.update(loadingToastId, {
+                render: `Đang nén file ZIP (${Math.round(metadata.percent || 0)}%)…`,
+                progress: (metadata.percent || 0) / 100,
               });
             },
           );
@@ -1074,12 +1100,35 @@ export default function DoanTrangWatermarkPage() {
               percent: Math.round(((i + 1) / total) * 100),
               message: `Đã tải ${i + 1}/${total} ảnh`,
             });
+            toast.update(loadingToastId, {
+              render: `Đang tải ảnh (${i + 1}/${total})…`,
+              progress: (i + 1) / total,
+            });
 
             await new Promise((resolve) => setTimeout(resolve, 80));
           }
         }
 
-        setExportSuccessBurst(exportBurst);
+        toast.update(loadingToastId, {
+          render: shouldZip
+            ? `Đã tạo và tải file ZIP gồm ${results.length} ảnh.`
+            : `Đã tải xuống ${results.length} ảnh.`,
+          type: "success",
+          isLoading: false,
+          progress: undefined,
+          autoClose: 3500,
+          closeButton: true,
+        });
+      } catch (error) {
+        console.error("[DoanTrangWatermark] Download failed", error);
+        toast.update(loadingToastId, {
+          render: "Không thể tải ảnh xuống. Vui lòng thử lại.",
+          type: "error",
+          isLoading: false,
+          progress: undefined,
+          autoClose: 4500,
+          closeButton: true,
+        });
       } finally {
         if (downloadProgressTimerRef.current) {
           window.clearTimeout(downloadProgressTimerRef.current);
@@ -1400,9 +1449,7 @@ export default function DoanTrangWatermarkPage() {
                 onClear={handleClear}
                 onDownloadAll={handleDownloadAll}
                 onRenameFile={handleRenameResult}
-                isProcessing={processing}
-                processingProgress={processingProgress}
-                downloadProgress={downloadProgress}
+                isProcessing={false}
               />
             </motion.div>
           </div>

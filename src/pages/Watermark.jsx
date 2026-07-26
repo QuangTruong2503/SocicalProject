@@ -2,6 +2,7 @@ import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { Helmet } from 'react-helmet-async';
 import { Link } from 'react-router-dom';
+import { toast } from 'react-toastify';
 import LogoUploader from '../components/watermark/LogoUploader';
 import ImageUploader from '../components/watermark/ImageUploader';
 import WatermarkControls from '../components/watermark/WatermarkControls';
@@ -72,7 +73,6 @@ function WatermarkCountBoard({
   selectedCount,
   isLoading,
   error,
-  dashboardHref,
 }) {
   const rows = [
     {
@@ -169,14 +169,13 @@ export default function Watermark() {
   const [options, setOptions]   = useState(DEFAULT_OPTIONS);
   const [results, setResults]   = useState([]);
   const [processing, setProcessing] = useState(false);
-  const [processingProgress, setProcessingProgress] = useState({ current: 0, total: 0 });
-  const [downloadProgress, setDownloadProgress] = useState(null);
+  const [, setProcessingProgress] = useState({ current: 0, total: 0 });
+  const [, setDownloadProgress] = useState(null);
   const [totalCreated, setTotalCreated] = useState(0);
   const [personalCreated, setPersonalCreated] = useState(0);
   const [lastCreated, setLastCreated] = useState(0);
   const [statsLoading, setStatsLoading] = useState(true);
   const [statsError, setStatsError] = useState(null);
-  const [createError, setCreateError] = useState('');
   const [optionsHydrated, setOptionsHydrated] = useState(false);
   const [zoomImage, setZoomImage] = useState(null);
   const [buttonRipples, setButtonRipples] = useState([]);
@@ -186,7 +185,6 @@ export default function Watermark() {
   const handleLogoChange = useCallback((url, name) => {
     setLogoUrl(url);
     setLogoName(name);
-    setCreateError('');
   }, []);
 
   const openZoom = useCallback((image) => {
@@ -325,32 +323,28 @@ export default function Watermark() {
     resultsRef.current.forEach((result) => URL.revokeObjectURL(result.url));
   }, []);
 
-  useEffect(() => {
-    setCreateError("");
-  }, [images, logoUrl, options]);
-
   // ── Create watermarked images ──────────────────────────────────────
   const handleCreate = async () => {
     if (!logoUrl) {
-      setCreateError('Vui lòng chọn logo trước.');
+      toast.warning('Vui lòng chọn logo trước.');
       return;
     }
 
     if (!images.length) {
-      setCreateError('Vui lòng chọn ít nhất 1 ảnh.');
+      toast.warning('Vui lòng chọn ít nhất 1 ảnh.');
       return;
     }
 
     if (!visitorId) {
-      setCreateError('Đang khởi tạo mã người dùng, bạn thử lại sau vài giây.');
+      toast.info('Đang khởi tạo mã người dùng, bạn thử lại sau vài giây.');
       return;
     }
 
-    setCreateError('');
     setProcessing(true);
     setProcessingProgress({ current: 0, total: images.length });
     setDownloadProgress(null);
     const newResults = [];
+    const loadingToastId = toast.loading(`Đang tạo ảnh watermark (0/${images.length})…`);
 
     for (let i = 0; i < images.length; i++) {
       try {
@@ -363,6 +357,10 @@ export default function Watermark() {
       }
 
       setProcessingProgress({ current: i + 1, total: images.length });
+      toast.update(loadingToastId, {
+        render: `Đang tạo ảnh watermark (${i + 1}/${images.length})…`,
+        progress: (i + 1) / images.length,
+      });
     }
 
     resultsRef.current.forEach((result) => URL.revokeObjectURL(result.url));
@@ -392,9 +390,22 @@ export default function Watermark() {
       }
     }
 
-    // Scroll to gallery
-    setTimeout(() => {
-      document.getElementById('wm-gallery')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    toast.update(loadingToastId, {
+      render: newResults.length === images.length
+        ? `Đã tạo xong ${newResults.length} ảnh watermark.`
+        : `Đã tạo ${newResults.length}/${images.length} ảnh. Một số ảnh bị lỗi.`,
+      type: newResults.length === images.length ? 'success' : 'warning',
+      isLoading: false,
+      progress: undefined,
+      autoClose: 3500,
+      closeButton: true,
+    });
+
+    window.setTimeout(() => {
+      document.getElementById('wm-gallery')?.scrollIntoView({
+        behavior: 'smooth',
+        block: 'start',
+      });
     }, 150);
   };
 
@@ -411,6 +422,7 @@ export default function Watermark() {
       percent: 0,
       message: 'Đang chuẩn bị file tải xuống…',
     });
+    const loadingToastId = toast.loading(`Đang chuẩn bị tải xuống (0/${total})…`);
 
     for (let index = 0; index < results.length; index += 1) {
       const r = results[index];
@@ -442,11 +454,23 @@ export default function Watermark() {
         percent: Math.round(((index + 1) / total) * 100),
         message: `Đã chuẩn bị ${index + 1}/${total} ảnh`,
       });
+      toast.update(loadingToastId, {
+        render: `Đang chuẩn bị tải xuống (${index + 1}/${total})…`,
+        progress: (index + 1) / total,
+      });
 
       await new Promise((resolve) => setTimeout(resolve, 80)); // slight delay between downloads
     }
 
     window.setTimeout(() => setDownloadProgress(null), 1000);
+    toast.update(loadingToastId, {
+      render: `Đã tải xuống ${total} ảnh.`,
+      type: 'success',
+      isLoading: false,
+      progress: undefined,
+      autoClose: 3000,
+      closeButton: true,
+    });
   }, [results]);
 
   // ── Clear results ──────────────────────────────────────────────────
@@ -556,7 +580,6 @@ export default function Watermark() {
           selectedCount={images.length}
           isLoading={statsLoading}
           error={statsError}
-          dashboardHref="/watermark/dashboard"
         />
 
         {/* ── Main Layout ── */}
@@ -590,13 +613,6 @@ export default function Watermark() {
                 onChange={setOptions}
                 enableAccentOptions
               />
-
-              {createError && (
-                <div className="wm-inline-banner wm-inline-banner--error" role="alert">
-                  <span className="wm-inline-icon" aria-hidden="true">!</span>
-                  <span>{createError}</span>
-                </div>
-              )}
 
               <hr className="wm-divider" />
 
@@ -657,9 +673,7 @@ export default function Watermark() {
             onDownloadAll={handleDownloadAll}
             onRenameFile={handleRenameResult}
             onRemoveResult={handleRemoveResult}
-            isProcessing={processing}
-            processingProgress={processingProgress}
-            downloadProgress={downloadProgress}
+            isProcessing={false}
           />
         </div>
 

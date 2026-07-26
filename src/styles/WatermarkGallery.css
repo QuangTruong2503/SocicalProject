@@ -65,6 +65,315 @@
 .wm-gallery-heading {
   display: flex;
   align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.wm-bulk-rename-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: 2.55rem;
+  padding: 0.6rem 1rem;
+  border: 1px solid color-mix(in srgb, var(--primary-color) 50%, transparent);
+  border-radius: 999px;
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--primary-color) 14%, var(--bg-card)),
+    color-mix(in srgb, var(--primary-color) 4%, var(--bg-card))
+  );
+  color: var(--primary-color);
+  font-size: 0.85rem;
+  font-weight: 800;
+  cursor: pointer;
+  box-shadow: 0 7px 20px color-mix(in srgb, var(--primary-color) 14%, transparent);
+  transition: transform var(--transition-base), box-shadow var(--transition-base), color var(--transition-base);
+}
+
+.wm-bulk-rename-button:hover:not(:disabled) {
+  background: linear-gradient(135deg, var(--primary-color), color-mix(in srgb, var(--primary-color) 70%, #7c3aed));
+  color: #fff;
+  box-shadow: 0 10px 26px color-mix(in srgb, var(--primary-color) 30%, transparent);
+  transform: translateY(-2px);
+}
+
+.wm-bulk-rename-button-icon {
+  display: grid;
+  width: 1.55rem;
+  height: 1.55rem;
+  place-items: center;
+  border-radius: 50%;
+  background: color-mix(in srgb, currentColor 12%, transparent);
+  font-size: 0.75rem;
+}
+
+.wm-bulk-rename-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.wm-bulk-rename-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 10020;
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+  background:
+    radial-gradient(circle at 50% 15%, color-mix(in srgb, var(--primary-color) 24%, transparent), transparent 40%),
+    rgba(15, 23, 42, 0.68);
+  backdrop-filter: blur(8px);
+}
+
+.wm-bulk-rename-modal {
+  position: relative;
+  width: min(640px, 100%);
+  max-height: min(90vh, 780px);
+  overflow-y: auto;
+  padding: 1.5rem;
+  border: 1px solid color-mix(in srgb, var(--primary-color) 24%, var(--border-color));
+  border-radius: 24px;
+  background:
+    linear-gradient(145deg, color-mix(in srgb, var(--primary-color) 7%, var(--bg-card)), var(--bg-card) 35%);
+  color: var(--text-light);
+  box-shadow: 0 28px 80px rgba(15, 23, 42, 0.3);
+  animation: wmBulkRenameEnter 0.22s ease-out both;
+}
+
+.wm-bulk-rename-modal::before {
+  position: absolute;
+  top: 0;
+  left: 10%;
+  width: 80%;
+  height: 3px;
+  border-radius: 0 0 999px 999px;
+  background: linear-gradient(90deg, transparent, var(--primary-color), transparent);
+  content: '';
+}
+
+@keyframes wmBulkRenameEnter {
+  from {
+    opacity: 0;
+    transform: translateY(14px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.wm-bulk-rename-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1.15rem;
+}
+
+.wm-bulk-rename-heading {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.9rem;
+}
+
+.wm-bulk-rename-hero-icon {
+  display: grid;
+  flex: 0 0 auto;
+  width: 2.8rem;
+  height: 2.8rem;
+  place-items: center;
+  border-radius: 14px;
+  background: linear-gradient(135deg, var(--primary-color), color-mix(in srgb, var(--primary-color) 68%, #7c3aed));
+  color: #fff;
+  box-shadow: 0 9px 24px color-mix(in srgb, var(--primary-color) 28%, transparent);
+}
+
+.wm-bulk-rename-eyebrow {
+  display: block;
+  margin-bottom: 0.2rem;
+  color: var(--primary-color);
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+}
+
+.wm-bulk-rename-header strong {
+  display: block;
+  font-size: 1.25rem;
+}
+
+.wm-bulk-rename-header p {
+  margin: 0.35rem 0 0;
+  color: var(--text-muted);
+  font-size: 0.88rem;
+}
+
+.wm-bulk-rename-close {
+  display: grid;
+  flex: 0 0 auto;
+  width: 2.25rem;
+  height: 2.25rem;
+  place-items: center;
+  border: 0;
+  border-radius: 50%;
+  border: 1px solid var(--border-color);
+  background: color-mix(in srgb, var(--bg-card) 80%, transparent);
+  color: inherit;
+  cursor: pointer;
+  font-size: 1.45rem;
+}
+
+.wm-bulk-rename-close:hover {
+  background: rgba(127, 127, 127, 0.12);
+}
+
+.wm-bulk-rename-guide {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.6rem;
+  margin-bottom: 1rem;
+}
+
+.wm-bulk-rename-guide span {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  min-height: 2.5rem;
+  padding: 0.55rem 0.65rem;
+  border: 1px solid color-mix(in srgb, var(--primary-color) 16%, var(--border-color));
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--primary-color) 5%, transparent);
+  color: var(--text-muted);
+  font-size: 0.75rem;
+}
+
+.wm-bulk-rename-guide b {
+  display: grid;
+  flex: 0 0 auto;
+  width: 1.35rem;
+  height: 1.35rem;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--primary-color);
+  color: #fff;
+  font-size: 0.68rem;
+}
+
+.wm-bulk-rename-field {
+  display: grid;
+  gap: 0.55rem;
+}
+
+.wm-bulk-rename-field-label {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.wm-bulk-rename-field-label small {
+  color: var(--text-muted);
+  font-size: 0.75rem;
+}
+
+.wm-bulk-rename-textarea {
+  width: 100%;
+  min-height: 220px;
+  resize: vertical;
+  padding: 1rem;
+  border: 1px solid color-mix(in srgb, var(--primary-color) 20%, var(--border-color));
+  border-radius: 16px;
+  background: color-mix(in srgb, var(--bg-dark) 86%, var(--bg-card));
+  color: var(--text-light);
+  font: inherit;
+  line-height: 1.55;
+}
+
+.wm-bulk-rename-textarea:focus {
+  border-color: var(--primary-color);
+  outline: 3px solid color-mix(in srgb, var(--primary-color) 18%, transparent);
+}
+
+.wm-bulk-rename-summary {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+  min-height: 2rem;
+  margin-top: 0.7rem;
+  padding: 0.5rem 0.7rem;
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--primary-color) 6%, transparent);
+  color: var(--text-muted);
+  font-size: 0.8rem;
+}
+
+.wm-bulk-rename-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-top: 1.15rem;
+}
+
+.wm-bulk-rename-action-buttons {
+  display: flex;
+  gap: 0.75rem;
+}
+
+.wm-bulk-rename-video {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--primary-color);
+  font-size: 0.8rem;
+  font-weight: 750;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.wm-bulk-rename-video > span {
+  display: grid;
+  width: 1.75rem;
+  height: 1.75rem;
+  place-items: center;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--primary-color) 13%, transparent);
+  font-size: 0.65rem;
+}
+
+.wm-bulk-rename-video:hover {
+  text-decoration: underline;
+}
+
+.wm-bulk-rename-cancel,
+.wm-bulk-rename-confirm {
+  min-height: 2.5rem;
+  padding: 0.6rem 1rem;
+  border-radius: var(--radius-md);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.wm-bulk-rename-cancel {
+  border: 1px solid var(--border-color);
+  background: transparent;
+  color: var(--text-light);
+}
+
+.wm-bulk-rename-confirm {
+  border: 1px solid var(--primary-color);
+  background: var(--primary-color);
+  color: #fff;
+}
+
+.wm-bulk-rename-confirm:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
 }
 
 .wm-download-menu {
@@ -398,6 +707,29 @@
   }
 
   .wm-gallery-actions {
+    width: 100%;
+  }
+
+  .wm-bulk-rename-summary {
+    flex-direction: column;
+  }
+
+  .wm-bulk-rename-guide {
+    grid-template-columns: 1fr;
+  }
+
+  .wm-bulk-rename-actions {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .wm-bulk-rename-action-buttons {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .wm-bulk-rename-cancel,
+  .wm-bulk-rename-confirm {
     width: 100%;
   }
 

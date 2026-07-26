@@ -311,7 +311,6 @@ export default function WatermarkControls({
     size = 60,
     opacity = 60,
     tiled = false,
-    productName = '',
     logoPosition = 'center',
     accentColor = '#2563EB',
   } = options || {};
@@ -363,25 +362,6 @@ export default function WatermarkControls({
           )}
         </div>
       )}
-
-      {/* Product Name */}
-      <div className="wm-control-group">
-        <div className="wm-section-label">
-          <span className="wm-inline-icon" aria-hidden="true">#</span>
-          Tên sản phẩm
-        </div>
-        <input
-          type="text"
-          className="wm-input"
-          placeholder="Ví dụ: ao-thun-mau-den"
-          value={productName}
-          onChange={(e) => update('productName', e.target.value)}
-        />
-        <small className="wm-muted-text">
-          Nhiều ảnh sẽ được đặt tên: <code>{productName || 'image'}_01.jpg</code>,{' '}
-          <code>{productName || 'image'}_02.jpg</code>…
-        </small>
-      </div>
 
       {/* Logo Size */}
       <div className="wm-control-group">

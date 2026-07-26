@@ -2,10 +2,19 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom';
 import '../../styles/WatermarkGallery.css';
 
+const BULK_RENAME_TUTORIAL_URL =
+  'https://psqfbcgkgafqtsmrgjqu.supabase.co/storage/v1/object/public/ZepLao/huong-dan-doi-ten-file.mp4';
+
 function normalizeDownloadName(fileName) {
   const trimmed = (fileName || '').trim();
   const baseName = trimmed ? trimmed.replace(/\.[^.]+$/, '') : 'image';
   return `${baseName || 'image'}.jpg`;
+}
+
+function normalizeBulkName(fileName) {
+  const trimmed = fileName.trim();
+  if (!trimmed) return '';
+  return /\.[^.]+$/.test(trimmed) ? trimmed : `${trimmed}.jpg`;
 }
 
 export default function WatermarkGallery({
@@ -19,6 +28,8 @@ export default function WatermarkGallery({
   downloadProgress,
 }) {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [isBulkRenameOpen, setIsBulkRenameOpen] = useState(false);
+  const [bulkNames, setBulkNames] = useState('');
   const [previewResult, setPreviewResult] = useState(null);
   const [isPreviewClosing, setIsPreviewClosing] = useState(false);
   const [viewportSize, setViewportSize] = useState({ width: 0, height: 0, scrollTop: 0 });
@@ -68,6 +79,19 @@ export default function WatermarkGallery({
       document.removeEventListener('keydown', handleEscape);
     };
   }, [isMenuOpen]);
+
+  useEffect(() => {
+    if (!isBulkRenameOpen) return;
+
+    const handleEscape = (event) => {
+      if (event.key === 'Escape') {
+        setIsBulkRenameOpen(false);
+      }
+    };
+
+    document.addEventListener('keydown', handleEscape);
+    return () => document.removeEventListener('keydown', handleEscape);
+  }, [isBulkRenameOpen]);
 
   useEffect(() => {
     if (!previewResult) return;
@@ -178,6 +202,19 @@ export default function WatermarkGallery({
     setIsMenuOpen(false);
   };
 
+  const parsedBulkNames = useMemo(
+    () => bulkNames.split(/\r?\n/).map(normalizeBulkName).filter(Boolean),
+    [bulkNames]
+  );
+
+  const handleBulkRename = () => {
+    parsedBulkNames.slice(0, results.length).forEach((fileName, index) => {
+      onRenameFile?.(index, fileName);
+    });
+    setIsBulkRenameOpen(false);
+    setBulkNames('');
+  };
+
   if (results.length === 0 && !isProcessing) return null;
 
   const showSkeletons = isProcessing && results.length === 0;
@@ -191,6 +228,15 @@ export default function WatermarkGallery({
             Kết quả
             <span className="wm-badge">{results.length}</span>
           </h5>
+          <button
+            className="wm-bulk-rename-button"
+            type="button"
+            onClick={() => setIsBulkRenameOpen(true)}
+            disabled={results.length === 0 || !onRenameFile}
+          >
+            <span className="wm-bulk-rename-button-icon" aria-hidden="true">✦</span>
+            <span>Thêm tên ảnh hàng loạt</span>
+          </button>
         </div>
 
         <div className="wm-gallery-actions">
@@ -360,6 +406,98 @@ export default function WatermarkGallery({
           onClose={closePreview}
         />
       )}
+
+      {isBulkRenameOpen && (
+        <div
+          className="wm-bulk-rename-backdrop"
+          role="presentation"
+          onPointerDown={() => setIsBulkRenameOpen(false)}
+        >
+          <div
+            className="wm-bulk-rename-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="wm-bulk-rename-title"
+            onPointerDown={(event) => event.stopPropagation()}
+          >
+            <div className="wm-bulk-rename-header">
+              <div className="wm-bulk-rename-heading">
+                <span className="wm-bulk-rename-hero-icon" aria-hidden="true">✦</span>
+                <div>
+                  <span className="wm-bulk-rename-eyebrow">Đổi tên nhanh</span>
+                  <strong id="wm-bulk-rename-title">Thêm tên ảnh hàng loạt</strong>
+                  <p>Dán danh sách tên và hệ thống sẽ ghép lần lượt với từng ảnh.</p>
+                </div>
+              </div>
+              <button
+                className="wm-bulk-rename-close"
+                type="button"
+                onClick={() => setIsBulkRenameOpen(false)}
+                aria-label="Đóng"
+              >
+                ×
+              </button>
+            </div>
+            <div className="wm-bulk-rename-guide">
+              <span><b>1</b> Mỗi tên một dòng</span>
+              <span><b>2</b> Theo thứ tự ảnh #1, #2…</span>
+              <span><b>3</b> Tự thêm đuôi .jpg</span>
+            </div>
+            <label className="wm-bulk-rename-field">
+              <span className="wm-bulk-rename-field-label">
+                <strong>Danh sách tên ảnh</strong>
+                <small>{parsedBulkNames.length} tên đã nhập</small>
+              </span>
+              <textarea
+                className="wm-bulk-rename-textarea"
+                value={bulkNames}
+                onChange={(event) => setBulkNames(event.target.value)}
+                placeholder={'Áo sơ mi trắng\nÁo sơ mi xanh\nÁo sơ mi hồng'}
+                rows={10}
+                autoFocus
+              />
+            </label>
+            <div className="wm-bulk-rename-summary" aria-live="polite">
+              <span>
+                {Math.min(parsedBulkNames.length, results.length)}/{results.length} ảnh sẽ được đổi tên
+              </span>
+              {parsedBulkNames.length > results.length && (
+                <span>{parsedBulkNames.length - results.length} tên dư sẽ được bỏ qua</span>
+              )}
+            </div>
+            <div className="wm-bulk-rename-actions">
+              <a
+                className="wm-bulk-rename-video"
+                href={BULK_RENAME_TUTORIAL_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                title="Mở video hướng dẫn trong tab mới"
+              >
+                <span aria-hidden="true">▶</span>
+                Xem video hướng dẫn
+              </a>
+              <div className="wm-bulk-rename-action-buttons">
+              <button
+                className="wm-bulk-rename-cancel"
+                type="button"
+                onClick={() => setIsBulkRenameOpen(false)}
+              >
+                Hủy
+              </button>
+              <button
+                className="wm-bulk-rename-confirm"
+                type="button"
+                onClick={handleBulkRename}
+                disabled={parsedBulkNames.length === 0}
+              >
+                Xác nhận đổi tên
+              </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }
