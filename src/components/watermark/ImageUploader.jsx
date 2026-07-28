@@ -174,11 +174,32 @@ export default function ImageUploader({
 
   return (
     <div className="wm-image-uploader">
-      <div className="wm-section-label">
-        <span className="wm-inline-icon" aria-hidden="true">▣</span>
-        Ảnh nguồn
+      <div className="wm-source-heading">
+        <div className="wm-section-label">
+          <span className="wm-inline-icon" aria-hidden="true">▣</span>
+          Ảnh nguồn
+          {images.length > 0 && (
+            <span className="wm-badge">{images.length}</span>
+          )}
+        </div>
         {images.length > 0 && (
-          <span className="wm-badge">{images.length}</span>
+          <button
+            className="wm-source-detail-button"
+            type="button"
+            onClick={() => onImagePreview?.({
+              title: `${images.length} ảnh nguồn`,
+              kicker: 'Toàn cảnh ảnh đã chọn',
+              items: images.map((image, index) => ({
+                url: image.preview,
+                title: image.name,
+                index: index + 1,
+              })),
+            })}
+            aria-label={`Xem chi tiết ${images.length} ảnh nguồn`}
+          >
+            <span aria-hidden="true">⌕</span>
+            Xem chi tiết
+          </button>
         )}
       </div>
 

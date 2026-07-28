@@ -24,6 +24,7 @@ import { useAuth } from "../hooks/useAuth.js";
 import { getUserDisplayName } from "../utils/userProfile.js";
 import { loadDoanTrangWatermarkOptions, saveDoanTrangWatermarkOptions } from "../hooks/useIndexedDB.js";
 import { getOrCreateWatermarkVisitorId } from "../utils/watermarkVisitor.js";
+import { captureAndDownloadSourceImages } from "../utils/sourceImageCapture.js";
 import { useHeroImagePreview } from "../hooks/useHeroImagePreview.js";
 import { useImageDropzoneDrag } from "../hooks/useImageDropzoneDrag.js";
 import { useWatermarkStats } from "../hooks/useWatermarkStats.js";
@@ -553,7 +554,22 @@ const WatermarkImageZoom = React.memo(function WatermarkImageZoom({
   image,
   onClose,
 }) {
+  const [isCapturing, setIsCapturing] = useState(false);
   if (!image) return null;
+  const detailItems = Array.isArray(image.items) ? image.items : null;
+
+  const handleCapture = async () => {
+    if (!detailItems || isCapturing) return;
+    setIsCapturing(true);
+    try {
+      await captureAndDownloadSourceImages(detailItems);
+      toast.success("Đã chụp và tải toàn bộ ảnh nguồn.");
+    } catch (error) {
+      toast.error(error?.message || "Không thể chụp ảnh toàn cảnh.");
+    } finally {
+      setIsCapturing(false);
+    }
+  };
 
   return createPortal(
     <div
@@ -562,13 +578,14 @@ const WatermarkImageZoom = React.memo(function WatermarkImageZoom({
       onPointerDown={onClose}
     >
       <div
-        className="wm-preview-modal wm-preview-modal--zoom"
+        className={`wm-preview-modal wm-preview-modal--zoom${detailItems ? " wm-preview-modal--source-detail" : ""}`}
         role="dialog"
         aria-modal="true"
         aria-label={`Phóng to ${image.title}`}
+        aria-describedby={detailItems ? "dtw-source-detail-description" : undefined}
         onPointerDown={(event) => event.stopPropagation()}
       >
-        <div className="wm-preview-header">
+        <div className={`wm-preview-header${detailItems ? " wm-source-detail-header" : ""}`}>
           <div className="wm-preview-title-wrap">
             <span className="wm-preview-kicker">
               {image.kicker || "Xem ảnh"}
@@ -576,19 +593,60 @@ const WatermarkImageZoom = React.memo(function WatermarkImageZoom({
             <strong className="wm-preview-title" title={image.title}>
               {image.title}
             </strong>
+            {detailItems && (
+              <span
+                className="wm-source-detail-description"
+                id="dtw-source-detail-description"
+              >
+                Kiểm tra thứ tự ảnh trước khi xuất bản tổng hợp JPG
+              </span>
+            )}
           </div>
-          <button
-            className="wm-preview-close"
-            type="button"
-            onClick={onClose}
-            aria-label="Đóng ảnh phóng to"
-          >
-            <span aria-hidden="true">×</span>
-          </button>
+          <div className="wm-preview-actions">
+            {detailItems && (
+              <button
+                className="wm-source-capture-button"
+                type="button"
+                onClick={handleCapture}
+                disabled={isCapturing}
+                autoFocus
+              >
+                <span className="wm-source-capture-icon" aria-hidden="true">
+                  ↓
+                </span>
+                {isCapturing ? "Đang tạo JPG…" : "Xuất ảnh JPG"}
+              </button>
+            )}
+            <button
+              className="wm-preview-close"
+              type="button"
+              onClick={onClose}
+              aria-label="Đóng ảnh phóng to"
+              autoFocus={!detailItems}
+            >
+              <span aria-hidden="true">×</span>
+            </button>
+          </div>
         </div>
 
-        <div className="wm-preview-image-frame">
-          <img src={image.url} alt={image.title} />
+        <div className={`wm-preview-image-frame${detailItems ? " wm-source-detail-frame" : ""}`}>
+          {detailItems ? (
+            <div className="wm-source-detail-grid">
+              {detailItems.map((item) => (
+                <figure
+                  className="wm-source-detail-item"
+                  key={`${item.url}-${item.index}`}
+                >
+                  <div className="wm-source-detail-image-wrap">
+                    <img src={item.url} alt={item.title} />
+                    <span className="wm-source-detail-index">{item.index}</span>
+                  </div>
+                </figure>
+              ))}
+            </div>
+          ) : (
+            <img src={image.url} alt={image.title} />
+          )}
         </div>
       </div>
     </div>,
