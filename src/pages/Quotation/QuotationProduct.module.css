@@ -1,0 +1,28 @@
+.productEditor {
+  display: grid;
+  gap: 7px;
+  min-width: 280px;
+}
+
+.productEditor input {
+  font-weight: 700;
+}
+
+.productEditor textarea {
+  min-height: 68px;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.printDescription {
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+}
+
+.printDescription strong {
+  font-weight: 700;
+}
+
+.printDescription span {
+  font-weight: 400;
+}

@@ -2,28 +2,12 @@
   --header-height: 56px;
 }
 
-.header-spacer {
-  width: 100%;
-  flex-shrink: 0;
-}
-
 header.header {
   position: relative;
   z-index: 200;
   border-bottom: 1px solid var(--color-border);
   background: color-mix(in srgb, var(--color-surface) 84%, transparent);
   backdrop-filter: blur(16px);
-}
-
-header.header.pinned {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-}
-
-header.header.scrolled {
-  background: color-mix(in srgb, var(--color-surface) 92%, transparent);
 }
 
 .header-container {

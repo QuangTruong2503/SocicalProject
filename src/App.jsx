@@ -6,6 +6,7 @@ import Watermark from './pages/Watermark.jsx';
 import DoanTrangWatermarkPage from './pages/DoanTrangWatermarkPage.jsx';
 import WatermarkDashboardPage from './pages/WatermarkDashboardPage.jsx';
 import Quotation from './pages/Quotation/Quotation.jsx';
+import QuotationList from './pages/Quotation/QuotationList.jsx';
 import Footer from './components/Footer.jsx';
 import Header from './components/Header.jsx';
 import ScrollToTopButton from './components/ScrollToTopButton.jsx';
@@ -105,7 +106,7 @@ function HomePage() {
       title: 'Quotation Builder',
       description: 'Tạo phiếu báo giá / đơn hàng, tự tính VAT, lưu draft và in hóa đơn A4.',
       buttonText: 'Mo Tool',
-      link: '/quotation',
+      link: '/admin/bao-gia',
       badge: 'New',
       delay: 325,
     },
@@ -325,7 +326,10 @@ export default function App() {
             <Route path="/watermark" element={<Watermark />} />
             <Route path="/watermark/doantrang" element={<DoanTrangWatermarkPage />} />
             <Route path="/watermark/dashboard" element={<WatermarkDashboardPage />} />
-            <Route path="/quotation" element={<Quotation />} />
+            <Route path="/quotation" element={<Navigate to="/admin/bao-gia/tao-moi" replace />} />
+            <Route path="/admin/bao-gia" element={<ProtectedRoute title="Quản lý báo giá cần đăng nhập." description="Khu vực dành cho nhân viên và quản trị viên." details={['Lưu và chỉnh sửa báo giá', 'Xuất Excel, PDF và in A4']} loginLabel="Đăng nhập để quản lý báo giá"><QuotationList /></ProtectedRoute>} />
+            <Route path="/admin/bao-gia/tao-moi" element={<ProtectedRoute title="Tạo báo giá cần đăng nhập." description="Khu vực dành cho nhân viên và quản trị viên." details={['Tạo báo giá theo mẫu công ty']} loginLabel="Đăng nhập để tạo báo giá"><Quotation /></ProtectedRoute>} />
+            <Route path="/admin/bao-gia/:id/chinh-sua" element={<ProtectedRoute title="Chỉnh sửa báo giá cần đăng nhập." description="Khu vực dành cho nhân viên và quản trị viên." details={['Chỉnh sửa báo giá đã lưu']} loginLabel="Đăng nhập để chỉnh sửa"><Quotation /></ProtectedRoute>} />
             <Route path="/seo-excel-generator" element={<SeoExcelGenerator />} />
             <Route
               path="/auth"

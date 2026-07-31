@@ -1,173 +1,205 @@
-import * as XLSX from 'xlsx';
-import dayjs from 'dayjs';
+import JSZip from 'jszip';
+import { saveAs } from './fileSaver.js';
+import { fileSlug } from './quotation.js';
 
-/**
- * Build a safe filename segment.
- * @param {string} value
- * @returns {string}
- */
-function toSafeSegment(value) {
-  return String(value || '')
-    .trim()
-    .replace(/[\\/:*?"<>|]+/g, '-')
-    .replace(/\s+/g, '-')
-    .replace(/-+/g, '-')
-    .replace(/^-|-$/g, '');
+const TEMPLATE_URL = '/templates/bao-gia-minh-triet.xlsx';
+const NS = 'http://schemas.openxmlformats.org/spreadsheetml/2006/main';
+
+function escapeXml(value) {
+  const xmlSafeValue = Array.from(String(value ?? ''))
+    .filter((character) => {
+      const codePoint = character.codePointAt(0);
+      return codePoint === 9 || codePoint === 10 || codePoint === 13 || codePoint >= 32;
+    })
+    .join('');
+  return xmlSafeValue.replace(/\r\n?/g, '\n').replace(/&/g, '&amp;').replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
 
-/**
- * Create the filename for a quotation export.
- * @param {{ shortName?: string, name?: string, documentNo?: string, date?: string }} company
- * @returns {string}
- */
-export function buildQuotationExcelFileName(company = {}, customer = {}) {
-  const companySegment = toSafeSegment(company.shortName || company.name || 'quotation');
-  const documentNo = toSafeSegment(customer.documentNo || '');
-  const date = dayjs(customer.date || undefined).format('YYYYMMDD');
-  const docPart = documentNo ? `-${documentNo}` : '';
-
-  return `quotation-${companySegment}${docPart}-${date}.xlsx`;
+function inlineCell(ref, style, value, numeric = false, formula = '') {
+  const styleAttr = style ? ` s="${style}"` : '';
+  if (formula) return `<c r="${ref}"${styleAttr}><f>${escapeXml(formula)}</f><v>${Number(value) || 0}</v></c>`;
+  if (numeric) return `<c r="${ref}"${styleAttr}><v>${Number(value) || 0}</v></c>`;
+  return `<c r="${ref}"${styleAttr} t="inlineStr"><is><t xml:space="preserve">${escapeXml(value)}</t></is></c>`;
 }
 
-/**
- * Export a quotation snapshot to an Excel file.
- * @param {{
- *   company: { name?: string, shortName?: string, taxCode?: string, taxAddress?: string, phone?: string, email?: string, bankName?: string, bankAccount?: string, representative?: string },
- *   customer: object,
- *   products: Array<{
- *     id?: string|number,
- *     code?: string,
- *     name?: string,
- *     unit?: string,
- *     quantity?: number,
- *     price?: number,
- *     vat?: number,
- *     total?: number,
- *     subtotal?: number,
- *     vatAmount?: number,
- *   }>,
- *   summary: { subtotal: number, vatAmount: number, total: number, totalInWords: string }
- * }} payload
- * @returns {string} Generated filename
- */
-export function exportQuotationToExcel({ company, customer, products = [], summary }) {
-  const headerRows = [
-    ['PHIẾU BÁO GIÁ / ĐƠN HÀNG'],
-    ['Đơn vị phát hành', company?.name || ''],
-    ['Địa chỉ', company?.taxAddress || ''],
-    ['Mã số thuế', company?.taxCode || ''],
-    ['Điện thoại', company?.phone || ''],
-    ['Email', company?.email || ''],
-    ['Ngân hàng', company?.bankName || ''],
-    ['Số tài khoản', company?.bankAccount || ''],
-    ['Người đại diện', company?.representative || ''],
-    [],
-    ['Khách hàng', customer?.companyName || ''],
-    ['Mã số thuế KH', customer?.taxCode || ''],
-    ['Địa chỉ thuế KH', customer?.taxAddress || ''],
-    ['Số điện thoại KH', customer?.phone || ''],
-    ['Địa chỉ giao hàng', customer?.shippingAddress || ''],
-    ['Ngày báo giá', customer?.date ? dayjs(customer.date).format('DD/MM/YYYY') : ''],
-    ['Số chứng từ', customer?.documentNo || ''],
-    ['Ghi chú', customer?.note || ''],
-    [],
-    ['STT', 'Mã SP', 'Tên hàng', 'ĐVT', 'SL', 'Đơn giá', 'VAT %', 'Thành tiền', 'VAT tiền'],
-  ];
+function replaceCell(rowXml, column, row, value, { numeric = false, formula = '' } = {}) {
+  const pattern = new RegExp(`<c\\s+([^>]*\\br="${column}${row}"[^>]*)\\/>|<c\\s+([^>]*\\br="${column}${row}"[^>]*)>[\\s\\S]*?<\\/c>`);
+  const found = rowXml.match(pattern);
+  const attrs = found?.[1] || found?.[2] || '';
+  const style = attrs.match(/\bs="([^"]+)"/)?.[1] || '';
+  const cell = inlineCell(`${column}${row}`, style, value, numeric, formula);
+  if (found) return rowXml.replace(pattern, cell);
+  return rowXml.replace('</row>', `${cell}</row>`);
+}
 
-  const productRows = products.map((product, index) => [
-    index + 1,
-    product.code || '',
-    product.name || '',
-    product.unit || '',
-    Number(product.quantity) || 0,
-    Number(product.price) || 0,
-    Number(product.vat) || 0,
-    Number(product.total) || 0,
-    Number(product.vatAmount) || 0,
-  ]);
+function replaceProductTextCell(rowXml, column, row, productName, description) {
+  const pattern = new RegExp(`<c\\s+([^>]*\\br="${column}${row}"[^>]*)\\/>|<c\\s+([^>]*\\br="${column}${row}"[^>]*)>[\\s\\S]*?<\\/c>`);
+  const found = rowXml.match(pattern);
+  const attrs = found?.[1] || found?.[2] || '';
+  const style = attrs.match(/\bs="([^"]+)"/)?.[1] || '';
+  const styleAttr = style ? ` s="${style}"` : '';
+  const name = escapeXml(productName);
+  const details = escapeXml(description);
+  const richText = [
+    `<c r="${column}${row}"${styleAttr} t="inlineStr"><is>`,
+    '<r><rPr><rFont val="Times New Roman"/><family val="1"/><b/><sz val="11"/></rPr>',
+    `<t xml:space="preserve">${name}</t></r>`,
+    details
+      ? `<r><rPr><rFont val="Times New Roman"/><family val="1"/><sz val="11"/></rPr><t xml:space="preserve">\n${details}</t></r>`
+      : '',
+    '</is></c>',
+  ].join('');
+  if (found) return rowXml.replace(pattern, richText);
+  return rowXml.replace('</row>', `${richText}</row>`);
+}
 
-  const footerRows = [
-    [],
-    ['Tổng tiền trước VAT', '', '', '', '', '', '', Number(summary?.subtotal) || 0, ''],
-    ['Tổng VAT', '', '', '', '', '', '', Number(summary?.vatAmount) || 0, ''],
-    ['Tổng thanh toán', '', '', '', '', '', '', Number(summary?.total) || 0, ''],
-    ['Số tiền bằng chữ', summary?.totalInWords || ''],
-  ];
+function setProductRowHeight(rowXml, productName, description) {
+  const countLines = (value) => String(value || '').replace(/\r\n?/g, '\n').split('\n')
+    .reduce((total, line) => total + Math.max(1, Math.ceil(Array.from(line).length / 42)), 0);
+  const lineCount = countLines(productName) + (description ? countLines(description) : 0);
+  const height = Math.min(180, Math.max(24, lineCount * 15.75 + 4));
+  return rowXml.replace(/<row\s+([^>]*)>/, (match, attrs) => {
+    const withoutHeight = attrs.replace(/\sht="[^"]*"/, '').replace(/\scustomHeight="[^"]*"/, '');
+    return `<row ${withoutHeight} ht="${height}" customHeight="1">`;
+  });
+}
 
-  const worksheet = XLSX.utils.aoa_to_sheet([
-    ...headerRows,
-    ...productRows,
-    ...footerRows,
-  ]);
+function shiftRow(rowXml, oldRow, newRow) {
+  return rowXml.replace(new RegExp(`r="${oldRow}"`, 'g'), `r="${newRow}"`)
+    .replace(new RegExp(`([A-Z]+)${oldRow}(?=[":<])`, 'g'), `$1${newRow}`);
+}
 
-  const tableHeaderRowIndex = headerRows.length;
-  const productStartRowIndex = tableHeaderRowIndex + 1;
-  const productEndRowIndex = productStartRowIndex + productRows.length - 1;
-  const subtotalRowIndex = productEndRowIndex + 2;
-  const vatRowIndex = productEndRowIndex + 3;
-  const totalRowIndex = productEndRowIndex + 4;
+function setTemplateValue(xml, ref, value, options) {
+  const row = Number(ref.match(/\d+/)[0]);
+  const column = ref.match(/[A-Z]+/)[0];
+  const rowPattern = new RegExp(`<row\\s+[^>]*\\br="${row}"[\\s\\S]*?<\\/row>`);
+  return xml.replace(rowPattern, (rowXml) => replaceCell(rowXml, column, row, value, options));
+}
 
-  worksheet['!cols'] = [
-    { wch: 8 },
-    { wch: 16 },
-    { wch: 34 },
-    { wch: 12 },
-    { wch: 10 },
-    { wch: 16 },
-    { wch: 10 },
-    { wch: 18 },
-    { wch: 16 },
-  ];
+function buildSheetXml(source, quotation, summary) {
+  const itemCount = quotation.items.length;
+  const delta = Math.max(0, itemCount - 1);
+  const rows = [...source.matchAll(/<row[\s\S]*?<\/row>/g)].map((match) => match[0]);
+  const templateProduct = rows.find((row) => /\br="17"/.test(row));
+  const rebuilt = [];
 
-  worksheet['!merges'] = [
-    { s: { r: 0, c: 0 }, e: { r: 0, c: 8 } },
-    { s: { r: 1, c: 1 }, e: { r: 1, c: 8 } },
-    { s: { r: 2, c: 1 }, e: { r: 2, c: 8 } },
-    { s: { r: 3, c: 1 }, e: { r: 3, c: 8 } },
-    { s: { r: 4, c: 1 }, e: { r: 4, c: 8 } },
-    { s: { r: 5, c: 1 }, e: { r: 5, c: 8 } },
-    { s: { r: 6, c: 1 }, e: { r: 6, c: 8 } },
-    { s: { r: 7, c: 1 }, e: { r: 7, c: 8 } },
-    { s: { r: 8, c: 1 }, e: { r: 8, c: 8 } },
-    { s: { r: 9, c: 1 }, e: { r: 9, c: 8 } },
-    { s: { r: 10, c: 1 }, e: { r: 10, c: 8 } },
-    { s: { r: 11, c: 1 }, e: { r: 11, c: 8 } },
-    { s: { r: 12, c: 1 }, e: { r: 12, c: 8 } },
-    { s: { r: 13, c: 1 }, e: { r: 13, c: 8 } },
-    { s: { r: 14, c: 1 }, e: { r: 14, c: 8 } },
-    { s: { r: 15, c: 1 }, e: { r: 15, c: 8 } },
-    { s: { r: 16, c: 1 }, e: { r: 16, c: 8 } },
-    { s: { r: 17, c: 1 }, e: { r: 17, c: 8 } },
-    { s: { r: 18, c: 1 }, e: { r: 18, c: 8 } },
-    { s: { r: subtotalRowIndex, c: 0 }, e: { r: subtotalRowIndex, c: 6 } },
-    { s: { r: vatRowIndex, c: 0 }, e: { r: vatRowIndex, c: 6 } },
-    { s: { r: totalRowIndex, c: 0 }, e: { r: totalRowIndex, c: 6 } },
-  ];
-
-  const currencyColumns = ['F', 'H', 'I'];
-  for (let rowIndex = productStartRowIndex; rowIndex <= productEndRowIndex; rowIndex += 1) {
-    currencyColumns.forEach((column) => {
-      const cellAddress = `${column}${rowIndex + 1}`;
-      if (worksheet[cellAddress]) {
-        worksheet[cellAddress].z = '#,##0';
-      }
-    });
+  for (const row of rows) {
+    const oldRow = Number(row.match(/\br="(\d+)"/)?.[1]);
+    if (oldRow === 17) {
+      quotation.items.forEach((item, index) => {
+        const rowNumber = 17 + index;
+        let productRow = shiftRow(templateProduct, 17, rowNumber)
+          .replace(/<f[\s\S]*?<\/f>/g, '');
+        productRow = replaceCell(productRow, 'B', rowNumber, index + 1, { numeric: true });
+        productRow = replaceProductTextCell(
+          productRow,
+          'C',
+          rowNumber,
+          item.product_name || item.description || '',
+          item.product_name ? (item.description || '') : '',
+        );
+        productRow = replaceCell(productRow, 'D', rowNumber, item.brand || '');
+        productRow = replaceCell(productRow, 'E', rowNumber, item.quantity, { numeric: true });
+        productRow = replaceCell(productRow, 'F', rowNumber, item.unit);
+        productRow = replaceCell(productRow, 'G', rowNumber, item.unit_price, { numeric: true });
+        productRow = replaceCell(
+          productRow,
+          'H',
+          rowNumber,
+          Number(item.quantity) * Number(item.unit_price),
+          { numeric: true },
+        );
+        productRow = setProductRowHeight(
+          productRow,
+          item.product_name || item.description || '',
+          item.product_name ? (item.description || '') : '',
+        );
+        rebuilt.push(productRow);
+      });
+    } else if (oldRow >= 18) {
+      rebuilt.push(shiftRow(row, oldRow, oldRow + delta));
+    } else {
+      rebuilt.push(row);
+    }
   }
 
-  ['H', 'H', 'H'].forEach((column, index) => {
-    const rowIndex = [subtotalRowIndex, vatRowIndex, totalRowIndex][index] + 1;
-    const cellAddress = `${column}${rowIndex}`;
-    if (worksheet[cellAddress]) {
-      worksheet[cellAddress].z = '#,##0';
-    }
+  let xml = source.replace(/<sheetData>[\s\S]*?<\/sheetData>/, `<sheetData>${rebuilt.join('')}</sheetData>`);
+  const totalRow = 18 + delta;
+  const customerLines = [
+    quotation.customer_name,
+    quotation.tax_code ? `Mã số thuế: ${quotation.tax_code}` : '',
+    quotation.address ? `Địa chỉ: ${quotation.address}` : '',
+  ].filter(Boolean);
+  xml = setTemplateValue(xml, 'C7', customerLines.join('\n'));
+  xml = setTemplateValue(xml, 'C8', quotation.contact_name || '');
+  xml = setTemplateValue(xml, 'C9', quotation.phone || '');
+  xml = setTemplateValue(xml, 'H7', quotation.prepared_by_name || '');
+  xml = setTemplateValue(xml, 'H8', quotation.prepared_by_phone || '');
+  const excelDate = Math.floor((new Date(`${quotation.quotation_date}T00:00:00Z`).getTime() - Date.UTC(1899, 11, 30)) / 86400000);
+  xml = setTemplateValue(xml, 'H9', excelDate, { numeric: true });
+  xml = setTemplateValue(xml, 'H10', quotation.quotation_no);
+  xml = setTemplateValue(xml, `H${totalRow}`, summary.total, { numeric: true });
+
+  const terms = quotation.terms || {};
+  [
+    [19, `Ghi chú: ${terms.note || ''}`],
+    [20, `Địa điểm giao hàng: ${terms.deliveryPlace || ''}`],
+    [21, `Thời gian giao hàng: ${terms.deliveryTime || ''}`],
+    [22, `Phương thức thanh toán: ${terms.payment || ''}`],
+    [23, `Chất lượng hàng hóa: ${terms.quality || ''}`],
+    [24, `Hiệu lực báo giá: ${terms.validity || ''}`],
+  ].forEach(([baseRow, value]) => { xml = setTemplateValue(xml, `B${baseRow + delta}`, value); });
+
+  xml = xml.replace(/<dimension ref="A1:J\d+"\/>/, `<dimension ref="A1:J${27 + delta}"/>`);
+  xml = xml.replace(/<mergeCell ref="([A-Z]+)(\d+):([A-Z]+)(\d+)"\/>/g, (match, c1, r1, c2, r2) => {
+    const start = Number(r1) >= 18 ? Number(r1) + delta : Number(r1);
+    const end = Number(r2) >= 18 ? Number(r2) + delta : Number(r2);
+    return `<mergeCell ref="${c1}${start}:${c2}${end}"/>`;
   });
+  return xml;
+}
 
-  worksheet['A1'].s = { font: { bold: true, sz: 16 } };
+async function createQuotationWorkbook(quotation, summary) {
+  const response = await fetch(TEMPLATE_URL);
+  if (!response.ok) throw new Error('Không tải được file Excel mẫu.');
+  const blob = await buildQuotationWorkbook(await response.arrayBuffer(), quotation, summary);
+  const filename = `Bao-gia-${fileSlug(quotation.quotation_no)}-${fileSlug(quotation.customer_name)}.xlsx`;
+  return { blob, filename };
+}
 
-  const workbook = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(workbook, worksheet, 'BaoGia');
+export async function exportQuotationToExcel(quotation, summary) {
+  const { blob, filename } = await createQuotationWorkbook(quotation, summary);
+  saveAs(blob, filename);
+  return filename;
+}
 
-  const fileName = buildQuotationExcelFileName(company, customer);
-  XLSX.writeFile(workbook, fileName, { compression: true });
-  return fileName;
+export async function buildQuotationWorkbook(templateBuffer, quotation, summary) {
+  const zip = await JSZip.loadAsync(templateBuffer);
+  const sheetPath = 'xl/worksheets/sheet1.xml';
+  const delta = Math.max(0, quotation.items.length - 1);
+  zip.file(sheetPath, buildSheetXml(await zip.file(sheetPath).async('string'), quotation, summary));
+  const drawingPath = 'xl/drawings/drawing1.xml';
+  if (delta && zip.file(drawingPath)) {
+    let drawing = await zip.file(drawingPath).async('string');
+    drawing = drawing.replace(/<xdr:twoCellAnchor[\s\S]*?name="Picture 2"[\s\S]*?<\/xdr:twoCellAnchor>/, (anchor) =>
+      anchor.replace(/<xdr:row>(\d+)<\/xdr:row>/g, (_, row) => `<xdr:row>${Number(row) + delta}</xdr:row>`));
+    zip.file(drawingPath, drawing);
+  }
+
+  const workbookPath = 'xl/workbook.xml';
+  let workbookXml = await zip.file(workbookPath).async('string');
+  const lastRow = 27 + delta;
+  workbookXml = workbookXml.replace(/(localSheetId="0">[^<]*!\\?\$A\\?\$1:)[^<]+(<\/definedName>)/, `$1\\$H\\$${lastRow}$2`);
+  workbookXml = workbookXml.replace(/<calcPr[^>]*\/>/, '<calcPr calcMode="auto" fullCalcOnLoad="1" forceFullCalc="1"/>');
+  zip.file(workbookPath, workbookXml);
+  zip.remove('xl/calcChain.xml');
+  const contentTypesPath = '[Content_Types].xml';
+  zip.file(contentTypesPath, (await zip.file(contentTypesPath).async('string'))
+    .replace(/<Override[^>]*PartName="\/xl\/calcChain\.xml"[^>]*\/>/, ''));
+  const relsPath = 'xl/_rels/workbook.xml.rels';
+  zip.file(relsPath, (await zip.file(relsPath).async('string'))
+    .replace(/<Relationship[^>]*Type="http:\/\/schemas\.openxmlformats\.org\/officeDocument\/2006\/relationships\/calcChain"[^>]*\/>/, ''));
+
+  return zip.generateAsync({ type: 'blob', mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', compression: 'DEFLATE' });
 }

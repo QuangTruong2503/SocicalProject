@@ -7,11 +7,7 @@ import '../styles/Header.css';
 
 export default function Header() {
   const [isOpen, setIsOpen] = useState(false);
-  const [scrolled, setScrolled] = useState(false);
-  const [pinned, setPinned] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
-  const [headerHeight, setHeaderHeight] = useState(70);
-  const headerRef = useRef(null);
   const userMenuRef = useRef(null);
   const location = useLocation();
   const navigate = useNavigate();
@@ -20,29 +16,6 @@ export default function Header() {
   const userDisplayName = getUserDisplayName(user, profile);
   const userAvatarUrl = getUserAvatarUrl(user, profile, latestUpload);
   const userInitials = getUserInitials(user, profile);
-
-  useEffect(() => {
-    const updateHeaderHeight = () => {
-      setHeaderHeight(headerRef.current?.offsetHeight || 70);
-    };
-
-    const handleScroll = () => {
-      const nextHeaderHeight = headerRef.current?.offsetHeight || 70;
-      setScrolled(window.scrollY > 10);
-      setPinned(window.scrollY > nextHeaderHeight);
-    };
-
-    updateHeaderHeight();
-    handleScroll();
-
-    window.addEventListener('resize', updateHeaderHeight);
-    window.addEventListener('scroll', handleScroll, { passive: true });
-
-    return () => {
-      window.removeEventListener('resize', updateHeaderHeight);
-      window.removeEventListener('scroll', handleScroll);
-    };
-  }, []);
 
   useEffect(() => {
     const handleEscape = (e) => {
@@ -97,11 +70,11 @@ export default function Header() {
       path: '/watermark',
       icon: '🎨',
     },
-    // {
-    //   label: 'Memory Game',
-    //   path: '/memory-game',
-    //   icon: '🎮',
-    // },
+    {
+      label: 'Báo Giá',
+      path: '/admin/bao-gia',
+      icon: '📜',
+    },
     {
       label: user ? 'Dashboard' : 'Đăng nhập',
       path: user ? '/dashboard/overview' : '/auth',
@@ -142,18 +115,7 @@ export default function Header() {
 
   return (
     <>
-      {pinned && (
-        <div
-          className="header-spacer"
-          style={{ height: `${headerHeight}px` }}
-          aria-hidden="true"
-        />
-      )}
-
-      <header
-        ref={headerRef}
-        className={`header ${scrolled ? 'scrolled' : ''} ${pinned ? 'pinned' : ''}`}
-      >
+      <header className="header">
         <div className="header-container">
           <div className="header-logo">
             <NavLink to="/" className="logo-link" aria-label="Home">

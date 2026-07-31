@@ -18,6 +18,8 @@
     "dayjs": "^1.11.21",
     "express": "^5.2.1",
     "framer-motion": "^12.42.0",
+    "html2canvas": "^1.4.1",
+    "jspdf": "^4.2.1",
     "jszip": "^3.10.1",
     "marked": "^17.0.4",
     "react": "^19.2.4",
