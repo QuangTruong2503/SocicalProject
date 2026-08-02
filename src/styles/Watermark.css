@@ -2140,3 +2140,139 @@ body.wm-watermark-theme:has(.theme-dark) .wm-preview-backdrop {
     box-shadow: 0 18px 46px rgba(15, 23, 42, 0.2);
   }
 }
+/* Download method chooser for large batches. */
+body.wm-watermark-theme .wm-download-choice-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 10020;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: rgba(15, 23, 42, 0.58);
+  backdrop-filter: blur(8px);
+}
+
+body.wm-watermark-theme .wm-download-choice-modal {
+  position: relative;
+  width: min(100%, 500px);
+  padding: 32px;
+  border: 1px solid color-mix(in srgb, var(--wm-primary, #2563eb) 24%, #fff);
+  border-radius: 24px;
+  background: #fff;
+  box-shadow: 0 24px 70px rgba(15, 23, 42, 0.24);
+  color: #172033;
+  text-align: center;
+}
+
+body.wm-watermark-theme .wm-download-choice-kicker {
+  display: block;
+  margin-bottom: 8px;
+  color: var(--wm-primary, #2563eb);
+  font-size: 0.76rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+body.wm-watermark-theme .wm-download-choice-modal h2 {
+  margin: 0;
+  font-size: clamp(1.35rem, 4vw, 1.8rem);
+  line-height: 1.25;
+}
+
+body.wm-watermark-theme .wm-download-choice-modal p {
+  margin: 14px auto 24px;
+  color: #64748b;
+  line-height: 1.6;
+}
+
+body.wm-watermark-theme .wm-download-choice-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+body.wm-watermark-theme .wm-download-choice-actions button {
+  min-height: 48px;
+  padding: 12px 18px;
+  border-radius: 14px;
+  font: inherit;
+  font-weight: 750;
+  cursor: pointer;
+}
+
+body.wm-watermark-theme .wm-download-choice-primary {
+  border: 1px solid var(--wm-primary, #2563eb);
+  background: var(--wm-primary, #2563eb);
+  color: #fff;
+}
+body.wm-watermark-theme .wm-download-choice-subtext {
+  display: block;
+  margin-top: 4px;
+  color: #cbd5e1;
+  font-size: 0.72rem;
+  font-weight: 600;
+}
+
+body.wm-watermark-theme .wm-download-choice-secondary {
+  border: 1px solid #cbd5e1;
+  background: #fff;
+  color: #334155;
+}
+
+body.wm-watermark-theme .wm-download-choice-actions button:hover {
+  transform: translateY(-1px);
+  filter: brightness(0.97);
+}
+
+body.wm-watermark-theme .wm-download-choice-actions button:focus-visible,
+body.wm-watermark-theme .wm-download-choice-close:focus-visible {
+  outline: 3px solid color-mix(in srgb, var(--wm-primary, #2563eb) 32%, transparent);
+  outline-offset: 3px;
+}
+
+body.wm-watermark-theme .wm-download-choice-close {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  width: 36px;
+  height: 36px;
+  border: 0;
+  border-radius: 50%;
+  background: #f1f5f9;
+  color: #475569;
+  font-size: 1.5rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+@media (max-width: 520px) {
+  body.wm-watermark-theme .wm-download-choice-modal {
+    padding: 28px 20px 20px;
+  }
+
+  body.wm-watermark-theme .wm-download-choice-actions {
+    grid-template-columns: 1fr;
+  }
+}
+
+[data-theme='dark'] body.wm-watermark-theme .wm-download-choice-modal,
+.theme-dark body.wm-watermark-theme .wm-download-choice-modal {
+  border-color: rgba(148, 163, 184, 0.28);
+  background: #172033;
+  color: #f8fafc;
+}
+
+[data-theme='dark'] body.wm-watermark-theme .wm-download-choice-modal p,
+.theme-dark body.wm-watermark-theme .wm-download-choice-modal p {
+  color: #cbd5e1;
+}
+
+[data-theme='dark'] body.wm-watermark-theme .wm-download-choice-secondary,
+.theme-dark body.wm-watermark-theme .wm-download-choice-secondary,
+[data-theme='dark'] body.wm-watermark-theme .wm-download-choice-close,
+.theme-dark body.wm-watermark-theme .wm-download-choice-close {
+  border-color: #475569;
+  background: #273449;
+  color: #f8fafc;
+}

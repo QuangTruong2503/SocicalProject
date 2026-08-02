@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { Helmet } from 'react-helmet-async';
 import { Link } from 'react-router-dom';
 import { toast } from 'react-toastify';
+import JSZip from 'jszip';
 import LogoUploader from '../components/watermark/LogoUploader';
 import ImageUploader from '../components/watermark/ImageUploader';
 import WatermarkControls from '../components/watermark/WatermarkControls';
@@ -209,6 +210,45 @@ function WatermarkImageZoom({ image, onClose }) {
   );
 }
 
+function DownloadMethodModal({ imageCount, onChoose, onClose }) {
+  return createPortal(
+    <div className="wm-download-choice-backdrop" role="presentation" onPointerDown={onClose}>
+      <div
+        className="wm-download-choice-modal"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="wm-download-choice-title"
+        aria-describedby="wm-download-choice-description"
+        onPointerDown={(event) => event.stopPropagation()}
+      >
+        <button
+          className="wm-download-choice-close"
+          type="button"
+          onClick={onClose}
+          aria-label="Đóng"
+        >
+          ×
+        </button>
+        <span className="wm-download-choice-kicker">Tùy chọn tải xuống</span>
+        <h2 id="wm-download-choice-title">Fen muốn tải {imageCount} ảnh này theo cách nào?</h2>
+        <p id="wm-download-choice-description">
+          Gộp thành một file ZIP để tải gọn hơn, hoặc tải từng ảnh về thiết bị.
+        </p>
+        <div className="wm-download-choice-actions">
+          <button type="button" className="wm-download-choice-primary" onClick={() => onChoose('zip')} autoFocus>
+            Tải file ZIP
+            <small className="wm-download-choice-subtext">Này chuyên nghiệp hơn nè</small>
+          </button>
+          <button type="button" className="wm-download-choice-secondary" onClick={() => onChoose('direct')}>
+            Tải trực tiếp 😏
+          </button>
+        </div>
+      </div>
+    </div>,
+    document.body
+  );
+}
+
 export default function Watermark() {
   const { user } = useAuth();
   const resultsRef = React.useRef([]);
@@ -228,6 +268,7 @@ export default function Watermark() {
   const [statsError, setStatsError] = useState(null);
   const [optionsHydrated, setOptionsHydrated] = useState(false);
   const [zoomImage, setZoomImage] = useState(null);
+  const [downloadChoiceMode, setDownloadChoiceMode] = useState(null);
   const [buttonRipples, setButtonRipples] = useState([]);
   const [visitorId] = useState(() => getOrCreateWatermarkVisitorId());
   const pageThemeVars = useMemo(() => buildThemeAccentVars(options.accentColor), [options.accentColor]);
@@ -366,6 +407,24 @@ export default function Watermark() {
   }, [closeZoom, zoomImage]);
 
   useEffect(() => {
+    if (!downloadChoiceMode) return undefined;
+
+    const handleEscape = (event) => {
+      if (event.key === 'Escape') {
+        setDownloadChoiceMode(null);
+      }
+    };
+
+    document.addEventListener('keydown', handleEscape);
+    document.body.classList.add('wm-modal-open');
+
+    return () => {
+      document.removeEventListener('keydown', handleEscape);
+      document.body.classList.remove('wm-modal-open');
+    };
+  }, [downloadChoiceMode]);
+
+  useEffect(() => {
     resultsRef.current = results;
   }, [results]);
 
@@ -453,7 +512,7 @@ export default function Watermark() {
   };
 
   // ── Download all ───────────────────────────────────────────────────
-  const handleDownloadAll = useCallback(async (mode) => {
+  const downloadAll = useCallback(async (mode, method) => {
     if (!results.length) {
       return;
     }
@@ -467,8 +526,7 @@ export default function Watermark() {
     });
     const loadingToastId = toast.loading(`Đang chuẩn bị tải xuống (0/${total})…`);
 
-    for (let index = 0; index < results.length; index += 1) {
-      const r = results[index];
+    const prepareResult = async (r) => {
       let blob = r.blob;
       let fileName = getDownloadFileName(r.fileName);
 
@@ -484,30 +542,75 @@ export default function Watermark() {
         } catch { /* use original */ }
       }
 
-      const a = document.createElement('a');
-      const objectUrl = URL.createObjectURL(blob);
-      a.href = objectUrl;
-      a.download = fileName;
-      a.click();
+      return { blob, fileName };
+    };
+
+    if (method === 'zip') {
+      const zip = new JSZip();
+      const usedNames = new Set();
+
+      for (let index = 0; index < results.length; index += 1) {
+        const prepared = await prepareResult(results[index]);
+        let fileName = prepared.fileName;
+        let duplicateIndex = 2;
+        while (usedNames.has(fileName.toLocaleLowerCase('vi'))) {
+          fileName = prepared.fileName.replace(/\.jpg$/i, `-${duplicateIndex}.jpg`);
+          duplicateIndex += 1;
+        }
+        usedNames.add(fileName.toLocaleLowerCase('vi'));
+        zip.file(fileName, prepared.blob);
+
+        setDownloadProgress({
+          current: index + 1,
+          total,
+          percent: Math.round(((index + 1) / total) * 100),
+          message: `Đã thêm ${index + 1}/${total} ảnh vào file ZIP`,
+        });
+        toast.update(loadingToastId, {
+          render: `Đang tạo file ZIP (${index + 1}/${total})…`,
+          progress: (index + 1) / total,
+        });
+      }
+
+      const zipBlob = await zip.generateAsync({
+        type: 'blob',
+        compression: 'DEFLATE',
+        compressionOptions: { level: 6 },
+      });
+      const anchor = document.createElement('a');
+      const objectUrl = URL.createObjectURL(zipBlob);
+      anchor.href = objectUrl;
+      anchor.download = `watermark-${Date.now()}.zip`;
+      anchor.click();
       window.setTimeout(() => URL.revokeObjectURL(objectUrl), 1500);
+    } else {
+      for (let index = 0; index < results.length; index += 1) {
+        const prepared = await prepareResult(results[index]);
+        const a = document.createElement('a');
+        const objectUrl = URL.createObjectURL(prepared.blob);
+        a.href = objectUrl;
+        a.download = prepared.fileName;
+        a.click();
+        window.setTimeout(() => URL.revokeObjectURL(objectUrl), 1500);
 
-      setDownloadProgress({
-        current: index + 1,
-        total,
-        percent: Math.round(((index + 1) / total) * 100),
-        message: `Đã chuẩn bị ${index + 1}/${total} ảnh`,
-      });
-      toast.update(loadingToastId, {
-        render: `Đang chuẩn bị tải xuống (${index + 1}/${total})…`,
-        progress: (index + 1) / total,
-      });
+        setDownloadProgress({
+          current: index + 1,
+          total,
+          percent: Math.round(((index + 1) / total) * 100),
+          message: `Đã chuẩn bị ${index + 1}/${total} ảnh`,
+        });
+        toast.update(loadingToastId, {
+          render: `Đang chuẩn bị tải xuống (${index + 1}/${total})…`,
+          progress: (index + 1) / total,
+        });
 
-      await new Promise((resolve) => setTimeout(resolve, 80)); // slight delay between downloads
+        await new Promise((resolve) => setTimeout(resolve, 80));
+      }
     }
 
     window.setTimeout(() => setDownloadProgress(null), 1000);
     toast.update(loadingToastId, {
-      render: `Đã tải xuống ${total} ảnh.`,
+      render: method === 'zip' ? `Đã tải file ZIP gồm ${total} ảnh.` : `Đã tải xuống ${total} ảnh.`,
       type: 'success',
       isLoading: false,
       progress: undefined,
@@ -515,6 +618,23 @@ export default function Watermark() {
       closeButton: true,
     });
   }, [results]);
+
+  const handleDownloadAll = useCallback((mode) => {
+    if (!results.length) return;
+    if (results.length > 10) {
+      setDownloadChoiceMode(mode);
+      return;
+    }
+    downloadAll(mode, 'direct');
+  }, [downloadAll, results.length]);
+
+  const handleDownloadChoice = useCallback((method) => {
+    const mode = downloadChoiceMode;
+    setDownloadChoiceMode(null);
+    if (mode) {
+      downloadAll(mode, method);
+    }
+  }, [downloadAll, downloadChoiceMode]);
 
   // ── Clear results ──────────────────────────────────────────────────
   const handleClear = useCallback(() => {
@@ -726,6 +846,13 @@ export default function Watermark() {
       notification={notification}
     /> */}
     <WatermarkImageZoom image={zoomImage} onClose={closeZoom} />
+    {downloadChoiceMode && (
+      <DownloadMethodModal
+        imageCount={results.length}
+        onChoose={handleDownloadChoice}
+        onClose={() => setDownloadChoiceMode(null)}
+      />
+    )}
     </>
   );
 }
