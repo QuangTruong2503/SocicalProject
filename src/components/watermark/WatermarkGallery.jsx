@@ -4,6 +4,8 @@ import '../../styles/WatermarkGallery.css';
 
 const BULK_RENAME_TUTORIAL_URL =
   'https://psqfbcgkgafqtsmrgjqu.supabase.co/storage/v1/object/public/ZepLao/huong-dan-doi-ten-file.mp4';
+const HARAVAN_PREFIX_GUIDE_IMAGE_URL =
+  'https://psqfbcgkgafqtsmrgjqu.supabase.co/storage/v1/object/public/ZepLao/huong-dan-lay-link-haravan.png';
 
 function normalizeDownloadName(fileName) {
   const trimmed = (fileName || '').trim();
@@ -15,6 +17,12 @@ function normalizeBulkName(fileName) {
   const trimmed = fileName.trim();
   if (!trimmed) return '';
   return /\.[^.]+$/.test(trimmed) ? trimmed : `${trimmed}.jpg`;
+}
+
+function joinImageUrl(prefix, fileName) {
+  const normalizedPrefix = prefix.trim().replace(/\/+$/, '');
+  const normalizedFileName = normalizeBulkName(fileName || '').replace(/^\/+/, '');
+  return normalizedPrefix && normalizedFileName ? `${normalizedPrefix}/${normalizedFileName}` : '';
 }
 
 export default function WatermarkGallery({
@@ -30,6 +38,10 @@ export default function WatermarkGallery({
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isBulkRenameOpen, setIsBulkRenameOpen] = useState(false);
   const [bulkNames, setBulkNames] = useState('');
+  const [isHaravanLinksOpen, setIsHaravanLinksOpen] = useState(false);
+  const [haravanPrefix, setHaravanPrefix] = useState('');
+  const [haravanCopyStatus, setHaravanCopyStatus] = useState('idle');
+  const [isHaravanPrefixGuideOpen, setIsHaravanPrefixGuideOpen] = useState(false);
   const [previewResult, setPreviewResult] = useState(null);
   const [isPreviewClosing, setIsPreviewClosing] = useState(false);
   const [viewportSize, setViewportSize] = useState({ width: 0, height: 0, scrollTop: 0 });
@@ -81,17 +93,18 @@ export default function WatermarkGallery({
   }, [isMenuOpen]);
 
   useEffect(() => {
-    if (!isBulkRenameOpen) return;
+    if (!isBulkRenameOpen && !isHaravanLinksOpen) return;
 
     const handleEscape = (event) => {
       if (event.key === 'Escape') {
         setIsBulkRenameOpen(false);
+        setIsHaravanLinksOpen(false);
       }
     };
 
     document.addEventListener('keydown', handleEscape);
     return () => document.removeEventListener('keydown', handleEscape);
-  }, [isBulkRenameOpen]);
+  }, [isBulkRenameOpen, isHaravanLinksOpen]);
 
   useEffect(() => {
     if (!previewResult) return;
@@ -207,6 +220,22 @@ export default function WatermarkGallery({
     [bulkNames]
   );
 
+  const haravanLinks = useMemo(
+    () => results.map((result) => joinImageUrl(haravanPrefix, result.fileName)).filter(Boolean).join('\n'),
+    [haravanPrefix, results]
+  );
+
+  const handleCopyHaravanLinks = async () => {
+    if (!haravanLinks) return;
+
+    try {
+      await navigator.clipboard.writeText(haravanLinks);
+      setHaravanCopyStatus('copied');
+    } catch {
+      setHaravanCopyStatus('error');
+    }
+  };
+
   const handleBulkRename = () => {
     parsedBulkNames.slice(0, results.length).forEach((fileName, index) => {
       onRenameFile?.(index, fileName);
@@ -236,6 +265,18 @@ export default function WatermarkGallery({
           >
             <span className="wm-bulk-rename-button-icon" aria-hidden="true">✦</span>
             <span>Thêm tên ảnh hàng loạt</span>
+          </button>
+          <button
+            className="wm-bulk-rename-button wm-haravan-link-button"
+            type="button"
+            onClick={() => {
+              setHaravanCopyStatus('idle');
+              setIsHaravanLinksOpen(true);
+            }}
+            disabled={results.length === 0}
+          >
+            <span className="wm-bulk-rename-button-icon" aria-hidden="true">↗</span>
+            <span>Lấy link Haravan nhanh</span>
           </button>
         </div>
 
@@ -492,6 +533,124 @@ export default function WatermarkGallery({
               >
                 Xác nhận đổi tên
               </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {isHaravanLinksOpen && (
+        <div
+          className="wm-bulk-rename-backdrop"
+          role="presentation"
+          onPointerDown={() => setIsHaravanLinksOpen(false)}
+        >
+          <div
+            className="wm-bulk-rename-modal wm-haravan-link-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="wm-haravan-link-title"
+            onPointerDown={(event) => event.stopPropagation()}
+          >
+            <div className="wm-bulk-rename-header">
+              <div className="wm-bulk-rename-heading">
+                <span className="wm-bulk-rename-hero-icon" aria-hidden="true">↗</span>
+                <div>
+                  <span className="wm-bulk-rename-eyebrow">Haravan</span>
+                  <strong id="wm-haravan-link-title">Lấy link hình ảnh nhanh</strong>
+                  <p>Ghép đường dẫn thư mục Haravan với tên file của từng sản phẩm.</p>
+                </div>
+              </div>
+              <button
+                className="wm-bulk-rename-close"
+                type="button"
+                onClick={() => setIsHaravanLinksOpen(false)}
+                aria-label="Đóng"
+              >
+                ×
+              </button>
+            </div>
+
+            <div className="wm-bulk-rename-field">
+              <div className="wm-bulk-rename-field-label">
+                <label htmlFor="wm-haravan-prefix"><strong>Tiền tố hình ảnh trên Haravan</strong></label>
+                <button
+                  className="wm-haravan-prefix-guide-button"
+                  type="button"
+                  aria-expanded={isHaravanPrefixGuideOpen}
+                  aria-controls="wm-haravan-prefix-guide"
+                  onClick={() => setIsHaravanPrefixGuideOpen((open) => !open)}
+                >
+                  <span aria-hidden="true">?</span>
+                  Cách lấy tiền tố
+                </button>
+              </div>
+              <input
+                id="wm-haravan-prefix"
+                className="wm-haravan-prefix-input"
+                type="url"
+                value={haravanPrefix}
+                onChange={(event) => {
+                  setHaravanPrefix(event.target.value);
+                  setHaravanCopyStatus('idle');
+                }}
+                placeholder="https://cdn.hstatic.net/files/200001198818/file/"
+                autoFocus
+              />
+            </div>
+            {isHaravanPrefixGuideOpen && (
+              <div className="wm-haravan-prefix-guide" id="wm-haravan-prefix-guide">
+                <strong>Cách lấy:</strong>
+                <span>Mở một hình đã tải lên Haravan và sao chép link hình ảnh.</span>
+                <span>Xóa tên file ở cuối link, chỉ giữ lại phần đường dẫn thư mục.</span>
+                <code>https://cdn.hstatic.net/files/200001198818/file/</code>
+                <a
+                  className="wm-haravan-prefix-guide-image"
+                  href={HARAVAN_PREFIX_GUIDE_IMAGE_URL}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  <span aria-hidden="true">▧</span>
+                  Xem hình hướng dẫn
+                </a>
+              </div>
+            )}
+
+            <label className="wm-bulk-rename-field wm-haravan-result-field">
+              <span className="wm-bulk-rename-field-label">
+                <strong>Danh sách link hình ảnh</strong>
+                <small>{haravanLinks ? results.length : 0} link</small>
+              </span>
+              <textarea
+                className="wm-bulk-rename-textarea wm-haravan-links-textarea"
+                value={haravanLinks}
+                placeholder="Nhập tiền tố phía trên để tạo danh sách link..."
+                rows={10}
+                readOnly
+              />
+            </label>
+
+            <div className="wm-bulk-rename-actions wm-haravan-actions">
+              <span className={`wm-haravan-copy-status is-${haravanCopyStatus}`} aria-live="polite">
+                {haravanCopyStatus === 'copied' && 'Đã sao chép toàn bộ link.'}
+                {haravanCopyStatus === 'error' && 'Không thể sao chép tự động. Hãy chọn và sao chép danh sách.'}
+              </span>
+              <div className="wm-bulk-rename-action-buttons">
+                <button
+                  className="wm-bulk-rename-cancel"
+                  type="button"
+                  onClick={() => setIsHaravanLinksOpen(false)}
+                >
+                  Đóng
+                </button>
+                <button
+                  className="wm-bulk-rename-confirm"
+                  type="button"
+                  onClick={handleCopyHaravanLinks}
+                  disabled={!haravanLinks}
+                >
+                  {haravanCopyStatus === 'copied' ? 'Đã sao chép' : 'Sao chép tất cả'}
+                </button>
               </div>
             </div>
           </div>

@@ -112,6 +112,17 @@
   opacity: 0.5;
 }
 
+.wm-haravan-link-button {
+  border-color: color-mix(in srgb, #10b981 55%, transparent);
+  background: linear-gradient(135deg, color-mix(in srgb, #10b981 14%, var(--bg-card)), var(--bg-card));
+  color: #059669;
+}
+
+.wm-haravan-link-button:hover:not(:disabled) {
+  background: linear-gradient(135deg, #10b981, #059669);
+  box-shadow: 0 10px 26px color-mix(in srgb, #10b981 30%, transparent);
+}
+
 .wm-bulk-rename-backdrop {
   position: fixed;
   inset: 0;
@@ -293,6 +304,122 @@
 .wm-bulk-rename-textarea:focus {
   border-color: var(--primary-color);
   outline: 3px solid color-mix(in srgb, var(--primary-color) 18%, transparent);
+}
+
+.wm-haravan-prefix-input {
+  width: 100%;
+  min-height: 3rem;
+  padding: 0.75rem 1rem;
+  border: 1px solid color-mix(in srgb, #10b981 30%, var(--border-color));
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--bg-dark) 86%, var(--bg-card));
+  color: var(--text-light);
+  font: inherit;
+}
+
+.wm-haravan-prefix-input:focus {
+  border-color: #10b981;
+  outline: 3px solid color-mix(in srgb, #10b981 18%, transparent);
+}
+
+.wm-haravan-prefix-guide-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.25rem 0.55rem;
+  border: 0;
+  border-radius: 999px;
+  background: color-mix(in srgb, #10b981 12%, transparent);
+  color: #059669;
+  font: inherit;
+  font-size: 0.75rem;
+  font-weight: 750;
+  cursor: pointer;
+}
+
+.wm-haravan-prefix-guide-button > span {
+  display: grid;
+  width: 1.1rem;
+  height: 1.1rem;
+  place-items: center;
+  border: 1px solid currentColor;
+  border-radius: 50%;
+  font-size: 0.68rem;
+}
+
+.wm-haravan-prefix-guide-button:hover {
+  background: color-mix(in srgb, #10b981 20%, transparent);
+}
+
+.wm-haravan-prefix-guide {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem 0.45rem;
+  margin-top: 0.65rem;
+  padding: 0.75rem 0.9rem;
+  border: 1px solid color-mix(in srgb, #10b981 24%, var(--border-color));
+  border-radius: 12px;
+  background: color-mix(in srgb, #10b981 7%, transparent);
+  color: var(--text-muted);
+  font-size: 0.78rem;
+  line-height: 1.5;
+}
+
+.wm-haravan-prefix-guide strong {
+  color: var(--text-light);
+}
+
+.wm-haravan-prefix-guide code {
+  flex-basis: 100%;
+  overflow-wrap: anywhere;
+  color: #059669;
+}
+
+.wm-haravan-prefix-guide-image {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-top: 0.25rem;
+  padding: 0.4rem 0.65rem;
+  border: 1px solid color-mix(in srgb, #10b981 35%, var(--border-color));
+  border-radius: 9px;
+  background: color-mix(in srgb, #10b981 10%, var(--bg-card));
+  color: #059669;
+  font-weight: 750;
+  text-decoration: none;
+}
+
+.wm-haravan-prefix-guide-image:hover {
+  background: color-mix(in srgb, #10b981 18%, var(--bg-card));
+  text-decoration: underline;
+}
+
+.wm-haravan-result-field {
+  margin-top: 1rem;
+}
+
+.wm-haravan-links-textarea {
+  min-height: 210px;
+  font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 0.82rem;
+}
+
+.wm-haravan-actions {
+  min-height: 2.5rem;
+}
+
+.wm-haravan-copy-status {
+  color: var(--text-muted);
+  font-size: 0.8rem;
+}
+
+.wm-haravan-copy-status.is-copied {
+  color: #059669;
+  font-weight: 700;
+}
+
+.wm-haravan-copy-status.is-error {
+  color: #dc2626;
 }
 
 .wm-bulk-rename-summary {
