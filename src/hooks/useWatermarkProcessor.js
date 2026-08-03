@@ -22,8 +22,7 @@ export async function processWatermark(sourceFile, logoUrl, options = {}) {
     };
 
     img.onload = () => {
-      const logo = new Image();
-      logo.onload = () => {
+      const exportImage = (logo = null) => {
         const canvas = document.createElement('canvas');
         canvas.width = img.naturalWidth;
         canvas.height = img.naturalHeight;
@@ -31,47 +30,49 @@ export async function processWatermark(sourceFile, logoUrl, options = {}) {
 
         ctx.drawImage(img, 0, 0);
 
-        const scaleFactor = size / 100;
-        const logoW = Math.round(img.naturalWidth * 0.2 * scaleFactor);
-        const logoH = Math.round((logo.naturalHeight / logo.naturalWidth) * logoW);
+        if (logo) {
+          const scaleFactor = size / 100;
+          const logoW = Math.round(img.naturalWidth * 0.2 * scaleFactor);
+          const logoH = Math.round((logo.naturalHeight / logo.naturalWidth) * logoW);
 
-        ctx.globalAlpha = opacity / 100;
+          ctx.globalAlpha = opacity / 100;
 
-        if (tiled) {
-          const gapX = logoW * 1.5;
-          const gapY = logoH * 1.5;
-          const cols = Math.ceil(canvas.width / gapX) + 1;
-          const rows = Math.ceil(canvas.height / gapY) + 1;
+          if (tiled) {
+            const gapX = logoW * 1.5;
+            const gapY = logoH * 1.5;
+            const cols = Math.ceil(canvas.width / gapX) + 1;
+            const rows = Math.ceil(canvas.height / gapY) + 1;
 
-          for (let r = 0; r < rows; r += 1) {
-            for (let c = 0; c < cols; c += 1) {
-              const x = c * gapX - (r % 2 === 0 ? 0 : gapX / 2);
-              const y = r * gapY;
-              ctx.drawImage(logo, x, y, logoW, logoH);
+            for (let r = 0; r < rows; r += 1) {
+              for (let c = 0; c < cols; c += 1) {
+                const x = c * gapX - (r % 2 === 0 ? 0 : gapX / 2);
+                const y = r * gapY;
+                ctx.drawImage(logo, x, y, logoW, logoH);
+              }
             }
-          }
-        } else {
-          const pad = Math.round(img.naturalWidth * 0.02);
-          let x = 0;
-          let y = 0;
-
-          if (logoPosition.includes('left')) {
-            x = pad;
-          } else if (logoPosition.includes('right')) {
-            x = canvas.width - logoW - pad;
           } else {
-            x = (canvas.width - logoW) / 2;
-          }
+            const pad = Math.round(img.naturalWidth * 0.02);
+            let x = 0;
+            let y = 0;
 
-          if (logoPosition.includes('top')) {
-            y = pad;
-          } else if (logoPosition.includes('bottom')) {
-            y = canvas.height - logoH - pad;
-          } else {
-            y = (canvas.height - logoH) / 2;
-          }
+            if (logoPosition.includes('left')) {
+              x = pad;
+            } else if (logoPosition.includes('right')) {
+              x = canvas.width - logoW - pad;
+            } else {
+              x = (canvas.width - logoW) / 2;
+            }
 
-          ctx.drawImage(logo, x, y, logoW, logoH);
+            if (logoPosition.includes('top')) {
+              y = pad;
+            } else if (logoPosition.includes('bottom')) {
+              y = canvas.height - logoH - pad;
+            } else {
+              y = (canvas.height - logoH) / 2;
+            }
+
+            ctx.drawImage(logo, x, y, logoW, logoH);
+          }
         }
 
         ctx.globalAlpha = 1;
@@ -90,6 +91,14 @@ export async function processWatermark(sourceFile, logoUrl, options = {}) {
           0.92
         );
       };
+
+      if (!logoUrl) {
+        exportImage();
+        return;
+      }
+
+      const logo = new Image();
+      logo.onload = () => exportImage(logo);
 
       logo.onerror = () => {
         cleanup();

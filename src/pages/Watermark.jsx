@@ -434,11 +434,6 @@ export default function Watermark() {
 
   // ── Create watermarked images ──────────────────────────────────────
   const handleCreate = async () => {
-    if (!logoUrl) {
-      toast.warning('Vui lòng chọn logo trước.');
-      return;
-    }
-
     if (!images.length) {
       toast.warning('Vui lòng chọn ít nhất 1 ảnh.');
       return;
@@ -664,7 +659,7 @@ export default function Watermark() {
     )));
   }, []);
 
-  const canCreate = logoUrl && images.length > 0 && !processing;
+  const canCreate = images.length > 0 && !processing;
 
   return (
     <>
@@ -810,7 +805,7 @@ export default function Watermark() {
                 </button>
 
                 <span className="wm-create-hint">
-                  {!logoUrl && '⚠ Chưa có logo · '}
+                  {!logoUrl && 'Không dùng logo · '}
                   {images.length === 0
                     ? 'Chưa có ảnh nào'
                     : `${images.length} ảnh đã chọn`}
@@ -821,7 +816,7 @@ export default function Watermark() {
               {!logoUrl && (
                 <div className="wm-tip-alert">
                   <span className="wm-inline-icon" aria-hidden="true">💡</span>
-                  Logo sẽ được lưu tự động vào trình duyệt – lần sau mở web logo vẫn còn đó.
+                  Bạn vẫn có thể tạo ảnh không logo. Logo sẽ được lưu tự động nếu được chọn.
                 </div>
               )}
             </div>

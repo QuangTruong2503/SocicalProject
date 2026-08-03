@@ -967,7 +967,6 @@ export default function DoanTrangWatermarkPage() {
   );
 
   const handleCreate = async () => {
-    if (!logoUrl) return toast.warning("Vui lòng chọn logo trước.");
     if (!images.length) return toast.warning("Vui lòng chọn ít nhất 1 ảnh.");
     if (!visitorId)
       return toast.info("Đang khởi tạo mã người dùng, bạn thử lại sau vài giây.");
@@ -1269,7 +1268,7 @@ export default function DoanTrangWatermarkPage() {
     return undefined;
   }, [results]);
 
-  const hasCreateInputs = Boolean(logoUrl && images.length > 0);
+  const hasCreateInputs = images.length > 0;
   const canCreate = hasCreateInputs && !processing;
   const createHeartIcon = hasCreateInputs && createButtonHovered ? "♥" : "♡";
   const shouldShowGallery =
@@ -1475,7 +1474,7 @@ export default function DoanTrangWatermarkPage() {
                   </motion.button>
 
                   <span className="wm-create-hint">
-                    {!logoUrl && "Chưa có logo · "}
+                    {!logoUrl && "Không dùng logo · "}
                     {images.length === 0
                       ? "Chưa có ảnh nào"
                       : `${images.length} ảnh đã chọn`}
@@ -1487,8 +1486,8 @@ export default function DoanTrangWatermarkPage() {
                     <span className="wm-inline-icon" aria-hidden="true">
                       ◇
                     </span>
-                    Logo sẽ được lưu tự động vào trình duyệt để lần sau mở trang
-                    vẫn còn sẵn.
+                    Bạn vẫn có thể tạo ảnh không logo. Logo sẽ được lưu tự động
+                    nếu được chọn.
                   </div>
                 )}
               </div>
