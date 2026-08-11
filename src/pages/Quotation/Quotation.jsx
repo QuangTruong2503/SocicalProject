@@ -7,7 +7,7 @@ import { toast } from 'react-toastify';
 import { useAuth } from '../../hooks/useAuth.js';
 import { calculateQuotation, emptyQuotation, newItem, normalizeLocalQuotation, QUOTATION_STATUSES, UNITS, validateQuotation, quotationPayload } from '../../utils/quotation.js';
 import { exportQuotationToExcel } from '../../utils/quotationExcel.js';
-import { exportQuotationElementToPdf } from '../../utils/quotationPdf.js';
+import { exportQuotationToPdf } from '../../utils/quotationPdf.js';
 import { createCustomer, getNextQuotationNumber, getQuotation, listCustomers, normalizeQuotation, saveQuotation } from '../../services/quotationService.js';
 import { formatCurrency } from '../../utils/numberFormat.js';
 import PrintInvoice from '../../components/quotation/PrintInvoice.jsx';
@@ -25,6 +25,7 @@ export default function Quotation() {
   const navigate = useNavigate();
   const { user, profile } = useAuth();
   const printRef = useRef(null);
+  const previewRef = useRef(null);
   const automaticPdfStarted = useRef(false);
   const storageKey = `quotation:draft:${user?.id || 'anonymous'}:${id || 'new'}`;
   const [data, setData] = useState(() => emptyQuotation(profile, user));
@@ -131,21 +132,47 @@ export default function Quotation() {
     if (!validate(false)) return;
     setBusy('pdf');
     try {
-      await exportQuotationElementToPdf(printRef.current, data);
+      await exportQuotationToPdf(data, summary);
       toast.success('Đã tạo PDF tại trình duyệt và tải xuống.');
     } catch (error) { toast.error(error.message); }
     finally { setBusy(''); }
+  };
+
+  const handleCopyPreviewImage = async () => {
+    if (!previewRef.current) return;
+    if (!navigator.clipboard?.write || typeof ClipboardItem === 'undefined') {
+      toast.error('Trình duyệt này chưa hỗ trợ sao chép hình vào clipboard.');
+      return;
+    }
+    setBusy('copy-image');
+    try {
+      const { default: html2canvas } = await import('html2canvas');
+      await document.fonts?.ready;
+      const canvas = await html2canvas(previewRef.current, {
+        backgroundColor: '#ffffff', scale: 2, useCORS: true, logging: false,
+      });
+      const blob = await new Promise((resolve, reject) => canvas.toBlob(
+        (value) => value ? resolve(value) : reject(new Error('Không thể tạo hình báo giá.')),
+        'image/png',
+      ));
+      await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
+      toast.success('Đã sao chép hình báo giá vào clipboard.');
+    } catch (error) {
+      toast.error(error.message || 'Không thể sao chép hình báo giá.');
+    } finally {
+      setBusy('');
+    }
   };
 
   useEffect(() => {
     if (!ready || searchParams.get('pdf') !== '1' || automaticPdfStarted.current) return;
     automaticPdfStarted.current = true;
     setBusy('pdf');
-    exportQuotationElementToPdf(printRef.current, data)
+    exportQuotationToPdf(data, summary)
       .then(() => toast.success('Đã tạo PDF tại trình duyệt và tải xuống.'))
       .catch((error) => toast.error(error.message))
       .finally(() => setBusy(''));
-  }, [data, ready, searchParams]);
+  }, [data, ready, searchParams, summary]);
 
   const duplicate = useCallback(async () => {
     setBusy('copy');
@@ -220,7 +247,7 @@ export default function Quotation() {
         <section className={styles.card}><h2>Người lập báo giá</h2><div className={styles.formGrid}><label>Họ tên<input value={data.prepared_by_name || ''} onChange={(e) => patch('prepared_by_name', e.target.value)}/></label><label>Điện thoại<input value={data.prepared_by_phone || ''} onChange={(e) => patch('prepared_by_phone', e.target.value)}/></label><label>Email<input type="email" value={data.prepared_by_email || ''} onChange={(e) => patch('prepared_by_email', e.target.value)}/></label><label>Trạng thái<select value={data.status} onChange={(e) => patch('status', e.target.value)}>{Object.entries(QUOTATION_STATUSES).map(([key, label]) => <option key={key} value={key}>{label}</option>)}</select></label></div></section>
       </div>
       <PrintInvoice ref={printRef} quotation={data} summary={summary}/>
-      {preview && <div className={styles.modal} onClick={() => setPreview(false)}><div onClick={(e) => e.stopPropagation()} className={styles.modalBody}><button className={styles.modalClose} onClick={() => setPreview(false)}><FaXmark/></button><PrintInvoice quotation={data} summary={summary} preview/></div></div>}
+      {preview && <div className={styles.modal} onClick={() => setPreview(false)}><div onClick={(e) => e.stopPropagation()} className={styles.modalBody}><div className={styles.modalActions}><button onClick={handleCopyPreviewImage} disabled={busy === 'copy-image'}><FaCopy/> {busy === 'copy-image' ? 'Đang sao chép...' : 'Sao chép hình'}</button><button onClick={() => setPreview(false)} aria-label="Đóng bản xem trước"><FaXmark/></button></div><PrintInvoice ref={previewRef} quotation={data} summary={summary} preview/></div></div>}
     </>
   );
 }
