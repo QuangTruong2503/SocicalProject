@@ -9,9 +9,9 @@
 
 ## Xuất PDF
 
-- PDF được tạo hoàn toàn tại trình duyệt từ bản xem trước báo giá và tự động tải xuống.
+- PDF được tạo hoàn toàn tại trình duyệt dưới dạng văn bản Unicode có thể tìm kiếm, chọn và sao chép, sau đó tự động tải xuống.
 - Không cần cài Excel hoặc LibreOffice trên máy chủ và không tải dữ liệu báo giá lên API chuyển đổi.
-- Chức năng sử dụng `html2canvas` để kết xuất nội dung và `jsPDF` để tạo file PDF A4.
+- Chức năng sử dụng `jsPDF` cùng font Noto Sans được nhúng để dựng trực tiếp nội dung PDF A4; không chụp nội dung thành ảnh.
 5. Chạy `npm install`, `npm run lint`, `npm run build`.
 6. Triển khai thư mục build theo quy trình hiện tại. Đảm bảo hai tài nguyên sau được phục vụ công khai:
    `public/templates/bao-gia-minh-triet.xlsx` và `public/templates/minh-triet-logo.png`.
@@ -26,7 +26,7 @@
 - VAT được chọn riêng cho từng sản phẩm: 5%, 8% hoặc 10%.
 - Mỗi dòng có ô **Tên sản phẩm** và **Mô tả** riêng. Khi xuất Excel/PDF, tên được in đậm; mô tả nằm ở dòng dưới và giữ nguyên các lần xuống dòng.
 - **Xuất Excel** sao chép chính workbook mẫu, chèn số dòng sản phẩm cần thiết và đẩy tổng cộng, điều khoản, chữ ký xuống dưới.
-- **Xuất PDF** và **In** mở hộp thoại in chuẩn A4 của trình duyệt; chọn máy in “Save as PDF” để lưu PDF.
+- **Xuất PDF** tạo và tải xuống file PDF text trực tiếp. **In** mở hộp thoại in chuẩn A4 của trình duyệt.
 - Khi sửa giá trong báo giá, dữ liệu giá của danh mục sản phẩm không bị thay đổi.
 
 ## Sao lưu và khôi phục
