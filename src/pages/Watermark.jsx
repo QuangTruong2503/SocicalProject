@@ -12,6 +12,7 @@ import SeasonalEffectLayer from '../components/watermark/SeasonalEffectLayer';
 import { processWatermark, resizeBlob, buildFileName, compressAndResizeBlob } from '../hooks/useWatermarkProcessor';
 import NotificationModal from '../components/NotificationModal';
 import { useAuth } from '../hooks/useAuth.js';
+import { supabase } from '../lib/supabase.js';
 import { getUserDisplayName } from '../utils/userProfile.js';
 import {
   loadWatermarkOptions,
@@ -75,13 +76,15 @@ function WatermarkCountBoard({
   selectedCount,
   isLoading,
   error,
+  totalJustUpdated,
 }) {
   const rows = [
     {
       label: 'Tổng ảnh đã tạo',
       value: isLoading ? '...' : formatCount(totalCreated),
-      note: error ? 'Chưa tải được dữ liệu Supabase' : 'Chỉ tính trang Watermark',
+      note: error ? 'Chưa tải được dữ liệu Supabase' : 'Tính trên toàn bộ dự án',
       tone: error ? 'warning' : 'primary',
+      pulse: totalJustUpdated,
     },
     {
       label: 'Ảnh của bạn',
@@ -108,7 +111,10 @@ function WatermarkCountBoard({
 
       <div className="wm-count-grid">
         {rows.map((row) => (
-          <article className={`wm-count-card wm-count-card--${row.tone}`} key={row.label}>
+          <article
+            className={`wm-count-card wm-count-card--${row.tone}${row.pulse ? ' wm-count-card--pulse' : ''}`}
+            key={row.label}
+          >
             <span className="wm-count-card__label">{row.label}</span>
             <strong>{row.value}</strong>
             <span className="wm-count-card__note">{row.note}</span>
@@ -266,6 +272,8 @@ export default function Watermark() {
   const [lastCreated, setLastCreated] = useState(0);
   const [statsLoading, setStatsLoading] = useState(true);
   const [statsError, setStatsError] = useState(null);
+  const [totalJustUpdated, setTotalJustUpdated] = useState(false);
+  const totalPulseTimeoutRef = React.useRef(null);
   const [optionsHydrated, setOptionsHydrated] = useState(false);
   const [zoomImage, setZoomImage] = useState(null);
   const [downloadChoiceMode, setDownloadChoiceMode] = useState(null);
@@ -362,7 +370,7 @@ export default function Watermark() {
     let isActive = true;
 
     Promise.all([
-      getWatermarkImageCountTotal({ sourcePage: WATERMARK_COUNT_SOURCE_PAGE }),
+      getWatermarkImageCountTotal({}),
       getWatermarkImageCountTotal({
         sourcePage: WATERMARK_COUNT_SOURCE_PAGE,
         visitorId,
@@ -385,6 +393,47 @@ export default function Watermark() {
 
     return () => {
       isActive = false;
+    };
+  }, [visitorId]);
+
+  // ── Live total via Supabase Realtime (websocket) ───────────────────
+  useEffect(() => {
+    if (!visitorId) {
+      return undefined;
+    }
+
+    const channel = supabase
+      .channel('watermark-image-counts-total')
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'watermark_image_counts' },
+        (payload) => {
+          const row = payload.new;
+          const increment = Number(row?.image_count) || 0;
+
+          // Skip our own inserts — handleCreate already bumps the total locally.
+          if (!row || row.visitor_id === visitorId || increment <= 0) {
+            return;
+          }
+
+          setTotalCreated((current) => current + increment);
+          setTotalJustUpdated(true);
+
+          if (totalPulseTimeoutRef.current) {
+            window.clearTimeout(totalPulseTimeoutRef.current);
+          }
+          totalPulseTimeoutRef.current = window.setTimeout(() => {
+            setTotalJustUpdated(false);
+          }, 900);
+        },
+      )
+      .subscribe();
+
+    return () => {
+      if (totalPulseTimeoutRef.current) {
+        window.clearTimeout(totalPulseTimeoutRef.current);
+      }
+      supabase.removeChannel(channel);
     };
   }, [visitorId]);
 
@@ -738,6 +787,7 @@ export default function Watermark() {
           selectedCount={images.length}
           isLoading={statsLoading}
           error={statsError}
+          totalJustUpdated={totalJustUpdated}
         />
 
         {/* ── Main Layout ── */}

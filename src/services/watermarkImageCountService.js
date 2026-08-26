@@ -127,27 +127,17 @@ export async function getWatermarkVisitorStatsRows({ sourcePage = null } = {}) {
  */
 export async function getWatermarkImageCountTotal({ sourcePage = null, visitorId = null } = {}) {
   try {
-    let query = supabase
-      .from(WATERMARK_IMAGE_COUNTS_TABLE)
-      .select('image_count');
-
-    if (sourcePage) {
-      query = query.eq('source_page', sourcePage);
-    }
-
-    if (visitorId) {
-      query = query.eq('visitor_id', visitorId);
-    }
-
-    const { data, error } = await query;
+    const { data, error } = await supabase.rpc('watermark_image_count_total', {
+      p_source_page: sourcePage || null,
+      p_visitor_id: visitorId || null,
+    });
 
     if (error) {
       console.error('[watermarkImageCountService] getWatermarkImageCountTotal error', { error });
       return createServiceResult(null, normalizeServiceError(error, 'Không thể tải số lượng ảnh watermark.'));
     }
 
-    const total = (data || []).reduce((sum, row) => sum + (Number(row.image_count) || 0), 0);
-    return createServiceResult(total);
+    return createServiceResult(Number(data) || 0);
   } catch (error) {
     console.error('[watermarkImageCountService] getWatermarkImageCountTotal exception', { error });
     return createServiceResult(null, normalizeServiceError(error, 'Không thể tải số lượng ảnh watermark.'));
