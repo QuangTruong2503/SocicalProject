@@ -12,6 +12,7 @@ import SeasonalEffectLayer from '../components/watermark/SeasonalEffectLayer';
 import { processWatermark, resizeBlob, buildFileName, compressAndResizeBlob } from '../hooks/useWatermarkProcessor';
 import NotificationModal from '../components/NotificationModal';
 import { useAuth } from '../hooks/useAuth.js';
+import { useTheme } from '../hooks/useTheme.js';
 import { supabase } from '../lib/supabase.js';
 import { getUserDisplayName } from '../utils/userProfile.js';
 import {
@@ -69,6 +70,82 @@ function formatCount(value) {
   return new Intl.NumberFormat('vi-VN').format(Number(value) || 0);
 }
 
+function useReplayOnReveal(elementRef) {
+  const [replayKey, setReplayKey] = useState(0);
+  const wasVisibleRef = React.useRef(false);
+
+  useEffect(() => {
+    const node = elementRef.current;
+    if (!node || typeof IntersectionObserver === 'undefined') {
+      return undefined;
+    }
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          if (!wasVisibleRef.current) {
+            wasVisibleRef.current = true;
+            setReplayKey((key) => key + 1);
+          }
+        } else {
+          wasVisibleRef.current = false;
+        }
+      },
+      { threshold: 0.35 },
+    );
+
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, [elementRef]);
+
+  return replayKey;
+}
+
+function useAnimatedCount(value, { duration = 700, replayKey } = {}) {
+  const numericValue = Number(value) || 0;
+  const [display, setDisplay] = useState(numericValue);
+  const displayRef = React.useRef(numericValue);
+  const lastReplayKeyRef = React.useRef(replayKey);
+
+  useEffect(() => {
+    const isReplay = replayKey !== undefined && replayKey !== lastReplayKeyRef.current;
+    lastReplayKeyRef.current = replayKey;
+
+    const from = isReplay ? 0 : displayRef.current;
+    const to = numericValue;
+
+    if (!isReplay && from === to) {
+      return undefined;
+    }
+
+    if (isReplay) {
+      displayRef.current = from;
+      setDisplay(from);
+    }
+
+    let rafId;
+    const start = performance.now();
+
+    const tick = (now) => {
+      const progress = Math.min((now - start) / duration, 1);
+      const eased = 1 - (1 - progress) ** 3;
+      const current = Math.round(from + (to - from) * eased);
+      displayRef.current = current;
+      setDisplay(current);
+
+      if (progress < 1) {
+        rafId = requestAnimationFrame(tick);
+      }
+    };
+
+    rafId = requestAnimationFrame(tick);
+
+    return () => cancelAnimationFrame(rafId);
+  }, [numericValue, duration, replayKey]);
+
+  return display;
+}
+
 function WatermarkCountBoard({
   totalCreated,
   personalCreated,
@@ -78,30 +155,37 @@ function WatermarkCountBoard({
   error,
   totalJustUpdated,
 }) {
+  const boardRef = React.useRef(null);
+  const replayKey = useReplayOnReveal(boardRef);
+
+  const animatedTotal = useAnimatedCount(totalCreated, { replayKey });
+  const animatedPersonal = useAnimatedCount(personalCreated, { replayKey });
+  const animatedLast = useAnimatedCount(lastCreated, { duration: 500, replayKey });
+
   const rows = [
     {
       label: 'Tổng ảnh đã tạo',
-      value: isLoading ? '...' : formatCount(totalCreated),
+      value: isLoading ? '...' : formatCount(animatedTotal),
       note: error ? 'Chưa tải được dữ liệu Supabase' : 'Tính trên toàn bộ dự án',
       tone: error ? 'warning' : 'primary',
       pulse: totalJustUpdated,
     },
     {
       label: 'Ảnh của bạn',
-      value: isLoading ? '...' : formatCount(personalCreated),
+      value: isLoading ? '...' : formatCount(animatedPersonal),
       note: 'Tổng số ảnh bạn đã tạo từ trước đến nay theo visitor_id này',
       tone: 'success',
     },
-    { 
+    {
       label: 'Lần tạo gần nhất',
-      value: formatCount(lastCreated),
+      value: formatCount(animatedLast),
       note: selectedCount > 0 ? `${formatCount(selectedCount)} ảnh` : 'Chưa chọn ảnh',
       tone: 'neutral',
     },
   ];
 
   return (
-    <section className="wm-count-board" aria-label="Bảng đếm ảnh watermark">
+    <section className="wm-count-board" aria-label="Bảng đếm ảnh watermark" ref={boardRef}>
       <div className="wm-count-board__header">
         <div>
           <span className="wm-count-board__kicker">Ảnh Đã Tạo</span>
@@ -257,6 +341,7 @@ function DownloadMethodModal({ imageCount, onChoose, onClose }) {
 
 export default function Watermark() {
   const { user } = useAuth();
+  const { isDark } = useTheme();
   const resultsRef = React.useRef([]);
   const createButtonRippleIdRef = React.useRef(0);
   const [logoUrl, setLogoUrl]   = useState(null);
@@ -279,7 +364,10 @@ export default function Watermark() {
   const [downloadChoiceMode, setDownloadChoiceMode] = useState(null);
   const [buttonRipples, setButtonRipples] = useState([]);
   const [visitorId] = useState(() => getOrCreateWatermarkVisitorId());
-  const pageThemeVars = useMemo(() => buildThemeAccentVars(options.accentColor), [options.accentColor]);
+  const pageThemeVars = useMemo(
+    () => buildThemeAccentVars(options.accentColor, isDark),
+    [options.accentColor, isDark],
+  );
 
   const handleLogoChange = useCallback((url, name) => {
     setLogoUrl(url);

@@ -104,30 +104,6 @@ export function clearLogo() {
   return clearAsset('logo');
 }
 
-export function saveDoanTrangHeroImage(file) {
-  return saveAsset('doan-trang-hero-image', file);
-}
-
-export function loadDoanTrangHeroImage() {
-  return loadAsset('doan-trang-hero-image');
-}
-
-export function clearDoanTrangHeroImage() {
-  return clearAsset('doan-trang-hero-image');
-}
-
-export function saveDoanTrangWatermarkOptions(options) {
-  return saveValue('doan-trang-watermark-options', options);
-}
-
-export function loadDoanTrangWatermarkOptions() {
-  return loadValue('doan-trang-watermark-options');
-}
-
-export function clearDoanTrangWatermarkOptions() {
-  return clearAsset('doan-trang-watermark-options');
-}
-
 export function saveWatermarkOptions(options) {
   return saveValue('watermark-options', options);
 }

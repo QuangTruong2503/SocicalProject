@@ -52,8 +52,27 @@ export function shiftHexColor(hex, amount = 0) {
   return `#${next.toUpperCase()}`;
 }
 
-export function buildThemeAccentVars(accentColor) {
+export function buildThemeAccentVars(accentColor, isDark = false) {
   const accent = ensureHexColor(accentColor);
+
+  if (isDark) {
+    // Inline custom properties always win over stylesheet rules (including
+    // the `[data-theme='dark']` block), so the dark-mode shades have to be
+    // computed here too — lightening instead of darkening keeps text/borders
+    // readable against the dark surfaces instead of inheriting light-mode math.
+    return {
+      '--wm-primary': shiftHexColor(accent, 24),
+      '--wm-primary-hover': shiftHexColor(accent, 44),
+      '--wm-primary-deep': shiftHexColor(accent, 78),
+      '--wm-primary-soft': hexToRgba(accent, 0.18),
+      '--wm-primary-ring': hexToRgba(accent, 0.32),
+      '--wm-border-strong': hexToRgba(accent, 0.4),
+      '--wm-lilac': shiftHexColor(accent, 24),
+      '--wm-lilac-soft': hexToRgba(accent, 0.26),
+      '--wm-pink-mid': shiftHexColor(accent, 24),
+    };
+  }
+
   return {
     '--wm-primary': accent,
     '--wm-primary-hover': shiftHexColor(accent, -18),

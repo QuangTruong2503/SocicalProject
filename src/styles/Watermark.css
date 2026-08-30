@@ -440,7 +440,7 @@
   overflow: hidden;
   border: 1px solid var(--wm-border);
   border-radius: var(--wm-radius-md);
-  background: rgba(255, 255, 255, 0.82);
+  background: var(--wm-surface-glass);
   backdrop-filter: blur(8px);
   animation: wmFadeInUp 0.42s ease both;
   transition: transform 220ms ease, box-shadow 220ms ease, border-color 220ms ease;
@@ -507,6 +507,7 @@
   -webkit-text-fill-color: transparent;
   font-family: var(--wm-font-display);
   font-size: clamp(1.8rem, 4vw, 3rem);
+  font-variant-numeric: tabular-nums;
   line-height: 1;
   transition: filter 200ms ease;
 }
@@ -894,7 +895,7 @@
   padding: 0.68rem 0.85rem;
   border: 1px solid var(--wm-border);
   border-radius: var(--wm-radius-sm);
-  background: rgba(255, 255, 255, 0.84);
+  background: var(--wm-surface-glass);
   color: var(--wm-text);
   font-family: var(--wm-font-body);
   font-size: 0.92rem;
@@ -906,7 +907,7 @@
 .wm-page .wm-control-input:focus {
   outline: none;
   border-color: var(--wm-primary);
-  background: #ffffff;
+  background: var(--wm-surface);
   box-shadow: var(--wm-focus-ring);
 }
 
@@ -1152,7 +1153,7 @@
   padding: 0.55rem 1rem;
   border: 1px solid var(--wm-border);
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.7);
+  background: var(--wm-surface-glass);
   color: var(--wm-text);
   cursor: pointer;
   text-decoration: none;
@@ -1610,9 +1611,9 @@ body.wm-watermark-theme .wm-preview-backdrop.is-closing .wm-preview-modal {
   align-items: center;
   margin-top: 1rem;
   padding: 0.72rem 0.95rem;
-  border-color: rgba(37, 99, 235, 0.18);
+  border-color: var(--wm-border-strong);
   border-radius: var(--wm-radius-sm);
-  background: rgba(219, 234, 254, 0.72);
+  background: var(--wm-primary-soft);
   color: var(--wm-primary-deep);
   font-size: 0.84rem;
 }
@@ -1621,7 +1622,7 @@ body.wm-watermark-theme .wm-preview-backdrop.is-closing .wm-preview-modal {
   padding: 2.4rem 1rem;
   border: 1px dashed var(--wm-border-strong);
   border-radius: var(--wm-radius);
-  background: rgba(255, 255, 255, 0.62);
+  background: var(--wm-surface-glass);
   text-align: center;
 }
 

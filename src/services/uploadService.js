@@ -20,11 +20,6 @@ function buildStoragePath(userId, fileName) {
   return `${userId}/${Date.now()}-${sanitizeFileName(fileName)}`;
 }
 
-function buildDoanTrangHeroPreviewPath(userId, fileName) {
-  const ownerPrefix = userId || 'guest';
-  return `${ownerPrefix}/doan-trang/hero-preview/${Date.now()}-${sanitizeFileName(fileName)}`;
-}
-
 function getPublicUrl(objectPath) {
   const { data } = supabase.storage
     .from(supabaseConfig.uploadBucket)
@@ -128,68 +123,6 @@ export async function uploadImage({ userId, file }) {
   } catch (error) {
     const message = normalizeServiceError(error, 'Unable to upload the file.');
     console.error('[uploadService] uploadImage exception', error);
-
-    if (storagePath) {
-      await supabase.storage
-        .from(supabaseConfig.uploadBucket)
-        .remove([storagePath]);
-    }
-
-    return createServiceResult(null, message);
-  }
-}
-
-/**
- * @param {{ userId: string, file: File }} payload
- * @returns {Promise<import('./serviceHelpers.js').ServiceResult<{ image_url: string, storage_path: string, file_name: string }>>}
- */
-export async function uploadDoanTrangHeroPreview({ userId, file }) {
-  let storagePath = null;
-
-  try {
-    if (!file) {
-      return createServiceResult(null, 'Chưa có file ảnh preview để tải lên.');
-    }
-
-    storagePath = buildDoanTrangHeroPreviewPath(userId, file.name);
-
-    console.debug('[uploadService] uploadDoanTrangHeroPreview start', {
-      userId,
-      bucket: supabaseConfig.uploadBucket,
-      storagePath,
-      fileName: file.name,
-      fileType: file.type,
-      fileSize: file.size,
-    });
-
-    const { error } = await supabase.storage
-      .from(supabaseConfig.uploadBucket)
-      .upload(storagePath, file, {
-        cacheControl: '3600',
-        contentType: file.type || 'application/octet-stream',
-        upsert: false,
-      });
-
-    if (error) {
-      console.error('[uploadService] uploadDoanTrangHeroPreview failed', error);
-      return createServiceResult(null, normalizeServiceError(error, 'Không thể tải ảnh preview lên Supabase Storage.'));
-    }
-
-    const imageUrl = getPublicUrl(storagePath);
-
-    console.debug('[uploadService] uploadDoanTrangHeroPreview success', {
-      userId,
-      storagePath,
-    });
-
-    return createServiceResult({
-      image_url: imageUrl,
-      storage_path: storagePath,
-      file_name: file.name,
-    });
-  } catch (error) {
-    const message = normalizeServiceError(error, 'Không thể tải ảnh preview lên Supabase Storage.');
-    console.error('[uploadService] uploadDoanTrangHeroPreview exception', error);
 
     if (storagePath) {
       await supabase.storage

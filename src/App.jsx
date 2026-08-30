@@ -3,7 +3,6 @@ import { HelmetProvider, Helmet } from 'react-helmet-async';
 import { useTheme } from './hooks/useTheme';
 import './styles/auth.css';
 import Watermark from './pages/Watermark.jsx';
-import DoanTrangWatermarkPage from './pages/DoanTrangWatermarkPage.jsx';
 import WatermarkDashboardPage from './pages/WatermarkDashboardPage.jsx';
 import Quotation from './pages/Quotation/Quotation.jsx';
 import QuotationList from './pages/Quotation/QuotationList.jsx';
@@ -324,7 +323,6 @@ export default function App() {
             <Route path="/" element={<HomePage />} />
             <Route path="/aiseo" element={<AISEO />} />
             <Route path="/watermark" element={<Watermark />} />
-            <Route path="/watermark/doantrang" element={<DoanTrangWatermarkPage />} />
             <Route path="/watermark/dashboard" element={<WatermarkDashboardPage />} />
             <Route path="/quotation" element={<Navigate to="/admin/bao-gia/tao-moi" replace />} />
             <Route path="/admin/bao-gia" element={<ProtectedRoute title="Quản lý báo giá cần đăng nhập." description="Khu vực dành cho nhân viên và quản trị viên." details={['Lưu và chỉnh sửa báo giá', 'Xuất Excel, PDF và in A4']} loginLabel="Đăng nhập để quản lý báo giá"><QuotationList /></ProtectedRoute>} />

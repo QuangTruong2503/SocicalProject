@@ -751,3 +751,81 @@
 .wm-control-button.active {
   color: #fff;
 }
+
+/* ==================== DARK THEME ====================
+   The accent/season modal is rendered via createPortal into document.body,
+   so it never inherits the `--wm-*` custom properties scoped to `.wm-page`.
+   It falls back to the global `--color-*` tokens instead, which are already
+   theme-aware — only the hardcoded light/white backgrounds below need a
+   dark-mode counterpart. */
+
+[data-theme='dark'] .wm-modal,
+.theme-dark .wm-modal {
+  border-color: var(--color-border);
+  background:
+    linear-gradient(180deg, var(--color-surface), color-mix(in srgb, var(--color-surface) 90%, black 10%)),
+    radial-gradient(circle at 10% 0%, color-mix(in srgb, var(--wm-primary, var(--color-primary)) 10%, transparent), transparent 30%);
+  box-shadow:
+    0 34px 90px rgba(0, 0, 0, 0.5),
+    0 0 0 1px rgba(255, 255, 255, 0.04) inset;
+}
+
+[data-theme='dark'] .wm-accent-launcher,
+.theme-dark .wm-accent-launcher {
+  border-color: var(--color-border);
+  background:
+    linear-gradient(135deg, color-mix(in srgb, var(--color-surface) 94%, white 6%), var(--color-surface)),
+    linear-gradient(135deg, color-mix(in srgb, var(--wm-primary, var(--color-primary)) 10%, transparent), transparent);
+  box-shadow: 0 14px 28px rgba(0, 0, 0, 0.32);
+}
+
+[data-theme='dark'] .wm-modal__close,
+.theme-dark .wm-modal__close,
+[data-theme='dark'] .wm-modal__button--ghost,
+.theme-dark .wm-modal__button--ghost {
+  border-color: var(--color-border);
+  background: color-mix(in srgb, var(--color-surface) 85%, white 15%);
+  color: var(--color-text);
+}
+
+[data-theme='dark'] .wm-modal__button--ghost:hover,
+.theme-dark .wm-modal__button--ghost:hover {
+  background: color-mix(in srgb, var(--wm-primary, var(--color-primary)) 14%, var(--color-surface));
+}
+
+[data-theme='dark'] .wm-modal__tab,
+.theme-dark .wm-modal__tab {
+  border-color: var(--color-border);
+  background: color-mix(in srgb, var(--color-surface) 78%, white 22%);
+}
+
+[data-theme='dark'] .wm-modal__tab.is-active,
+.theme-dark .wm-modal__tab.is-active {
+  background: color-mix(in srgb, var(--wm-primary, var(--color-primary)) 20%, var(--color-surface));
+}
+
+[data-theme='dark'] .wm-season-toggle,
+.theme-dark .wm-season-toggle,
+[data-theme='dark'] .wm-season-card,
+.theme-dark .wm-season-card,
+[data-theme='dark'] .wm-palette-chip,
+.theme-dark .wm-palette-chip,
+[data-theme='dark'] .wm-modal__color-field,
+.theme-dark .wm-modal__color-field,
+[data-theme='dark'] .wm-modal__hex-field,
+.theme-dark .wm-modal__hex-field {
+  border-color: var(--color-border);
+  background: color-mix(in srgb, var(--color-surface) 86%, white 14%);
+}
+
+[data-theme='dark'] .wm-season-card.is-active,
+.theme-dark .wm-season-card.is-active {
+  background: color-mix(in srgb, var(--wm-primary, var(--color-primary)) 18%, var(--color-surface));
+}
+
+[data-theme='dark'] .wm-modal__preview,
+.theme-dark .wm-modal__preview {
+  background:
+    radial-gradient(circle at 24% 20%, color-mix(in srgb, var(--wm-primary, var(--color-primary)) 22%, transparent), transparent 30%),
+    linear-gradient(135deg, color-mix(in srgb, var(--color-surface) 92%, white 8%), var(--color-surface));
+}
