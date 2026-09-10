@@ -71,6 +71,7 @@ const COMPANY_KEY = 'company';
 const TERMS_KEY = 'terms';
 const LOGO_KEY = 'logo';
 const STAMP_KEY = 'stamp';
+const BANK_QR_KEY = 'bankQr';
 
 export const KNM_COMPANY_INFO_FIELDS = [
   'name', 'taxCode', 'address', 'hotline', 'email', 'website',
@@ -139,6 +140,18 @@ export function saveCompanyStampAsset(file) {
 
 export function clearCompanyStampAsset() {
   return deleteRecord(STAMP_KEY);
+}
+
+export function loadCompanyBankQrAsset() {
+  return getFile(BANK_QR_KEY).catch(() => null);
+}
+
+export function saveCompanyBankQrAsset(file) {
+  return putFile(BANK_QR_KEY, file);
+}
+
+export function clearCompanyBankQrAsset() {
+  return deleteRecord(BANK_QR_KEY);
 }
 
 export async function nextQuotationNumberAsync(date) {

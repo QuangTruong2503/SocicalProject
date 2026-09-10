@@ -1,10 +1,43 @@
+import { useState } from 'react';
+import { toast } from 'react-toastify';
+import { isLikelyTaxCode, lookupBusinessByTaxCode } from '../../utils/knmTaxLookup.js';
+
 export default function CustomerInfoForm({ customer, error, onChange, styles }) {
+  const [lookupState, setLookupState] = useState('idle');
   const patch = (name, value) => onChange({ ...customer, [name]: value });
+
+  const handleTaxCodeBlur = async () => {
+    const taxCode = customer.taxCode.trim();
+    if (!isLikelyTaxCode(taxCode)) {
+      setLookupState('idle');
+      return;
+    }
+    setLookupState('loading');
+    try {
+      const data = await lookupBusinessByTaxCode(taxCode);
+      onChange({ ...customer, taxCode, name: data.name || customer.name, address: data.address || customer.address });
+      setLookupState('done');
+    } catch (err) {
+      setLookupState('error');
+      toast.error(err.message || 'Không tìm thấy thông tin doanh nghiệp với mã số thuế này.');
+    }
+  };
 
   return (
     <section className={styles.card}>
       <h2>Thông tin khách hàng</h2>
       <div className={styles.grid}>
+        <label className={`${styles.field} ${styles.span2}`}>
+          Mã số thuế
+          <input
+            value={customer.taxCode}
+            onChange={(e) => { patch('taxCode', e.target.value); setLookupState('idle'); }}
+            onBlur={handleTaxCodeBlur}
+            placeholder="Nhập MST để tự động điền tên & địa chỉ"
+          />
+          {lookupState === 'loading' && <small className={styles.lookupHint}>Đang tra cứu...</small>}
+          {lookupState === 'done' && <small className={styles.lookupHintDone}>Đã điền theo dữ liệu Tổng cục Thuế.</small>}
+        </label>
         <label className={`${styles.field} ${styles.span2}`}>
           Tên công ty / khách hàng *
           <input value={customer.name} onChange={(e) => patch('name', e.target.value)} />
@@ -18,13 +51,9 @@ export default function CustomerInfoForm({ customer, error, onChange, styles }) 
           Số điện thoại
           <input value={customer.phone} onChange={(e) => patch('phone', e.target.value)} />
         </label>
-        <label className={styles.field}>
+        <label className={`${styles.field} ${styles.span2}`}>
           Email
           <input type="email" value={customer.email} onChange={(e) => patch('email', e.target.value)} />
-        </label>
-        <label className={styles.field}>
-          Mã số thuế
-          <input value={customer.taxCode} onChange={(e) => patch('taxCode', e.target.value)} />
         </label>
         <label className={`${styles.field} ${styles.span2}`}>
           Địa chỉ

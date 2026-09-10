@@ -3,7 +3,8 @@ import { FaChevronDown, FaChevronUp } from 'react-icons/fa6';
 import AssetImageUploader from './AssetImageUploader.jsx';
 
 export default function CompanyInfoForm({
-  company, onChange, onLogoUpload, onLogoClear, onStampUpload, onStampClear, styles,
+  company, onChange, onLogoUpload, onLogoClear, onStampUpload, onStampClear,
+  onBankQrUpload, onBankQrClear, styles,
 }) {
   const [expanded, setExpanded] = useState(false);
   const patch = (name, value) => onChange({ ...company, [name]: value });
@@ -88,6 +89,15 @@ export default function CompanyInfoForm({
               fileName={company.stampName}
               onUpload={onStampUpload}
               onClear={onStampClear}
+              styles={styles}
+            />
+            <AssetImageUploader
+              label="QR ngân hàng (tùy chọn)"
+              hint="Hiển thị trong mục Thông tin ngân hàng trên bản báo giá."
+              url={company.bankQr}
+              fileName={company.bankQrName}
+              onUpload={onBankQrUpload}
+              onClear={onBankQrClear}
               styles={styles}
             />
           </div>

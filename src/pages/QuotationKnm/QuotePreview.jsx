@@ -7,7 +7,8 @@ import styles from './QuotePreview.module.css';
 export default function QuotePreview({ company, quotation }) {
   const { subtotal, vatAmount, total } = quotation.totals;
   const validUntil = resolveValidUntil(quotation.quotationDate, quotation.validityDays);
-  const hasBank = company.bankName && company.bankAccountNumber && company.bankAccountHolder;
+  const hasBankText = company.bankName && company.bankAccountNumber && company.bankAccountHolder;
+  const hasBankQr = !!company.bankQr;
 
   return (
     <div className={styles.sheet}>
@@ -88,10 +89,15 @@ export default function QuotePreview({ company, quotation }) {
         <div className={styles.termsBody}>{quotation.terms}</div>
       </section>
 
-      {hasBank && (
+      {(hasBankText || hasBankQr) && (
         <section className={styles.bankInfo}>
           <h3>THÔNG TIN NGÂN HÀNG</h3>
-          <p>Ngân hàng: {company.bankName} · Số tài khoản: {company.bankAccountNumber} · Chủ tài khoản: {company.bankAccountHolder}</p>
+          <div className={styles.bankInfoRow}>
+            {hasBankText && (
+              <p>Ngân hàng: {company.bankName} · Số tài khoản: {company.bankAccountNumber} · Chủ tài khoản: {company.bankAccountHolder}</p>
+            )}
+            {hasBankQr && <img className={styles.bankQr} src={company.bankQr} alt="QR chuyển khoản ngân hàng" />}
+          </div>
         </section>
       )}
 

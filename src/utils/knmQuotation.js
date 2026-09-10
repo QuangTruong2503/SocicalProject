@@ -24,10 +24,10 @@ export const KNM_DEFAULT_COMPANY = {
   address: '18 Đường số 77, Phường Tân Hưng, TP Hồ Chí Minh, Việt Nam',
   hotline: '0888.571.179',
   email: 'himarketvn@gmail.com',
-  website: '',
-  bankName: '',
-  bankAccountNumber: '',
-  bankAccountHolder: '',
+  website: 'himarket.vn',
+  bankName: 'Ngân hàng TMCP Ngoại thương Việt Nam - Chi nhánh TP.Hồ Chí Minh',
+  bankAccountNumber: '1051617979',
+  bankAccountHolder: 'CÔNG TY CP ĐẦU TƯ QUỐC TẾ KỶ NGUYÊN MỚI',
   preparerName: '',
   preparerTitle: '',
   showStamp: true,
@@ -35,6 +35,8 @@ export const KNM_DEFAULT_COMPANY = {
   logoName: '',
   stamp: '',
   stampName: '',
+  bankQr: '',
+  bankQrName: '',
 };
 
 export function newKnmItem() {

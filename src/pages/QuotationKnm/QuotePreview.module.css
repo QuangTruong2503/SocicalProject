@@ -1,27 +1,27 @@
-.sheet{width:210mm;min-height:297mm;box-sizing:border-box;background:#fff;color:#1c2622;padding:14mm 16mm;margin:0 auto;font:11.5px/1.5 "Segoe UI",Arial,sans-serif;box-shadow:0 8px 30px #0f172a1f}
+.sheet{width:210mm;min-height:297mm;box-sizing:border-box;background:#fff;color:#1f2937;padding:14mm 16mm;margin:0 auto;font:11.5px/1.5 "Segoe UI",Arial,sans-serif;box-shadow:0 8px 30px #0f172a1f}
 
-.docHeader{display:flex;align-items:flex-start;gap:14px;border-bottom:2px solid #166534;padding-bottom:10px}
+.docHeader{display:flex;align-items:flex-start;gap:14px;border-bottom:2px solid #073e68;padding-bottom:10px}
 .logo{width:60px;height:60px;flex:0 0 auto;object-fit:contain;border-radius:8px}
-.logoFallback{width:60px;height:60px;flex:0 0 auto;border-radius:10px;background:#166534;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:16px;letter-spacing:.02em}
+.logoFallback{width:60px;height:60px;flex:0 0 auto;border-radius:10px;background:#073e68;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:16px;letter-spacing:.02em}
 .companyInfo{flex:1;text-align:right}
-.companyInfo h2{margin:0 0 4px;font-size:15px;color:#14532d}
+.companyInfo h2{margin:0 0 4px;font-size:15px;color:#052b49}
 .companyInfo p{margin:2px 0;font-size:11px;color:#374151}
 
 .titleBlock{text-align:center;margin:16px 0}
-.titleBlock h1{margin:0;font-size:26px;letter-spacing:.06em;color:#14532d}
+.titleBlock h1{margin:0;font-size:26px;letter-spacing:.06em;color:#052b49}
 .subtitle{margin:2px 0 8px;font-size:11px;letter-spacing:.3em;color:#94a3b8}
 .meta{margin:0;font-size:11.5px}
 
-.customerBox{background:#f4faf6;border:1px solid #d9e8dd;border-radius:8px;padding:10px 14px;margin-bottom:14px}
-.customerBox h3{margin:0 0 8px;font-size:11.5px;letter-spacing:.06em;color:#166534}
+.customerBox{background:#eaf2f8;border:1px solid #cfe0ea;border-radius:8px;padding:10px 14px;margin-bottom:14px}
+.customerBox h3{margin:0 0 8px;font-size:11.5px;letter-spacing:.06em;color:#073e68}
 .customerGrid{display:grid;grid-template-columns:1fr 1fr;gap:4px 14px}
 .customerGrid p{margin:0;font-size:11.5px}
 
 .greeting{margin:6px 0}
 
 .productTable{width:100%;border-collapse:collapse;margin:12px 0}
-.productTable th,.productTable td{border:1px solid #cbd5c9;padding:6px 7px;font-size:11px;vertical-align:top}
-.productTable thead th{background:#e5f2e9;color:#14532d;font-size:10.5px}
+.productTable th,.productTable td{border:1px solid #c7d4dc;padding:6px 7px;font-size:11px;vertical-align:top}
+.productTable thead th{background:#dce8f0;color:#052b49;font-size:10.5px}
 .center{text-align:center}
 .left{text-align:left;white-space:pre-line}
 .right{text-align:right;white-space:nowrap}
@@ -29,15 +29,18 @@
 
 .totalsBlock{margin-left:auto;width:60%;min-width:260px;margin-bottom:16px}
 .totalsRow{display:flex;justify-content:space-between;padding:4px 2px;font-size:12px}
-.totalsGrand{display:flex;justify-content:space-between;align-items:center;background:#166534;color:#fff;border-radius:6px;padding:8px 12px;font-weight:800;font-size:14px;margin-top:4px}
+.totalsGrand{display:flex;justify-content:space-between;align-items:center;background:#fff;color:#000;border-radius:6px;padding:8px 12px;font-weight:800;font-size:14px;margin-top:4px}
 .words{margin:6px 2px 0;font-size:11px;font-style:italic;text-align:right;color:#374151}
 
 .terms{margin-bottom:14px}
-.terms h3{margin:0 0 6px;font-size:11.5px;letter-spacing:.06em;color:#166534}
+.terms h3{margin:0 0 6px;font-size:11.5px;letter-spacing:.06em;color:#073e68}
 .termsBody{white-space:pre-line;font-size:10.8px;color:#1f2937}
 
 .bankInfo{margin-bottom:14px;font-size:11px}
-.bankInfo h3{margin:0 0 4px;font-size:11.5px;letter-spacing:.06em;color:#166534}
+.bankInfo h3{margin:0 0 4px;font-size:11.5px;letter-spacing:.06em;color:#073e68}
+.bankInfoRow{display:flex;align-items:center;gap:14px}
+.bankInfoRow p{margin:0;flex:1}
+.bankQr{width:90px;height:90px;flex:0 0 auto;object-fit:contain;border:1px solid #c7d4dc;border-radius:6px;padding:4px;background:#fff}
 
 .closing{margin:10px 0 26px}
 
@@ -45,7 +48,7 @@
 .signatures b{display:block;margin-bottom:2px}
 .signatures span{display:block;color:#64748b;font-size:10.5px}
 .signatures em{display:block;margin-top:46px;font-style:normal;font-weight:700}
-.stamp{display:block;max-width:100px;max-height:100px;margin:8px auto 0;object-fit:contain}
+.stamp{display:block;max-width:100%;max-height:100%;margin:8px auto 0;object-fit:contain}
 
 @media(max-width:1080px){
   .sheet{box-shadow:0 6px 20px #0f172a1a}

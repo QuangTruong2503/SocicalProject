@@ -12,8 +12,9 @@ import QuotePreview from './QuotePreview.jsx';
 import QuotePreviewModal from './QuotePreviewModal.jsx';
 import { calculateKnmTotals, createDraftKnmQuotation, KNM_DEFAULT_COMPANY } from '../../utils/knmQuotation.js';
 import {
-  clearCompanyLogoAsset, clearCompanyStampAsset, loadCompanyInfo, loadCompanyLogoAsset, loadCompanyStampAsset,
-  loadTerms, nextQuotationNumberAsync, saveCompanyInfo, saveCompanyLogoAsset, saveCompanyStampAsset, saveTerms,
+  clearCompanyBankQrAsset, clearCompanyLogoAsset, clearCompanyStampAsset, loadCompanyBankQrAsset, loadCompanyInfo,
+  loadCompanyLogoAsset, loadCompanyStampAsset, loadTerms, nextQuotationNumberAsync, saveCompanyBankQrAsset,
+  saveCompanyInfo, saveCompanyLogoAsset, saveCompanyStampAsset, saveTerms,
 } from '../../utils/knmStorage.js';
 import styles from './QuotationKnm.module.css';
 
@@ -27,6 +28,7 @@ export default function QuotationKnm() {
   const hydrated = useRef(false);
   const logoUrlRef = useRef('');
   const stampUrlRef = useRef('');
+  const bankQrUrlRef = useRef('');
 
   useEffect(() => {
     if (numberGenerated.current) return;
@@ -40,8 +42,8 @@ export default function QuotationKnm() {
   useEffect(() => {
     let active = true;
     (async () => {
-      const [storedCompany, storedTerms, logoAsset, stampAsset] = await Promise.all([
-        loadCompanyInfo(), loadTerms(), loadCompanyLogoAsset(), loadCompanyStampAsset(),
+      const [storedCompany, storedTerms, logoAsset, stampAsset, bankQrAsset] = await Promise.all([
+        loadCompanyInfo(), loadTerms(), loadCompanyLogoAsset(), loadCompanyStampAsset(), loadCompanyBankQrAsset(),
       ]);
       if (!active) return;
       setCompany((current) => ({
@@ -51,9 +53,12 @@ export default function QuotationKnm() {
         logoName: logoAsset?.name || '',
         stamp: stampAsset?.url || '',
         stampName: stampAsset?.name || '',
+        bankQr: bankQrAsset?.url || '',
+        bankQrName: bankQrAsset?.name || '',
       }));
       logoUrlRef.current = logoAsset?.url || '';
       stampUrlRef.current = stampAsset?.url || '';
+      bankQrUrlRef.current = bankQrAsset?.url || '';
       if (storedTerms) setQuotation((current) => ({ ...current, terms: storedTerms }));
       hydrated.current = true;
     })();
@@ -63,6 +68,7 @@ export default function QuotationKnm() {
   useEffect(() => () => {
     if (logoUrlRef.current) URL.revokeObjectURL(logoUrlRef.current);
     if (stampUrlRef.current) URL.revokeObjectURL(stampUrlRef.current);
+    if (bankQrUrlRef.current) URL.revokeObjectURL(bankQrUrlRef.current);
   }, []);
 
   useEffect(() => {
@@ -82,42 +88,64 @@ export default function QuotationKnm() {
 
   const patchQuotation = (patch) => setQuotation((current) => ({ ...current, ...patch }));
 
-  const handleLogoUpload = async (file) => {
-    try {
-      await saveCompanyLogoAsset(file);
-      const asset = await loadCompanyLogoAsset();
+  const logoHandlers = {
+    upload: async (file) => {
+      try {
+        await saveCompanyLogoAsset(file);
+        const asset = await loadCompanyLogoAsset();
+        if (logoUrlRef.current) URL.revokeObjectURL(logoUrlRef.current);
+        logoUrlRef.current = asset?.url || '';
+        setCompany((current) => ({ ...current, logo: asset?.url || '', logoName: asset?.name || '' }));
+      } catch {
+        toast.error('Không thể lưu logo vào thiết bị.');
+      }
+    },
+    clear: async () => {
+      await clearCompanyLogoAsset();
       if (logoUrlRef.current) URL.revokeObjectURL(logoUrlRef.current);
-      logoUrlRef.current = asset?.url || '';
-      setCompany((current) => ({ ...current, logo: asset?.url || '', logoName: asset?.name || '' }));
-    } catch {
-      toast.error('Không thể lưu logo vào thiết bị.');
-    }
+      logoUrlRef.current = '';
+      setCompany((current) => ({ ...current, logo: '', logoName: '' }));
+    },
   };
 
-  const handleLogoClear = async () => {
-    await clearCompanyLogoAsset();
-    if (logoUrlRef.current) URL.revokeObjectURL(logoUrlRef.current);
-    logoUrlRef.current = '';
-    setCompany((current) => ({ ...current, logo: '', logoName: '' }));
-  };
-
-  const handleStampUpload = async (file) => {
-    try {
-      await saveCompanyStampAsset(file);
-      const asset = await loadCompanyStampAsset();
+  const stampHandlers = {
+    upload: async (file) => {
+      try {
+        await saveCompanyStampAsset(file);
+        const asset = await loadCompanyStampAsset();
+        if (stampUrlRef.current) URL.revokeObjectURL(stampUrlRef.current);
+        stampUrlRef.current = asset?.url || '';
+        setCompany((current) => ({ ...current, stamp: asset?.url || '', stampName: asset?.name || '' }));
+      } catch {
+        toast.error('Không thể lưu dấu mộc vào thiết bị.');
+      }
+    },
+    clear: async () => {
+      await clearCompanyStampAsset();
       if (stampUrlRef.current) URL.revokeObjectURL(stampUrlRef.current);
-      stampUrlRef.current = asset?.url || '';
-      setCompany((current) => ({ ...current, stamp: asset?.url || '', stampName: asset?.name || '' }));
-    } catch {
-      toast.error('Không thể lưu dấu mộc vào thiết bị.');
-    }
+      stampUrlRef.current = '';
+      setCompany((current) => ({ ...current, stamp: '', stampName: '' }));
+    },
   };
 
-  const handleStampClear = async () => {
-    await clearCompanyStampAsset();
-    if (stampUrlRef.current) URL.revokeObjectURL(stampUrlRef.current);
-    stampUrlRef.current = '';
-    setCompany((current) => ({ ...current, stamp: '', stampName: '' }));
+  const bankQrHandlers = {
+    upload: async (file) => {
+      try {
+        await saveCompanyBankQrAsset(file);
+        const asset = await loadCompanyBankQrAsset();
+        if (bankQrUrlRef.current) URL.revokeObjectURL(bankQrUrlRef.current);
+        bankQrUrlRef.current = asset?.url || '';
+        setCompany((current) => ({ ...current, bankQr: asset?.url || '', bankQrName: asset?.name || '' }));
+      } catch {
+        toast.error('Không thể lưu QR ngân hàng vào thiết bị.');
+      }
+    },
+    clear: async () => {
+      await clearCompanyBankQrAsset();
+      if (bankQrUrlRef.current) URL.revokeObjectURL(bankQrUrlRef.current);
+      bankQrUrlRef.current = '';
+      setCompany((current) => ({ ...current, bankQr: '', bankQrName: '' }));
+    },
   };
 
   const triggerPrint = (asPdf) => {
@@ -176,10 +204,12 @@ export default function QuotationKnm() {
           <CompanyInfoForm
             company={company}
             onChange={setCompany}
-            onLogoUpload={handleLogoUpload}
-            onLogoClear={handleLogoClear}
-            onStampUpload={handleStampUpload}
-            onStampClear={handleStampClear}
+            onLogoUpload={logoHandlers.upload}
+            onLogoClear={logoHandlers.clear}
+            onStampUpload={stampHandlers.upload}
+            onStampClear={stampHandlers.clear}
+            onBankQrUpload={bankQrHandlers.upload}
+            onBankQrClear={bankQrHandlers.clear}
             styles={styles}
           />
           <QuoteMetaForm quotation={quotation} onChange={patchQuotation} styles={styles} />
