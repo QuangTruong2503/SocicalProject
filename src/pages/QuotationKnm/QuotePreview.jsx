@@ -18,9 +18,9 @@ export default function QuotePreview({ company, quotation }) {
           : <div className={styles.logoFallback}>KNM</div>}
         <div className={styles.companyInfo}>
           <h2>{company.name}</h2>
-          <p>MST: {company.taxCode}</p>
-          <p>Địa chỉ: {company.address}</p>
-          <p>Hotline: {company.hotline} · Email: {company.email}{company.website ? ` · ${company.website}` : ''}</p>
+          <p><strong>MST: {company.taxCode}</strong></p>
+          <p><strong>Địa chỉ: {company.address}</strong></p>
+          <p><strong>Hotline: {company.hotline} · Email: {company.email}{company.website ? ` · ${company.website}` : ''}</strong></p>
         </div>
       </header>
 
@@ -77,17 +77,19 @@ export default function QuotePreview({ company, quotation }) {
         </tbody>
       </table>
 
-      <div className={styles.totalsBlock}>
-        <div className={styles.totalsRow}><span>Tạm tính</span><b>{formatCurrency(subtotal)} ₫</b></div>
-        <div className={styles.totalsRow}><span>VAT {quotation.vatRate}%</span><b>{formatCurrency(vatAmount)} ₫</b></div>
-        <div className={styles.totalsGrand}><span>TỔNG THANH TOÁN</span><b>{formatCurrency(total)} ₫</b></div>
-        <p className={styles.words}>Bằng chữ: {numberToVietnamese(total)}</p>
-      </div>
+      <div className={styles.summaryRow}>
+        <section className={styles.terms}>
+          <h3>ĐIỀU KHOẢN &amp; GHI CHÚ</h3>
+          <div className={styles.termsBody}>{quotation.terms}</div>
+        </section>
 
-      <section className={styles.terms}>
-        <h3>ĐIỀU KHOẢN &amp; GHI CHÚ</h3>
-        <div className={styles.termsBody}>{quotation.terms}</div>
-      </section>
+        <div className={styles.totalsBlock}>
+          <div className={styles.totalsRow}><span>Tạm tính</span><b>{formatCurrency(subtotal)} ₫</b></div>
+          <div className={styles.totalsRow}><span>VAT {quotation.vatRate}%</span><b>{formatCurrency(vatAmount)} ₫</b></div>
+          <div className={styles.totalsGrand}><span>TỔNG THANH TOÁN</span><b>{formatCurrency(total)} ₫</b></div>
+          <p className={styles.words}>Bằng chữ: {numberToVietnamese(total)}</p>
+        </div>
+      </div>
 
       {(hasBankText || hasBankQr) && (
         <section className={styles.bankInfo}>

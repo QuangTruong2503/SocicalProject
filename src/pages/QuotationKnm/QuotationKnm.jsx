@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import dayjs from 'dayjs';
 import { Helmet } from 'react-helmet-async';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'react-toastify';
-import { FaEye, FaFilePdf, FaPrint, FaRotateLeft } from 'react-icons/fa6';
+import { FaEye, FaFilePdf, FaFloppyDisk, FaList, FaPrint, FaRotateLeft } from 'react-icons/fa6';
 import CompanyInfoForm from '../../components/quotationKnm/CompanyInfoForm.jsx';
 import QuoteMetaForm from '../../components/quotationKnm/QuoteMetaForm.jsx';
 import CustomerInfoForm from '../../components/quotationKnm/CustomerInfoForm.jsx';
@@ -16,13 +17,18 @@ import {
   loadCompanyLogoAsset, loadCompanyStampAsset, loadTerms, nextQuotationNumberAsync, saveCompanyBankQrAsset,
   saveCompanyInfo, saveCompanyLogoAsset, saveCompanyStampAsset, saveTerms,
 } from '../../utils/knmStorage.js';
+import { getKnmQuotation, saveKnmQuotation } from '../../services/knmQuotationService.js';
 import styles from './QuotationKnm.module.css';
 
 export default function QuotationKnm() {
+  const { id } = useParams();
+  const navigate = useNavigate();
   const [company, setCompany] = useState(() => ({ ...KNM_DEFAULT_COMPANY }));
   const [quotation, setQuotation] = useState(createDraftKnmQuotation);
   const [customerError, setCustomerError] = useState('');
   const [previewOpen, setPreviewOpen] = useState(false);
+  const [savedId, setSavedId] = useState(id || '');
+  const [saving, setSaving] = useState(false);
 
   const numberGenerated = useRef(false);
   const hydrated = useRef(false);
@@ -31,13 +37,28 @@ export default function QuotationKnm() {
   const bankQrUrlRef = useRef('');
 
   useEffect(() => {
+    if (id) return;
     if (numberGenerated.current) return;
     numberGenerated.current = true;
     (async () => {
       const no = await nextQuotationNumberAsync(dayjs().format('YYYYMMDD'));
       setQuotation((current) => (current.quotationNo ? current : { ...current, quotationNo: no }));
     })();
-  }, []);
+  }, [id]);
+
+  useEffect(() => {
+    if (!id) { setSavedId(''); return; }
+    setSavedId(id);
+    (async () => {
+      try {
+        const record = await getKnmQuotation(id);
+        setCompany((current) => ({ ...current, ...(record.company || {}) }));
+        setQuotation((current) => ({ ...current, ...(record.quotation || {}) }));
+      } catch (e) {
+        toast.error(e.message || 'Không tìm thấy báo giá.');
+      }
+    })();
+  }, [id]);
 
   useEffect(() => {
     let active = true;
@@ -148,13 +169,39 @@ export default function QuotationKnm() {
     },
   };
 
-  const triggerPrint = (asPdf) => {
+  const persistQuotation = async () => {
+    if (!quotation.customer.name.trim()) {
+      setCustomerError('Tên khách hàng là bắt buộc.');
+      toast.error('Vui lòng nhập tên khách hàng trước khi lưu.');
+      return null;
+    }
+    setSaving(true);
+    try {
+      const record = await saveKnmQuotation({ id: savedId || undefined, company, quotation, totals });
+      setSavedId(record.id);
+      if (!id) navigate(`/bao-gia-knm/${record.id}/chinh-sua`, { replace: true });
+      return record;
+    } catch (e) {
+      toast.error(e.message || 'Không thể lưu báo giá vào cơ sở dữ liệu.');
+      return null;
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleSave = async () => {
+    const record = await persistQuotation();
+    if (record) toast.success('Đã lưu báo giá.');
+  };
+
+  const triggerPrint = async (asPdf) => {
     if (!quotation.customer.name.trim()) {
       setCustomerError('Tên khách hàng là bắt buộc.');
       toast.error(`Vui lòng nhập tên khách hàng trước khi ${asPdf ? 'xuất PDF' : 'in'}.`);
       return;
     }
     if (asPdf) {
+      await persistQuotation();
       toast.info('Trong hộp thoại in, chọn đích đến "Lưu thành PDF / Save as PDF" rồi bấm Lưu.', { autoClose: 6000 });
     }
     window.print();
@@ -172,6 +219,8 @@ export default function QuotationKnm() {
       draft.terms = quotation.terms;
       setQuotation(draft);
       setCustomerError('');
+      setSavedId('');
+      if (id) navigate('/bao-gia-knm');
       toast.success('Đã tạo báo giá mới.');
     })();
   };
@@ -191,8 +240,12 @@ export default function QuotationKnm() {
             </div>
           </div>
           <div className={styles.headerActions}>
+            <Link to="/bao-gia-knm/quan-ly" className={styles.btnManage}><FaList /> Quản lý báo giá</Link>
             <button type="button" className={styles.btnPreview} onClick={() => setPreviewOpen(true)}><FaEye /> Xem trước</button>
             <button type="button" className={styles.btnPrint} onClick={handlePrint}><FaPrint /> In</button>
+            <button type="button" className={styles.btnSave} onClick={handleSave} disabled={saving}>
+              <FaFloppyDisk /> {saving ? 'Đang lưu…' : 'Lưu'}
+            </button>
             <button type="button" className={styles.btnPdf} onClick={handleExportPdf}>
               <FaFilePdf /> Xuất PDF
             </button>
