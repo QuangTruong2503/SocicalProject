@@ -1,0 +1,19 @@
+.overlay{position:fixed;inset:0;background:#0f172acc;z-index:1000;display:flex;align-items:flex-start;justify-content:center;padding:26px 16px;overflow:auto}
+.dialog{background:#e7ece9;border-radius:16px;max-width:calc(210mm + 48px);width:100%;box-shadow:0 20px 60px #0f172a3d}
+.dialogHeader{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 18px;background:#fff;border-radius:16px 16px 0 0;border-bottom:1px solid #e2e8e5;position:sticky;top:0;z-index:2}
+.dialogLabel{margin:0;font-size:12px;font-weight:700;letter-spacing:.14em;color:#166534}
+.closeBtn{display:inline-flex;align-items:center;gap:7px;border:1px solid #cbd5e1;background:#fff;color:#1f2937;border-radius:9px;padding:9px 14px;font-weight:600;font-size:13.5px;cursor:pointer}
+.closeBtn:hover{background:#f8fafc}
+.dialogBody{padding:20px;overflow:auto}
+.scaleWrap{transform-origin:top center;margin:0 auto}
+
+@media(max-width:640px){
+  .overlay{padding:0}
+  .dialog{border-radius:0;max-width:100%;min-height:100vh}
+  .dialogHeader{border-radius:0}
+  .dialogBody{padding:12px}
+}
+
+@media print{
+  .overlay{display:none!important}
+}
