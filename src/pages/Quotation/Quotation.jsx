@@ -3,7 +3,7 @@ import dayjs from 'dayjs';
 import { Helmet } from 'react-helmet-async';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useReactToPrint } from 'react-to-print';
-import { FaCopy, FaEye, FaFileArrowDown, FaFileArrowUp, FaFileExcel, FaFilePdf, FaFloppyDisk, FaPlus, FaPrint, FaTrash, FaXmark } from 'react-icons/fa6';
+import { FaChevronDown, FaCopy, FaEye, FaFileArrowDown, FaFileArrowUp, FaFileExcel, FaFilePdf, FaFloppyDisk, FaGripVertical, FaMagnifyingGlass, FaPlus, FaPrint, FaTrash, FaXmark } from 'react-icons/fa6';
 import { toast } from 'react-toastify';
 import { useAuth } from '../../hooks/useAuth.js';
 import { calculateQuotation, emptyQuotation, newItem, normalizeLocalQuotation, QUOTATION_STATUSES, TERM_LABELS, UNITS, validateQuotation, quotationPayload } from '../../utils/quotation.js';
@@ -18,6 +18,7 @@ import {
 } from '../../utils/quotationAssets.js';
 import { downloadProductImportTemplate, parseProductImportFile } from '../../utils/quotationImport.js';
 import PrintInvoice from '../../components/quotation/PrintInvoice.jsx';
+import ConfirmModal from './ConfirmModal.jsx';
 import styles from './Quotation.module.css';
 import productStyles from './QuotationProduct.module.css';
 
@@ -40,6 +41,13 @@ export default function Quotation() {
   const stampPositionRef = useRef(DEFAULT_STAMP_POSITION);
   const setStampPosition = (position) => { stampPositionRef.current = position; setStampPositionState(position); };
   const [ready, setReady] = useState(false);
+  const [exportMenuOpen, setExportMenuOpen] = useState(false);
+  const exportMenuRef = useRef(null);
+  const [dragIndex, setDragIndex] = useState(null);
+  const [stampOpen, setStampOpen] = useState(false);
+  const [termsOpen, setTermsOpen] = useState(false);
+  const [confirmReset, setConfirmReset] = useState(false);
+  const [deleteItemIndex, setDeleteItemIndex] = useState(null);
   const summary = useMemo(() => calculateQuotation(data), [data]);
 
   const print = useReactToPrint({ contentRef: printRef, documentTitle: `Bao-gia-${data.quotation_no}` });
@@ -47,6 +55,16 @@ export default function Quotation() {
   const patchItem = (index, name, value) => setData((current) => ({
     ...current, items: current.items.map((item, itemIndex) => itemIndex === index ? { ...item, [name]: value } : item),
   }));
+  const dropItem = (index) => {
+    setData((current) => {
+      if (dragIndex === null || dragIndex === index) return current;
+      const items = [...current.items];
+      const [moved] = items.splice(dragIndex, 1);
+      items.splice(index, 0, moved);
+      return { ...current, items };
+    });
+    setDragIndex(null);
+  };
 
   useEffect(() => {
     let active = true;
@@ -97,6 +115,20 @@ export default function Quotation() {
   }, []);
 
   useEffect(() => {
+    if (!exportMenuOpen) return;
+    const closeMenu = (event) => {
+      if (exportMenuRef.current && !exportMenuRef.current.contains(event.target)) setExportMenuOpen(false);
+    };
+    const closeOnEscape = (event) => { if (event.key === 'Escape') setExportMenuOpen(false); };
+    document.addEventListener('pointerdown', closeMenu);
+    document.addEventListener('keydown', closeOnEscape);
+    return () => {
+      document.removeEventListener('pointerdown', closeMenu);
+      document.removeEventListener('keydown', closeOnEscape);
+    };
+  }, [exportMenuOpen]);
+
+  useEffect(() => {
     if (!ready) return;
     try {
       window.localStorage.setItem(storageKey, JSON.stringify(data));
@@ -130,12 +162,15 @@ export default function Quotation() {
     const file = event.target.files?.[0];
     event.target.value = '';
     if (!file) return;
+    setBusy('stamp');
     try {
       await saveStampAsset(file);
       setStamp(await loadStampAsset());
       toast.success('Đã lưu dấu mộc vào trình duyệt này.');
     } catch (error) {
       toast.error(error.message || 'Không thể lưu dấu mộc.');
+    } finally {
+      setBusy('');
     }
   };
 
@@ -285,7 +320,11 @@ export default function Quotation() {
   }, [data.quotation_date, navigate]);
 
   const handleReset = useCallback(async () => {
-    if (!window.confirm('Tạo báo giá mới sẽ xóa thông tin khách hàng và sản phẩm đang nhập. Tiếp tục?')) return;
+    setConfirmReset(true);
+  }, []);
+
+  const confirmHandleReset = useCallback(async () => {
+    setConfirmReset(false);
     setBusy('reset');
     try {
       window.localStorage.removeItem(storageKey);
@@ -306,33 +345,57 @@ export default function Quotation() {
         <header className={styles.pageHeader}>
           <div><span>QUẢN LÝ BÁO GIÁ</span><h1>{id ? 'CHỈNH SỬA BÁO GIÁ' : 'TẠO BÁO GIÁ'}</h1></div>
           <div className={styles.actions}>
+            <button className={styles.outlineAction} onClick={() => navigate('/admin/bao-gia')}><FaXmark/> Hủy</button>
             {id ? (
-              <button className={styles.secondaryAction} onClick={() => handleSave('draft')} disabled={!!busy}><FaFloppyDisk/> Lưu nháp</button>
+              <button className={styles.outlineAction} onClick={() => handleSave('draft')} disabled={!!busy}><FaFloppyDisk/> Lưu nháp</button>
             ) : (
-              <button className={styles.secondaryAction} onClick={handleReset} disabled={!!busy}><FaPlus/> Tạo báo giá mới</button>
+              <button className={styles.outlineAction} onClick={handleReset} disabled={!!busy}><FaPlus/> Tạo báo giá mới</button>
             )}
+            {id && <button className={styles.outlineAction} onClick={duplicate} disabled={!!busy}><FaCopy/> Tạo bản sao</button>}
+            <button className={styles.outlineAction} onClick={handlePreview}><FaEye/> Xem trước</button>
+            <div className={styles.exportMenu} ref={exportMenuRef}>
+              <button
+                type="button" className={styles.outlineAction} onClick={() => setExportMenuOpen((open) => !open)}
+                disabled={!!busy} aria-haspopup="true" aria-expanded={exportMenuOpen}
+              >
+                <FaFileArrowDown/> Xuất dữ liệu <FaChevronDown className={exportMenuOpen ? styles.chevronOpen : undefined}/>
+              </button>
+              {exportMenuOpen && (
+                <div className={styles.exportMenuList} role="menu">
+                  <button type="button" role="menuitem" onClick={() => { setExportMenuOpen(false); handleExportPdf(); }} disabled={!!busy}><FaFilePdf/> {busy === 'pdf' ? 'Đang chuyển PDF...' : 'Xuất PDF'}</button>
+                  <button type="button" role="menuitem" onClick={() => { setExportMenuOpen(false); handleExport(); }} disabled={!!busy}><FaFileExcel/> {busy === 'excel' ? 'Đang xuất...' : 'Xuất Excel'}</button>
+                  <button type="button" role="menuitem" onClick={() => { setExportMenuOpen(false); print(); }}><FaPrint/> In</button>
+                </div>
+              )}
+            </div>
             <button className={styles.primary} onClick={() => handleSave('created')} disabled={!!busy}><FaFloppyDisk/> Lưu báo giá</button>
-            <button className={styles.previewAction} onClick={handlePreview}><FaEye/> Xem trước</button>
-            <button className={styles.excelAction} onClick={handleExport} disabled={!!busy}><FaFileExcel/> {busy === 'excel' ? 'Đang xuất...' : 'Xuất Excel'}</button>
-            <button className={styles.pdfAction} onClick={handleExportPdf} disabled={!!busy}><FaFilePdf/> {busy === 'pdf' ? 'Đang chuyển PDF...' : 'Xuất PDF'}</button>
-            <button onClick={print}><FaPrint/> In</button>
-            {id && <button onClick={duplicate} disabled={!!busy}><FaCopy/> Tạo bản sao</button>}
-            <button onClick={() => navigate('/admin/bao-gia')}><FaXmark/> Hủy</button>
           </div>
         </header>
 
         <section className={styles.card}>
-          <h2>Thông tin khách hàng</h2>
-          <div className={styles.formGrid}>
-            <label>Mã số thuế<input placeholder="Nhập MST để tự động điền tên & địa chỉ" value={data.tax_code || ''} onChange={(e) => { patch('tax_code', e.target.value); setTaxLookupState('idle'); }} onBlur={handleTaxCodeBlur}/>{taxLookupState === 'loading' && <small>Đang tra cứu...</small>}{taxLookupState === 'done' && <small>Đã điền theo dữ liệu Tổng cục Thuế.</small>}</label>
-            <label className={styles.span2}>Tên khách hàng / công ty *<input placeholder="Ví dụ: Công ty TNHH Minh Triết" value={data.customer_name} onChange={(e) => patch('customer_name', e.target.value)}/>{errors.customer_name && <small>{errors.customer_name}</small>}</label>
-            <label>Người liên hệ<input placeholder="Họ tên người nhận báo giá" value={data.contact_name || ''} onChange={(e) => patch('contact_name', e.target.value)}/></label>
-            <label>Số điện thoại<input inputMode="tel" placeholder="Ví dụ: 0901 234 567" value={data.phone || ''} onChange={(e) => patch('phone', e.target.value)}/>{errors.phone && <small>{errors.phone}</small>}</label>
-            <label>Email<input type="email" placeholder="email@congty.vn" value={data.email || ''} onChange={(e) => patch('email', e.target.value)}/>{errors.email && <small>{errors.email}</small>}</label>
-            <label className={styles.span2}>Địa chỉ<textarea placeholder="Số nhà, đường, phường/xã, tỉnh/thành phố" value={data.address || ''} onChange={(e) => patch('address', e.target.value)}/></label>
-            <label>Ngày báo giá<input type="date" value={data.quotation_date} onChange={(e) => patch('quotation_date', e.target.value)}/></label>
-            <label>Số báo giá<input value={data.quotation_no} onChange={(e) => patch('quotation_no', e.target.value)}/>{errors.quotation_no && <small>{errors.quotation_no}</small>}</label>
-            <label className={styles.span2}>Ghi chú<textarea placeholder="Ghi chú riêng dành cho báo giá này" value={data.note || ''} onChange={(e) => patch('note', e.target.value)}/></label>
+          <h2>Thông tin khách hàng &amp; báo giá</h2>
+          <div className={styles.twoColGrid}>
+            <div className={styles.formColumn}>
+              <h3 className={styles.columnTitle}>Khách hàng</h3>
+              <label>Mã số thuế
+                <div className={styles.inputWithButton}>
+                  <input placeholder="Nhập MST để tự động điền tên & địa chỉ" value={data.tax_code || ''} onChange={(e) => { patch('tax_code', e.target.value); setTaxLookupState('idle'); }} onBlur={handleTaxCodeBlur}/>
+                  <button type="button" onClick={handleTaxCodeBlur} disabled={taxLookupState === 'loading'} title="Lấy thông tin theo MST"><FaMagnifyingGlass/></button>
+                </div>
+                {taxLookupState === 'loading' && <small>Đang tra cứu...</small>}{taxLookupState === 'done' && <small>Đã điền theo dữ liệu Tổng cục Thuế.</small>}
+              </label>
+              <label>Tên khách hàng / công ty *<input placeholder="Ví dụ: Công ty TNHH Minh Triết" value={data.customer_name} onChange={(e) => patch('customer_name', e.target.value)}/>{errors.customer_name && <small>{errors.customer_name}</small>}</label>
+              <label>Người liên hệ<input placeholder="Họ tên người nhận báo giá" value={data.contact_name || ''} onChange={(e) => patch('contact_name', e.target.value)}/></label>
+              <label>Số điện thoại<input inputMode="tel" placeholder="Ví dụ: 0901 234 567" value={data.phone || ''} onChange={(e) => patch('phone', e.target.value)}/>{errors.phone && <small>{errors.phone}</small>}</label>
+              <label>Email<input type="email" placeholder="email@congty.vn" value={data.email || ''} onChange={(e) => patch('email', e.target.value)}/>{errors.email && <small>{errors.email}</small>}</label>
+              <label>Địa chỉ<textarea placeholder="Số nhà, đường, phường/xã, tỉnh/thành phố" value={data.address || ''} onChange={(e) => patch('address', e.target.value)}/></label>
+            </div>
+            <div className={styles.formColumn}>
+              <h3 className={styles.columnTitle}>Đơn báo giá</h3>
+              <label>Ngày báo giá<input type="date" value={data.quotation_date} onChange={(e) => patch('quotation_date', e.target.value)}/></label>
+              <label>Số báo giá<input value={data.quotation_no} onChange={(e) => patch('quotation_no', e.target.value)}/>{errors.quotation_no && <small>{errors.quotation_no}</small>}</label>
+              <label>Ghi chú<textarea placeholder="Ghi chú riêng dành cho báo giá này" value={data.note || ''} onChange={(e) => patch('note', e.target.value)}/></label>
+            </div>
           </div>
         </section>
 
@@ -350,8 +413,14 @@ export default function Quotation() {
           </div>
           {errors.items && <p className={styles.error}>{errors.items}</p>}
           <div className={styles.tableWrap}><table className={styles.itemsTable}>
-            <thead><tr><th>STT</th><th>Tên và mô tả sản phẩm *</th><th>Thương hiệu</th><th>Số lượng</th><th>ĐVT</th><th>Đơn giá</th><th>Thành tiền</th><th></th></tr></thead>
-            <tbody>{data.items.map((item, index) => <tr key={item.key || item.id}>
+            <thead><tr><th className={styles.dragCol}></th><th>STT</th><th>Tên và mô tả sản phẩm *</th><th>Thương hiệu</th><th>Số lượng</th><th>ĐVT</th><th>Đơn giá</th><th>Thành tiền</th><th></th></tr></thead>
+            <tbody>{data.items.map((item, index) => <tr
+              key={item.key || item.id}
+              onDragOver={(e) => e.preventDefault()}
+              onDrop={() => dropItem(index)}
+              className={dragIndex === index ? styles.dragging : undefined}
+            >
+              <td className={styles.dragHandle}><span draggable onDragStart={() => setDragIndex(index)} onDragEnd={() => setDragIndex(null)} title="Kéo để sắp xếp"><FaGripVertical/></span></td>
               <td>{index + 1}</td>
               <td><div className={productStyles.productEditor}><input aria-label={`Tên sản phẩm ${index + 1}`} placeholder="Tên sản phẩm" value={item.product_name || ''} onChange={(e) => patchItem(index, 'product_name', e.target.value)}/>{errors[`item_${index}_product_name`] && <small>{errors[`item_${index}_product_name`]}</small>}<textarea aria-label={`Mô tả sản phẩm ${index + 1}`} placeholder="Mô tả sản phẩm (có thể nhập nhiều dòng)" value={item.description || ''} onChange={(e) => patchItem(index, 'description', e.target.value)}/></div></td>
               <td><input placeholder="Thương hiệu" value={item.brand || ''} onChange={(e) => patchItem(index, 'brand', e.target.value)}/></td>
@@ -359,48 +428,95 @@ export default function Quotation() {
               <td><input list="units" placeholder="ĐVT" value={item.unit} onChange={(e) => patchItem(index, 'unit', e.target.value)}/></td>
               <td><input type="number" min="0" step="1000" value={item.unit_price} onChange={(e) => patchItem(index, 'unit_price', e.target.value)}/>{errors[`item_${index}_unit_price`] && <small>{errors[`item_${index}_unit_price`]}</small>}</td>
               <td className={styles.money}>{formatCurrency(Number(item.quantity) * Number(item.unit_price))}</td>
-              <td><button className={styles.danger} disabled={data.items.length === 1} onClick={() => window.confirm('Xóa sản phẩm này?') && patch('items', data.items.filter((_, i) => i !== index))}><FaTrash/></button></td>
+              <td><button className={styles.danger} disabled={data.items.length === 1} onClick={() => setDeleteItemIndex(index)}><FaTrash/></button></td>
             </tr>)}</tbody>
-            <tfoot><tr><td colSpan={8} className={styles.addRow}><button type="button" onClick={() => patch('items', [...data.items, newItem()])}><FaPlus/> Thêm sản phẩm</button></td></tr></tfoot>
+            <tfoot><tr><td colSpan={9} className={styles.addRow}><button type="button" onClick={() => patch('items', [...data.items, newItem()])}><FaPlus/> Thêm sản phẩm</button></td></tr></tfoot>
           </table><datalist id="units">{UNITS.map((unit) => <option key={unit} value={unit}/>)}</datalist></div>
-        </section>
-
-        <section className={`${styles.card} ${styles.summaryCard}`}>
-          <div className={styles.totals}><p><span>Tạm tính</span><b>{formatCurrency(summary.subtotal)} VNĐ</b></p><p><span>Chiết khấu</span><b>-{formatCurrency(summary.discount)} VNĐ</b></p><p><span>Phí vận chuyển</span><b>{formatCurrency(summary.shipping)} VNĐ</b></p><p><span>VAT</span><b>Đã bao gồm</b></p><p className={styles.grand}><span>Tổng cộng</span><b>{formatCurrency(summary.total)} VNĐ</b></p><em>{summary.words}</em></div>
+          <div className={styles.totalsRow}>
+            <div className={styles.totalsCard}>
+              <p><span>Tạm tính</span><b>{formatCurrency(summary.subtotal)} VNĐ</b></p>
+              <p><span>Chiết khấu</span><b>-{formatCurrency(summary.discount)} VNĐ</b></p>
+              <p><span>Phí vận chuyển</span><b>{formatCurrency(summary.shipping)} VNĐ</b></p>
+              <p><span>VAT</span><b>Đã bao gồm</b></p>
+              <p className={styles.grand}><span>Tổng cộng</span><b>{formatCurrency(summary.total)} VNĐ</b></p>
+              <em>{summary.words}</em>
+            </div>
+          </div>
         </section>
 
         <section className={styles.card}>
-          <h2>Dấu mộc công ty</h2>
-          <div className={styles.formGrid}>
-            <label className={styles.span2}>
-              Tải ảnh dấu mộc từ máy
-              <input type="file" accept="image/*" onChange={handleStampUpload}/>
-              <span className={styles.hint}>Ảnh được lưu trên trình duyệt này (IndexedDB), không tải lên máy chủ.</span>
-            </label>
+          <button type="button" className={styles.collapsibleHeader} onClick={() => setStampOpen((open) => !open)} aria-expanded={stampOpen}>
+            <div className={styles.collapsibleHeaderTitle}>
+              <h2>Dấu mộc công ty</h2>
+              {stamp?.url && <img src={stamp.url} alt="Dấu mộc đã lưu" className={styles.stampThumb}/>}
+            </div>
+            <FaChevronDown className={stampOpen ? styles.chevronOpen : undefined}/>
+          </button>
+          {stampOpen && (<>
             {stamp?.url && (
-              <label className={`${styles.span2} ${styles.rangeField}`}>
-                Kích thước dấu mộc ({Math.round((stampPosition.scale ?? 1) * 100)}%)
-                <input
-                  type="range" min="0.4" max="2.5" step="0.05"
-                  value={stampPosition.scale ?? 1}
-                  onChange={handleStampScaleChange}
-                />
-              </label>
-            )}
-            {stamp?.url && (
-              <div className={styles.inlineButton}>
-                <button type="button" className={styles.danger} onClick={handleStampClear}><FaTrash/> Xóa dấu mộc</button>
+              <div className={styles.stampPreviewBox}>
+                <img src={stamp.url} alt="Dấu mộc đã lưu"/>
+                <span>Dấu mộc hiện tại đã được lưu trên trình duyệt này.</span>
               </div>
             )}
-          </div>
-          {stamp?.url && <p className={styles.hint}>Mở "Xem trước" và kéo dấu mộc để đặt đúng vị trí mong muốn.</p>}
+            <div className={styles.formGrid}>
+              <label className={styles.span2}>
+                Tải ảnh dấu mộc từ máy
+                <input type="file" accept="image/*" onChange={handleStampUpload} disabled={busy === 'stamp'}/>
+                <span className={styles.hint}>{busy === 'stamp' ? 'Đang lưu dấu mộc...' : 'Ảnh được lưu trên trình duyệt này (IndexedDB), không tải lên máy chủ.'}</span>
+              </label>
+              {stamp?.url && (
+                <label className={`${styles.span2} ${styles.rangeField}`}>
+                  Kích thước dấu mộc ({Math.round((stampPosition.scale ?? 1) * 100)}%)
+                  <input
+                    type="range" min="0.4" max="2.5" step="0.05"
+                    value={stampPosition.scale ?? 1}
+                    onChange={handleStampScaleChange}
+                  />
+                </label>
+              )}
+              {stamp?.url && (
+                <div className={styles.inlineButton}>
+                  <button type="button" className={styles.danger} onClick={handleStampClear} disabled={busy === 'stamp'}><FaTrash/> Xóa dấu mộc</button>
+                </div>
+              )}
+            </div>
+            {stamp?.url && <p className={styles.hint}>Mở "Xem trước" và kéo dấu mộc để đặt đúng vị trí mong muốn.</p>}
+          </>)}
         </section>
 
-        <section className={styles.card}><h2>Điều khoản báo giá</h2><div className={styles.terms}>{Object.entries(TERM_LABELS).map(([key, label]) => <label key={key}>{label}<textarea value={data.terms?.[key] || ''} onChange={(e) => patch('terms', { ...data.terms, [key]: e.target.value })}/></label>)}</div></section>
+        <section className={styles.card}>
+          <button type="button" className={styles.collapsibleHeader} onClick={() => setTermsOpen((open) => !open)} aria-expanded={termsOpen}>
+            <h2>Điều khoản báo giá</h2>
+            <FaChevronDown className={termsOpen ? styles.chevronOpen : undefined}/>
+          </button>
+          {termsOpen && <div className={styles.terms}>{Object.entries(TERM_LABELS).map(([key, label]) => <label key={key}>{label}<textarea value={data.terms?.[key] || ''} onChange={(e) => patch('terms', { ...data.terms, [key]: e.target.value })}/></label>)}</div>}
+        </section>
         <section className={styles.card}><h2>Người lập báo giá</h2><div className={styles.formGrid}><label>Họ tên<input value={data.prepared_by_name || ''} onChange={(e) => patch('prepared_by_name', e.target.value)}/></label><label>Điện thoại<input value={data.prepared_by_phone || ''} onChange={(e) => patch('prepared_by_phone', e.target.value)}/></label><label>Email<input type="email" value={data.prepared_by_email || ''} onChange={(e) => patch('prepared_by_email', e.target.value)}/></label><label>Trạng thái<select value={data.status} onChange={(e) => patch('status', e.target.value)}>{Object.entries(QUOTATION_STATUSES).map(([key, label]) => <option key={key} value={key}>{label}</option>)}</select></label></div></section>
       </div>
       <PrintInvoice ref={printRef} quotation={data} summary={summary} stamp={stamp} stampPosition={stampPosition}/>
       {preview && <div className={styles.modal} onClick={() => setPreview(false)}><div onClick={(e) => e.stopPropagation()} className={styles.modalBody}><div className={styles.modalActions}><button onClick={handleCopyPreviewImage} disabled={busy === 'copy-image'}><FaCopy/> {busy === 'copy-image' ? 'Đang sao chép...' : 'Sao chép hình'}</button><button onClick={() => setPreview(false)} aria-label="Đóng bản xem trước"><FaXmark/></button></div><PrintInvoice ref={previewRef} quotation={data} summary={summary} preview stamp={stamp} stampPosition={stampPosition} stampEditable={!!stamp?.url} onStampDrag={setStampPosition} onStampDragEnd={handleStampDragEnd}/></div></div>}
+      <ConfirmModal
+        open={confirmReset}
+        title="Tạo báo giá mới"
+        message="Tạo báo giá mới sẽ xóa thông tin khách hàng và sản phẩm đang nhập. Tiếp tục?"
+        confirmLabel="Tiếp tục"
+        danger
+        onConfirm={confirmHandleReset}
+        onCancel={() => setConfirmReset(false)}
+      />
+      <ConfirmModal
+        open={deleteItemIndex !== null}
+        title="Xóa sản phẩm"
+        message="Xóa sản phẩm này?"
+        confirmLabel="Xóa"
+        danger
+        onConfirm={() => {
+          patch('items', data.items.filter((_, i) => i !== deleteItemIndex));
+          setDeleteItemIndex(null);
+        }}
+        onCancel={() => setDeleteItemIndex(null)}
+      />
     </>
   );
 }
