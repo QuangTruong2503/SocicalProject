@@ -1,5 +1,6 @@
 import dayjs from 'dayjs';
 import { numberToVietnamese } from './numberToVietnamese.js';
+import { quotationCompany } from '../data/quotationCompany.js';
 
 export const QUOTATION_STATUSES = {
   draft: 'Bản nháp',
@@ -10,6 +11,11 @@ export const QUOTATION_STATUSES = {
 };
 
 export const UNITS = ['Cái', 'Bộ', 'Máy', 'Chiếc', 'Hộp', 'Thùng', 'Cuộn', 'Mét', 'Kg', 'Gói', 'Cặp', 'Chai', 'Can', 'Bộ sản phẩm', 'Dịch vụ'];
+export const TERM_LABELS = {
+  note: 'Giá bán', deliveryPlace: 'Địa điểm giao hàng', deliveryTime: 'Thời gian giao hàng',
+  payment: 'Phương thức thanh toán', quality: 'Chất lượng hàng hóa', validity: 'Hiệu lực báo giá',
+};
+
 export const DEFAULT_TERMS = {
   note: 'Giá đã bao gồm thuế VAT.',
   deliveryPlace: 'Chưa gồm phí vận chuyển nếu có.',
@@ -89,7 +95,7 @@ export function validateQuotation(data, draft = false) {
 
 export function quotationPayload(data, status) {
   return {
-    ...data, status,
+    ...data, status, company_name: quotationCompany.name,
     items: (data.items || []).filter((item) => item.product_name?.trim() || item.description?.trim()).map((item, index) => ({
       product_id: item.product_id || '', product_code: item.product_code || '',
       product_name: (item.product_name || item.description || '').trim(),

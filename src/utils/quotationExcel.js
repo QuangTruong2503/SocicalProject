@@ -1,6 +1,6 @@
 import JSZip from 'jszip';
 import { saveAs } from './fileSaver.js';
-import { fileSlug } from './quotation.js';
+import { fileSlug, TERM_LABELS } from './quotation.js';
 
 const TEMPLATE_URL = '/templates/bao-gia-minh-triet.xlsx';
 const NS = 'http://schemas.openxmlformats.org/spreadsheetml/2006/main';
@@ -142,14 +142,10 @@ function buildSheetXml(source, quotation, summary) {
   xml = setTemplateValue(xml, `H${totalRow}`, summary.total, { numeric: true });
 
   const terms = quotation.terms || {};
-  [
-    [19, `Ghi chú: ${terms.note || ''}`],
-    [20, `Địa điểm giao hàng: ${terms.deliveryPlace || ''}`],
-    [21, `Thời gian giao hàng: ${terms.deliveryTime || ''}`],
-    [22, `Phương thức thanh toán: ${terms.payment || ''}`],
-    [23, `Chất lượng hàng hóa: ${terms.quality || ''}`],
-    [24, `Hiệu lực báo giá: ${terms.validity || ''}`],
-  ].forEach(([baseRow, value]) => { xml = setTemplateValue(xml, `B${baseRow + delta}`, value); });
+  Object.keys(TERM_LABELS).forEach((key, index) => {
+    const baseRow = 19 + index;
+    xml = setTemplateValue(xml, `B${baseRow + delta}`, `${TERM_LABELS[key]}: ${terms[key] || ''}`);
+  });
 
   xml = xml.replace(/<dimension ref="A1:J\d+"\/>/, `<dimension ref="A1:J${27 + delta}"/>`);
   xml = xml.replace(/<mergeCell ref="([A-Z]+)(\d+):([A-Z]+)(\d+)"\/>/g, (match, c1, r1, c2, r2) => {
