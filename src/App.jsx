@@ -319,9 +319,9 @@ export default function App() {
             <Route path="/watermark" element={<Watermark />} />
             <Route path="/watermark/dashboard" element={<WatermarkDashboardPage />} />
             <Route path="/quotation" element={<Navigate to="/admin/bao-gia/tao-moi" replace />} />
-            <Route path="/bao-gia-knm" element={<QuotationKnm />} />
-            <Route path="/bao-gia-knm/quan-ly" element={<QuotationKnmList />} />
-            <Route path="/bao-gia-knm/:id/chinh-sua" element={<QuotationKnm />} />
+            <Route path="/bao-gia-knm" element={<ProtectedRoute title="Báo giá KNM cần đăng nhập." description="Khu vực dành cho nhân viên và quản trị viên." details={['Tạo báo giá máy móc, thiết bị công nghiệp', 'Xem trước realtime, xuất PDF và in ngay']} loginLabel="Đăng nhập để tạo báo giá KNM"><QuotationKnm /></ProtectedRoute>} />
+            <Route path="/bao-gia-knm/quan-ly" element={<ProtectedRoute title="Quản lý báo giá KNM cần đăng nhập." description="Khu vực dành cho nhân viên và quản trị viên." details={['Lưu và chỉnh sửa báo giá KNM']} loginLabel="Đăng nhập để quản lý báo giá KNM"><QuotationKnmList /></ProtectedRoute>} />
+            <Route path="/bao-gia-knm/:id/chinh-sua" element={<ProtectedRoute title="Chỉnh sửa báo giá KNM cần đăng nhập." description="Khu vực dành cho nhân viên và quản trị viên." details={['Chỉnh sửa báo giá KNM đã lưu']} loginLabel="Đăng nhập để chỉnh sửa"><QuotationKnm /></ProtectedRoute>} />
             <Route path="/admin" element={<AdminRoute><AdminLayout /></AdminRoute>}>
               <Route index element={<AdminDashboardPage />} />
               <Route path="users" element={<AdminUsersPage />} />
