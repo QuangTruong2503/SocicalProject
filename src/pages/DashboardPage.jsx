@@ -2,10 +2,28 @@ import { useEffect, useMemo, useState } from 'react';
 import { Helmet } from 'react-helmet-async';
 import imageCompression from 'browser-image-compression';
 import { Navigate, NavLink, useNavigate, useParams } from 'react-router-dom';
+import {
+  FaArrowsRotate,
+  FaCamera,
+  FaCircleUser,
+  FaCrown,
+  FaGaugeHigh,
+  FaImages,
+  FaKey,
+  FaRightFromBracket,
+  FaShieldHalved,
+  FaTrash,
+  FaUser,
+  FaXmark,
+} from 'react-icons/fa6';
 import { useAuth } from '../hooks/useAuth.js';
-import { uploadImage, fetchCurrentUserUploads } from '../services/uploadService.js';
+import { uploadImage, fetchCurrentUserUploads, deleteUpload } from '../services/uploadService.js';
 import { getUserAvatarUrl, getUserDisplayName, getUserInitials } from '../utils/userProfile.js';
 import '../styles/auth.css';
+
+const PLAN_CREDIT_LIMITS = {
+  free: 10,
+};
 
 function formatDate(value) {
   if (!value) {
@@ -55,11 +73,11 @@ function getAuthProviderLabel(user) {
 }
 
 const dashboardSections = [
-  { id: 'overview', label: 'Tổng quan', path: '/dashboard/overview' },
-  { id: 'profile', label: 'Hồ sơ', path: '/dashboard/profile' },
-  { id: 'security', label: 'Bảo mật', path: '/dashboard/security' },
-  { id: 'avatar', label: 'Avatar', path: '/dashboard/avatar' },
-  { id: 'uploads', label: 'Ảnh đã tải', path: '/dashboard/uploads' },
+  { id: 'overview', label: 'Tổng quan', path: '/dashboard/overview', icon: FaGaugeHigh },
+  { id: 'profile', label: 'Hồ sơ', path: '/dashboard/profile', icon: FaUser },
+  { id: 'security', label: 'Bảo mật', path: '/dashboard/security', icon: FaShieldHalved },
+  { id: 'avatar', label: 'Avatar', path: '/dashboard/avatar', icon: FaCamera },
+  { id: 'uploads', label: 'Ảnh đã tải', path: '/dashboard/uploads', icon: FaImages },
 ];
 
 export default function DashboardPage() {
@@ -78,7 +96,6 @@ export default function DashboardPage() {
     isProfileLoading,
     profileError,
     uploadError: authUploadError,
-    lastAuthEvent,
   } = useAuth();
   const [uploads, setUploads] = useState([]);
   const [selectedFile, setSelectedFile] = useState(null);
@@ -99,6 +116,8 @@ export default function DashboardPage() {
   const [passwordMessage, setPasswordMessage] = useState('');
   const [passwordError, setPasswordError] = useState('');
   const [isChangingPassword, setIsChangingPassword] = useState(false);
+  const [previewUpload, setPreviewUpload] = useState(null);
+  const [deletingUploadId, setDeletingUploadId] = useState(null);
 
   const displayName = getUserDisplayName(user, profile);
   const avatarUrl = getUserAvatarUrl(user, profile, latestUpload);
@@ -167,24 +186,33 @@ export default function DashboardPage() {
     {
       label: 'Phiên đăng nhập',
       value: session ? 'Hoạt động' : 'Chưa có',
-      hint: lastAuthEvent,
+      icon: <FaKey aria-hidden="true" />,
     },
     {
       label: 'Ảnh đã tải lên',
-      value: uploads.length,
-      hint: isReloadingUploads ? 'Đang đồng bộ...' : 'Từ bảng user_uploads',
+      value: isReloadingUploads ? '...' : uploads.length,
+      icon: <FaImages aria-hidden="true" />,
     },
     {
       label: 'Trạng thái profile',
-      value: profile ? 'Sẵn sàng' : 'Chưa có row',
-      hint: isProfileLoading ? 'Đang tải profile...' : 'Đã đồng bộ',
+      value: isProfileLoading ? 'Đang tải...' : profile ? 'Sẵn sàng' : 'Chưa có row',
+      icon: <FaCircleUser aria-hidden="true" />,
     },
     {
       label: 'Gói hiện tại',
       value: profile?.plan || 'free',
-      hint: `${profile?.credits ?? 10} credits`,
+      icon: <FaCrown aria-hidden="true" />,
     },
-  ]), [isProfileLoading, lastAuthEvent, profile, session, uploads.length, isReloadingUploads]);
+  ]), [isProfileLoading, profile, session, uploads.length, isReloadingUploads]);
+
+  const creditsInfo = useMemo(() => {
+    const plan = profile?.plan || 'free';
+    const credits = profile?.credits ?? 10;
+    const limit = PLAN_CREDIT_LIMITS[plan] || Math.max(credits, 10);
+    const percent = limit > 0 ? Math.min(100, Math.max(0, (credits / limit) * 100)) : 0;
+
+    return { plan, credits, limit, percent };
+  }, [profile?.plan, profile?.credits]);
 
   async function handleLogout() {
     const result = await logout();
@@ -253,6 +281,32 @@ export default function DashboardPage() {
     } finally {
       setIsUploading(false);
     }
+  }
+
+  async function handleDeleteUpload(item) {
+    if (!user?.id || !item?.id) {
+      return;
+    }
+
+    const confirmed = window.confirm('Xóa ảnh này khỏi danh sách?');
+    if (!confirmed) {
+      return;
+    }
+
+    setDeletingUploadId(item.id);
+    setUploadError('');
+
+    const result = await deleteUpload({ uploadId: item.id, userId: user.id, imageUrl: item.image_url });
+
+    setDeletingUploadId(null);
+
+    if (result.error) {
+      setUploadError(result.error);
+      return;
+    }
+
+    setUploads((prev) => prev.filter((upload) => upload.id !== item.id));
+    setPreviewUpload((prev) => (prev?.id === item.id ? null : prev));
   }
 
   async function handleRefreshProfile() {
@@ -372,81 +426,107 @@ export default function DashboardPage() {
         <meta name="description" content="Dashboard sau khi dang nhap thanh cong voi Supabase." />
       </Helmet>
 
-      <div className="dashboard-page">
-        <div className="dashboard-orb dashboard-orb-one" aria-hidden="true" />
-        <div className="dashboard-orb dashboard-orb-two" aria-hidden="true" />
-        <div className="dashboard-gridwash" aria-hidden="true" />
-
-        <div className="dashboard-shell">
-          <section className="dashboard-hero">
-            <div className="dashboard-hero-copy">
-              <div className="dashboard-badge">Phiên đăng nhập</div>
-
-              <div className="dashboard-stat-row">
-                {statCards.map((stat) => (
-                  <article key={stat.label} className="dashboard-stat-card">
-                    <span>{stat.label}</span>
-                    <strong>{stat.value}</strong>
-                    <small>{stat.hint}</small>
-                  </article>
-                ))}
-              </div>
-
-              <div className="dashboard-hero-actions">
-                <button type="button" className="dashboard-ghost-btn" onClick={handleRefreshProfile}>
-                  Làm mới profile
-                </button>
-                <button type="button" className="dashboard-solid-btn" onClick={handleLogout}>
-                  Logout
-                </button>
-              </div>
-            </div>
-
-            <aside className="dashboard-avatar-card">
-              <div className="dashboard-avatar-frame">
+      <div className="dashboard-page dashboard-page-v2">
+        <div className="dashboard-shell dashboard-shell-v2">
+          <aside className="dashboard-sidebar">
+            <div className="dashboard-sidebar-profile">
+              <div className="dashboard-sidebar-avatar">
                 {avatarUrl ? (
-                  <img src={avatarUrl} alt={displayName} className="dashboard-avatar-image" />
+                  <img src={avatarUrl} alt={displayName} />
                 ) : (
-                  <span className="dashboard-avatar-fallback">{initials}</span>
+                  <span>{initials}</span>
                 )}
               </div>
-              <div className="dashboard-avatar-copy">
-                <h2>{displayName}</h2>
-                <p>{profile?.email || user?.email || 'Chưa có email'}</p>
-                <div className="dashboard-mini-meta">
-                  <span>User ID: {user?.id || 'N/A'}</span>
-                  <span>Session: {sessionExpiry ? formatDate(sessionExpiry) : 'Không rõ'}</span>
+              <div className="dashboard-sidebar-identity">
+                <strong>{displayName}</strong>
+                <span>{profile?.email || user?.email || 'Chưa có email'}</span>
+              </div>
+              <span className="dashboard-plan-chip">
+                <FaCrown aria-hidden="true" />
+                {creditsInfo.plan}
+              </span>
+            </div>
+
+            <nav className="dashboard-sidebar-nav" aria-label="Dashboard sections">
+              {dashboardSections.map((item) => {
+                const Icon = item.icon;
+                return (
+                  <NavLink
+                    key={item.id}
+                    to={item.path}
+                    className={({ isActive }) => `dashboard-sidebar-link ${isActive || activeSection === item.id ? 'active' : ''}`}
+                    end
+                  >
+                    <Icon aria-hidden="true" />
+                    {item.label}
+                  </NavLink>
+                );
+              })}
+            </nav>
+
+            <button type="button" className="dashboard-sidebar-logout" onClick={handleLogout}>
+              <FaRightFromBracket aria-hidden="true" />
+              Đăng xuất
+            </button>
+          </aside>
+
+          <main className="dashboard-main">
+            <div className="dashboard-topbar">
+              <div>
+                <span className="dashboard-panel-kicker">Dashboard</span>
+                <h1>Xin chào, {displayName}</h1>
+              </div>
+              <div className="dashboard-topbar-actions">
+                <button type="button" className="dashboard-ghost-btn dashboard-icon-btn" onClick={handleRefreshProfile}>
+                  <FaArrowsRotate aria-hidden="true" />
+                  Làm mới
+                </button>
+                <NavLink to="/dashboard/avatar" className="dashboard-solid-btn dashboard-icon-btn">
+                  <FaCamera aria-hidden="true" />
+                  Tải ảnh mới
+                </NavLink>
+              </div>
+            </div>
+
+            {(uploadError || authUploadError || profileError) && (
+              <div className="dashboard-alert dashboard-alert-error">
+                {uploadError || authUploadError || profileError}
+              </div>
+            )}
+
+            {uploadMessage && (
+              <div className="dashboard-alert dashboard-alert-success">
+                {uploadMessage}
+              </div>
+            )}
+
+            <div className="dashboard-stats-grid">
+              {statCards.map((stat) => (
+                <article key={stat.label} className="dashboard-stat-card-v2">
+                  <span className="dashboard-stat-icon">
+                    {stat.icon}
+                  </span>
+                  <div>
+                    <span>{stat.label}</span>
+                    <strong>{stat.value}</strong>
+                  </div>
+                </article>
+              ))}
+            </div>
+
+            {activeSection === 'overview' && (
+              <div className="dashboard-credit-card">
+                <div className="dashboard-credit-head">
+                  <span className="dashboard-panel-kicker">Quota</span>
+                  <strong>{creditsInfo.credits} / {creditsInfo.limit} credits còn lại</strong>
+                </div>
+                <div className="dashboard-credit-track">
+                  <div className="dashboard-credit-fill" style={{ width: `${creditsInfo.percent}%` }} />
                 </div>
               </div>
-            </aside>
-          </section>
+            )}
 
-          <nav className="dashboard-section-nav" aria-label="Dashboard sections">
-            {dashboardSections.map((item) => (
-              <NavLink
-                key={item.id}
-                to={item.path}
-                className={({ isActive }) => `dashboard-section-link ${isActive || activeSection === item.id ? 'active' : ''}`}
-                end
-              >
-                {item.label}
-              </NavLink>
-            ))}
-          </nav>
-
-          {(uploadError || authUploadError || profileError) && (
-            <div className="dashboard-alert dashboard-alert-error">
-              {uploadError || authUploadError || profileError}
-            </div>
-          )}
-
-          {uploadMessage && (
-            <div className="dashboard-alert dashboard-alert-success">
-              {uploadMessage}
-            </div>
-          )}
-
-          <div className="dashboard-panels">
+            <div className="dashboard-panels">
             {activeSection === 'profile' && (
             <section className="dashboard-panel dashboard-profile-panel">
               <div className="dashboard-panel-head">
@@ -781,16 +861,8 @@ export default function DashboardPage() {
                   <strong>{formatDate(profile?.updated_at)}</strong>
                 </div>
                 <div className="dashboard-info-item">
-                  <span>Session Expires</span>
+                  <span>Phiên hết hạn</span>
                   <strong>{sessionExpiry ? formatDate(sessionExpiry) : 'Không rõ'}</strong>
-                </div>
-                <div className="dashboard-info-item">
-                  <span>Last Auth Event</span>
-                  <strong>{lastAuthEvent}</strong>
-                </div>
-                <div className="dashboard-info-item">
-                  <span>Profile State</span>
-                  <strong>{isProfileLoading ? 'Đang tải...' : profile ? 'Đã đồng bộ' : 'Chưa có row'}</strong>
                 </div>
               </div>
             </section>
@@ -806,13 +878,30 @@ export default function DashboardPage() {
                 <span className="dashboard-panel-chip">{uploads.length} items</span>
               </div>
 
-              <div className="dashboard-uploads-grid">
-                {uploads.length > 0 ? uploads.slice(0, 6).map((item) => (
-                  <article key={item.id} className="dashboard-upload-item">
-                    <img src={item.image_url} alt={item.file_name || 'Uploaded image'} />
-                    <div>
-                      <strong>{item.file_name || 'Untitled upload'}</strong>
-                      <span>{formatDate(item.created_at)}</span>
+              <div className="dashboard-uploads-grid-v2">
+                {uploads.length > 0 ? uploads.slice(0, 9).map((item) => (
+                  <article key={item.id} className="dashboard-upload-thumb">
+                    <img
+                      src={item.image_url}
+                      alt={item.file_name || 'Uploaded image'}
+                      onClick={() => setPreviewUpload(item)}
+                    />
+                    <div className="dashboard-upload-thumb-actions">
+                      <button
+                        type="button"
+                        title="Xem nhanh"
+                        onClick={() => setPreviewUpload(item)}
+                      >
+                        <FaImages aria-hidden="true" />
+                      </button>
+                      <button
+                        type="button"
+                        title="Xóa ảnh"
+                        onClick={() => handleDeleteUpload(item)}
+                        disabled={deletingUploadId === item.id}
+                      >
+                        <FaTrash aria-hidden="true" />
+                      </button>
                     </div>
                   </article>
                 )) : (
@@ -824,9 +913,34 @@ export default function DashboardPage() {
               </div>
             </section>
             )}
-          </div>
+            </div>
+          </main>
         </div>
       </div>
+
+      {previewUpload && (
+        <div className="dashboard-lightbox" role="dialog" aria-modal="true" onClick={() => setPreviewUpload(null)}>
+          <div className="dashboard-lightbox-content" onClick={(event) => event.stopPropagation()}>
+            <button type="button" className="dashboard-lightbox-close" onClick={() => setPreviewUpload(null)}>
+              <FaXmark aria-hidden="true" />
+            </button>
+            <img src={previewUpload.image_url} alt={previewUpload.file_name || 'Uploaded image'} />
+            <div className="dashboard-lightbox-meta">
+              <strong>{previewUpload.file_name || 'Untitled upload'}</strong>
+              <span>{formatDate(previewUpload.created_at)}</span>
+            </div>
+            <button
+              type="button"
+              className="dashboard-solid-btn"
+              onClick={() => handleDeleteUpload(previewUpload)}
+              disabled={deletingUploadId === previewUpload.id}
+            >
+              <FaTrash aria-hidden="true" />
+              Xóa ảnh
+            </button>
+          </div>
+        </div>
+      )}
     </>
   );
 }

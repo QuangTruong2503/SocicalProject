@@ -1,9 +1,10 @@
-import { FaCopy, FaTrash } from 'react-icons/fa6';
+import { FaChevronDown, FaChevronUp, FaCopy, FaGripVertical, FaTrash } from 'react-icons/fa6';
 import { formatCurrency, parseCurrency } from '../../utils/numberFormat.js';
 import { KNM_UNITS, toGrossUnitPrice, toNetUnitPrice } from '../../utils/knmQuotation.js';
 
 export default function ProductRow({
-  item, index, canDelete, vatRate, vatInclusiveInput, onChange, onDuplicate, onDelete, styles,
+  item, index, canDelete, canMoveUp, canMoveDown, vatRate, vatInclusiveInput, onChange, onDuplicate, onDelete,
+  onMoveUp, onMoveDown, onDragStart, onDragEnd, onDragOver, onDrop, isDragging, isDragOver, styles,
 }) {
   const patch = (name, value) => onChange({ ...item, [name]: value });
   const displayPrice = vatInclusiveInput ? toGrossUnitPrice(item.unitPrice, vatRate) : item.unitPrice;
@@ -12,9 +13,25 @@ export default function ProductRow({
     patch('unitPrice', vatInclusiveInput ? toNetUnitPrice(entered, vatRate) : entered);
   };
 
+  const rowClassName = [isDragging && styles.rowDragging, isDragOver && styles.rowDragOver].filter(Boolean).join(' ') || undefined;
+
   return (
-    <tr>
-      <td className={styles.stt}>{index + 1}</td>
+    <tr className={rowClassName} onDragOver={onDragOver} onDrop={onDrop}>
+      <td className={styles.stt}>
+        <span className={styles.sttInner}>
+          <span
+            className={styles.dragHandle}
+            draggable
+            onDragStart={onDragStart}
+            onDragEnd={onDragEnd}
+            aria-label="Kéo để đổi thứ tự sản phẩm"
+            title="Kéo để đổi thứ tự"
+          >
+            <FaGripVertical />
+          </span>
+          {index + 1}
+        </span>
+      </td>
       <td>
         <textarea
           placeholder={'Tên máy móc/ thiết bị\nThông số, mô tả chi tiết (có thể nhiều dòng)'}
@@ -54,6 +71,8 @@ export default function ProductRow({
       <td className={styles.money}>{formatCurrency(Number(item.quantity) * Number(item.unitPrice))} ₫</td>
       <td>
         <div className={styles.rowActions}>
+          <button type="button" onClick={onMoveUp} disabled={!canMoveUp} aria-label="Di chuyển sản phẩm lên"><FaChevronUp /></button>
+          <button type="button" onClick={onMoveDown} disabled={!canMoveDown} aria-label="Di chuyển sản phẩm xuống"><FaChevronDown /></button>
           <button type="button" onClick={onDuplicate} aria-label="Nhân bản sản phẩm"><FaCopy /></button>
           <button type="button" className={styles.danger} onClick={onDelete} disabled={!canDelete} aria-label="Xóa sản phẩm"><FaTrash /></button>
         </div>

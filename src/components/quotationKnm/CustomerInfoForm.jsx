@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { toast } from 'react-toastify';
+import { FaCircleCheck, FaCircleExclamation, FaSpinner } from 'react-icons/fa6';
 import { isLikelyTaxCode, lookupBusinessByTaxCode } from '../../utils/knmTaxLookup.js';
 
 export default function CustomerInfoForm({ customer, error, onChange, styles }) {
@@ -29,14 +30,26 @@ export default function CustomerInfoForm({ customer, error, onChange, styles }) 
       <div className={styles.grid}>
         <label className={`${styles.field} ${styles.span2}`}>
           Mã số thuế
-          <input
-            value={customer.taxCode}
-            onChange={(e) => { patch('taxCode', e.target.value); setLookupState('idle'); }}
-            onBlur={handleTaxCodeBlur}
-            placeholder="Nhập MST để tự động điền tên & địa chỉ"
-          />
+          <span className={styles.inputIconWrap}>
+            <input
+              value={customer.taxCode}
+              onChange={(e) => { patch('taxCode', e.target.value); setLookupState('idle'); }}
+              onBlur={handleTaxCodeBlur}
+              placeholder="Nhập MST để tự động điền tên & địa chỉ"
+            />
+            {lookupState === 'loading' && (
+              <span className={styles.inputIcon}><FaSpinner className={styles.inputIconSpin} /></span>
+            )}
+            {lookupState === 'done' && (
+              <span className={styles.inputIcon} style={{ color: '#0f7a45' }}><FaCircleCheck /></span>
+            )}
+            {lookupState === 'error' && (
+              <span className={styles.inputIcon} style={{ color: '#b91c1c' }}><FaCircleExclamation /></span>
+            )}
+          </span>
           {lookupState === 'loading' && <small className={styles.lookupHint}>Đang tra cứu...</small>}
           {lookupState === 'done' && <small className={styles.lookupHintDone}>Đã điền theo dữ liệu Tổng cục Thuế.</small>}
+          {lookupState === 'error' && <small className={styles.lookupHintError}>Không tìm thấy doanh nghiệp với MST này.</small>}
         </label>
         <label className={`${styles.field} ${styles.span2}`}>
           Tên công ty / khách hàng *

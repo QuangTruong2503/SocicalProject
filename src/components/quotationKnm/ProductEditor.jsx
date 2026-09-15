@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { FaPlus } from 'react-icons/fa6';
 import { formatCurrency } from '../../utils/numberFormat.js';
 import { numberToVietnamese } from '../../utils/numberToVietnamese.js';
@@ -5,6 +6,9 @@ import { newKnmItem } from '../../utils/knmQuotation.js';
 import ProductRow from './ProductRow.jsx';
 
 export default function ProductEditor({ items, totals, vatRate, vatInclusiveInput, error, onChange, styles }) {
+  const [dragIndex, setDragIndex] = useState(null);
+  const [dragOverIndex, setDragOverIndex] = useState(null);
+
   const updateItem = (index, next) => onChange(items.map((item, i) => (i === index ? next : item)));
   const addItem = () => onChange([...items, newKnmItem()]);
   const duplicateItem = (index) => onChange([
@@ -13,6 +17,13 @@ export default function ProductEditor({ items, totals, vatRate, vatInclusiveInpu
     ...items.slice(index + 1),
   ]);
   const deleteItem = (index) => onChange(items.length > 1 ? items.filter((_, i) => i !== index) : items);
+  const moveItem = (from, to) => {
+    if (from === to || from < 0 || to < 0 || from >= items.length || to >= items.length) return;
+    const next = [...items];
+    const [moved] = next.splice(from, 1);
+    next.splice(to, 0, moved);
+    onChange(next);
+  };
 
   return (
     <section className={styles.card}>
@@ -39,11 +50,33 @@ export default function ProductEditor({ items, totals, vatRate, vatInclusiveInpu
                 item={item}
                 index={index}
                 canDelete={items.length > 1}
+                canMoveUp={index > 0}
+                canMoveDown={index < items.length - 1}
+                isDragging={dragIndex === index}
+                isDragOver={dragOverIndex === index && dragIndex !== null && dragIndex !== index}
                 vatRate={vatRate}
                 vatInclusiveInput={vatInclusiveInput}
                 onChange={(next) => updateItem(index, next)}
                 onDuplicate={() => duplicateItem(index)}
                 onDelete={() => deleteItem(index)}
+                onMoveUp={() => moveItem(index, index - 1)}
+                onMoveDown={() => moveItem(index, index + 1)}
+                onDragStart={(e) => {
+                  setDragIndex(index);
+                  e.dataTransfer.effectAllowed = 'move';
+                }}
+                onDragEnd={() => { setDragIndex(null); setDragOverIndex(null); }}
+                onDragOver={(e) => {
+                  if (dragIndex === null) return;
+                  e.preventDefault();
+                  setDragOverIndex(index);
+                }}
+                onDrop={(e) => {
+                  e.preventDefault();
+                  if (dragIndex !== null) moveItem(dragIndex, index);
+                  setDragIndex(null);
+                  setDragOverIndex(null);
+                }}
                 styles={styles}
               />
             ))}
