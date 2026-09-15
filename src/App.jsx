@@ -12,14 +12,18 @@ import Footer from './components/Footer.jsx';
 import Header from './components/Header.jsx';
 import ScrollToTopButton from './components/ScrollToTopButton.jsx';
 import MemoryGame from './pages/MemoryGame.jsx';
-import SEOKeywords from './pages/SEOKeywords.jsx';
 import SeoExcelGenerator from './pages/SeoExcelGenerator.jsx';
 import AuthPage from './pages/AuthPage.jsx';
 import AuthCallbackPage from './pages/AuthCallbackPage.jsx';
 import DashboardPage from './pages/DashboardPage.jsx';
 import ProtectedRoute from './components/ProtectedRoute.jsx';
+import AdminRoute from './components/AdminRoute.jsx';
 import PublicRoute from './components/PublicRoute.jsx';
 import AISEO from './pages/AISEO.jsx';
+import AdminLayout from './pages/Admin/AdminLayout.jsx';
+import AdminDashboardPage from './pages/Admin/AdminDashboardPage.jsx';
+import AdminUsersPage from './pages/Admin/AdminUsersPage.jsx';
+import AdminQuotationsPage from './pages/Admin/AdminQuotationsPage.jsx';
 
 function FeatureCard({ icon, title, description, buttonText, link, badge, delay }) {
   return (
@@ -65,15 +69,6 @@ function HomePage() {
       link: '/auth',
       badge: 'New',
       delay: 150,
-    },
-    {
-      icon: '🔍',
-      title: 'SEO Keywords Generator',
-      description: 'Tạo bộ từ khóa SEO toàn diện cho sản phẩm của bạn.',
-      buttonText: 'Mo Tool',
-      link: '/seo-keywords',
-      badge: 'New',
-      delay: 200,
     },
     {
       icon: '📊',
@@ -280,18 +275,6 @@ const protectedRouteConfigs = [
     ],
     loginLabel: 'Đăng nhập để vào dashboard',
   },
-  {
-    path: '/seo-keywords',
-    element: <SEOKeywords />,
-    title: 'SEO Keywords cần tài khoản để lưu và đồng bộ dữ liệu.',
-    description: 'Công cụ này có thể tạo nội dung gắn với lịch sử sử dụng, nên mình yêu cầu đăng nhập để giữ trải nghiệm nhất quán.',
-    details: [
-      'Lưu lịch sử kết quả',
-      'Đồng bộ dữ liệu cá nhân',
-      'Truy cập tài nguyên đầy đủ',
-    ],
-    loginLabel: 'Đăng nhập để dùng SEO Keywords',
-  },
   // {
   //   path: '/watermark',
   //   element: <Watermark />,
@@ -339,6 +322,12 @@ export default function App() {
             <Route path="/bao-gia-knm" element={<QuotationKnm />} />
             <Route path="/bao-gia-knm/quan-ly" element={<QuotationKnmList />} />
             <Route path="/bao-gia-knm/:id/chinh-sua" element={<QuotationKnm />} />
+            <Route path="/admin" element={<AdminRoute><AdminLayout /></AdminRoute>}>
+              <Route index element={<AdminDashboardPage />} />
+              <Route path="users" element={<AdminUsersPage />} />
+              <Route path="quotations" element={<AdminQuotationsPage />} />
+              <Route path="watermark" element={<WatermarkDashboardPage />} />
+            </Route>
             <Route path="/admin/bao-gia" element={<ProtectedRoute title="Quản lý báo giá cần đăng nhập." description="Khu vực dành cho nhân viên và quản trị viên." details={['Lưu và chỉnh sửa báo giá', 'Xuất Excel, PDF và in A4']} loginLabel="Đăng nhập để quản lý báo giá"><QuotationList /></ProtectedRoute>} />
             <Route path="/admin/bao-gia/tao-moi" element={<ProtectedRoute title="Tạo báo giá cần đăng nhập." description="Khu vực dành cho nhân viên và quản trị viên." details={['Tạo báo giá theo mẫu công ty']} loginLabel="Đăng nhập để tạo báo giá"><Quotation /></ProtectedRoute>} />
             <Route path="/admin/bao-gia/:id/chinh-sua" element={<ProtectedRoute title="Chỉnh sửa báo giá cần đăng nhập." description="Khu vực dành cho nhân viên và quản trị viên." details={['Chỉnh sửa báo giá đã lưu']} loginLabel="Đăng nhập để chỉnh sửa"><Quotation /></ProtectedRoute>} />

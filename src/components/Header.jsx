@@ -61,11 +61,6 @@ export default function Header() {
       icon: '🏠',
     },
     {
-      label: 'SEO Keywords',
-      path: '/seo-keywords',
-      icon: '🔍',
-    },
-    {
       label: 'Watermark',
       path: '/watermark',
       icon: '🎨',
@@ -80,6 +75,7 @@ export default function Header() {
       path: user ? '/dashboard/overview' : '/auth',
       icon: user ? '📊' : '🔐',
     },
+    ...(profile?.role === 'admin' ? [{ label: 'Quản trị', path: '/admin', icon: '🛠️' }] : []),
   ];
 
   const isActive = (path) => {

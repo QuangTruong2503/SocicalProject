@@ -10,7 +10,7 @@ export default function ProtectedRoute({
   details = ['Xem dashboard cá nhân', 'Đồng bộ hồ sơ và ảnh tải lên', 'Bảo vệ dữ liệu riêng tư'],
   loginLabel = 'Đăng nhập ngay',
 }) {
-  const { isAuthenticated, isInitializing } = useAuth();
+  const { isAuthenticated, isInitializing, profile, logout } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -37,6 +37,23 @@ export default function ProtectedRoute({
         primaryActionLabel={loginLabel}
         secondaryActionLabel="Quay về trang chủ"
         onPrimaryAction={() => navigate('/auth', { replace: true, state: { from: returnPath } })}
+        onSecondaryAction={() => navigate('/', { replace: true })}
+      />
+    );
+  }
+
+  if (profile?.status === 'suspended') {
+    return (
+      <AccessGateModal
+        title="Tài khoản của bạn đã bị khóa."
+        description="Tài khoản này đã bị quản trị viên tạm khóa nên không thể truy cập các trang cần đăng nhập. Liên hệ quản trị viên nếu bạn cho rằng đây là nhầm lẫn."
+        details={[]}
+        primaryActionLabel="Đăng xuất"
+        secondaryActionLabel="Quay về trang chủ"
+        onPrimaryAction={async () => {
+          await logout();
+          navigate('/', { replace: true });
+        }}
         onSecondaryAction={() => navigate('/', { replace: true })}
       />
     );

@@ -215,6 +215,74 @@ export async function ensureProfile(user) {
 }
 
 /**
+ * Admin-only: list profiles with search/role/status filters.
+ * @param {{ search?: string, role?: string, status?: string }} [filters]
+ * @returns {Promise<import('./serviceHelpers.js').ServiceResult<Array<Object>>>}
+ */
+export async function listProfiles(filters = {}) {
+  try {
+    let query = supabase
+      .from('profiles')
+      .select(PROFILE_SELECT)
+      .order('created_at', { ascending: false })
+      .range(0, 199);
+
+    const safeSearch = String(filters.search || '').replace(/[%(),.]/g, ' ').trim();
+    if (safeSearch) {
+      query = query.or(`username.ilike.%${safeSearch}%,email.ilike.%${safeSearch}%,full_name.ilike.%${safeSearch}%`);
+    }
+    if (filters.role) query = query.eq('role', filters.role);
+    if (filters.status) query = query.eq('status', filters.status);
+
+    const { data, error } = await query;
+
+    if (error) {
+      console.error('[profileService] listProfiles failed', error);
+      return createServiceResult(null, normalizeServiceError(error, 'Không thể tải danh sách người dùng.'));
+    }
+
+    return createServiceResult(data ?? []);
+  } catch (error) {
+    const message = normalizeServiceError(error, 'Không thể tải danh sách người dùng.');
+    console.error('[profileService] listProfiles exception', error);
+    return createServiceResult(null, message);
+  }
+}
+
+/**
+ * Admin-only: change another user's role/status/is_verified/plan/credits via the
+ * `admin_update_profile` RPC (regular table UPDATE is blocked for these columns by RLS).
+ * @param {string} userId
+ * @param {{ role?: string, status?: string, is_verified?: boolean, plan?: string, credits?: number }} updates
+ * @returns {Promise<import('./serviceHelpers.js').ServiceResult<Object>>}
+ */
+export async function adminUpdateProfile(userId, updates = {}) {
+  try {
+    console.debug('[profileService] adminUpdateProfile start', { userId, fields: Object.keys(updates) });
+
+    const { data, error } = await supabase.rpc('admin_update_profile', {
+      p_user_id: userId,
+      p_role: updates.role ?? null,
+      p_status: updates.status ?? null,
+      p_is_verified: updates.is_verified ?? null,
+      p_plan: updates.plan ?? null,
+      p_credits: updates.credits ?? null,
+    });
+
+    if (error) {
+      console.error('[profileService] adminUpdateProfile failed', error);
+      return createServiceResult(null, normalizeServiceError(error, 'Không thể cập nhật người dùng.'));
+    }
+
+    return createServiceResult(data);
+  } catch (error) {
+    const message = normalizeServiceError(error, 'Không thể cập nhật người dùng.');
+    console.error('[profileService] adminUpdateProfile exception', error);
+    return createServiceResult(null, message);
+  }
+}
+
+/**
  * @param {string} userId
  * @param {{ username?: string | null, email?: string | null, full_name?: string | null, avatar_url?: string | null }} updates
  * @returns {Promise<import('./serviceHelpers.js').ServiceResult<Object>>}
