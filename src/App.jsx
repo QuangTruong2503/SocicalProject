@@ -275,18 +275,18 @@ const protectedRouteConfigs = [
     ],
     loginLabel: 'Đăng nhập để vào dashboard',
   },
-  // {
-  //   path: '/watermark',
-  //   element: <Watermark />,
-  //   title: 'Watermark Tool cần đăng nhập để lưu trạng thái làm việc.',
-  //   description: 'Trang này có thể xử lý dữ liệu người dùng và cần phiên đăng nhập để đồng bộ thao tác an toàn hơn.',
-  //   details: [
-  //     'Bảo toàn lịch sử thao tác',
-  //     'Đồng bộ dữ liệu cá nhân',
-  //     'Giữ phiên làm việc ổn định',
-  //   ],
-  //   loginLabel: 'Đăng nhập để mở Watermark',
-  // },
+  {
+    path: '/watermark',
+    element: <Watermark />,
+    title: 'Watermark Tool cần đăng nhập để lưu trạng thái làm việc.',
+    description: 'Trang này có thể xử lý dữ liệu người dùng và cần phiên đăng nhập để đồng bộ thao tác an toàn hơn.',
+    details: [
+      'Bảo toàn lịch sử thao tác',
+      'Đồng bộ dữ liệu cá nhân',
+      'Giữ phiên làm việc ổn định',
+    ],
+    loginLabel: 'Đăng nhập để mở Watermark',
+  },
   {
     path: '/memory-game',
     element: <MemoryGame />,
@@ -316,8 +316,7 @@ export default function App() {
           <Routes>
             <Route path="/" element={<HomePage />} />
             <Route path="/aiseo" element={<AISEO />} />
-            <Route path="/watermark" element={<Watermark />} />
-            <Route path="/watermark/dashboard" element={<WatermarkDashboardPage />} />
+            <Route path="/watermark/dashboard" element={<ProtectedRoute title="Thống kê Watermark cần đăng nhập." description="Khu vực dành cho nhân viên và quản trị viên." details={['Xem thống kê lượt sử dụng Watermark']} loginLabel="Đăng nhập để xem thống kê"><WatermarkDashboardPage /></ProtectedRoute>} />
             <Route path="/quotation" element={<Navigate to="/admin/bao-gia/tao-moi" replace />} />
             <Route path="/bao-gia-knm" element={<ProtectedRoute title="Báo giá KNM cần đăng nhập." description="Khu vực dành cho nhân viên và quản trị viên." details={['Tạo báo giá máy móc, thiết bị công nghiệp', 'Xem trước realtime, xuất PDF và in ngay']} loginLabel="Đăng nhập để tạo báo giá KNM"><QuotationKnm /></ProtectedRoute>} />
             <Route path="/bao-gia-knm/quan-ly" element={<ProtectedRoute title="Quản lý báo giá KNM cần đăng nhập." description="Khu vực dành cho nhân viên và quản trị viên." details={['Lưu và chỉnh sửa báo giá KNM']} loginLabel="Đăng nhập để quản lý báo giá KNM"><QuotationKnmList /></ProtectedRoute>} />
