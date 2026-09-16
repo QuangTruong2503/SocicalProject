@@ -227,7 +227,7 @@ export default function Quotation() {
       const savedId = await saveQuotation(quotationPayload(data, status));
       toast.success(draft ? 'Đã lưu bản nháp.' : 'Đã lưu báo giá.');
       if (!draft) window.localStorage.removeItem(storageKey);
-      if (!id) navigate(`/admin/bao-gia/${savedId}/chinh-sua`, { replace: true });
+      if (!id) navigate(`/bao-gia-minh-triet/${savedId}/chinh-sua`, { replace: true });
       else patch('status', status);
     } catch (error) { toast.error(error.message); }
     finally { setBusy(''); }
@@ -313,7 +313,7 @@ export default function Quotation() {
     try {
       const quotation_no = await getNextQuotationNumber(data.quotation_date);
       setData((current) => ({ ...current, id: '', quotation_no, status: 'draft' }));
-      navigate('/admin/bao-gia/tao-moi', { replace: true });
+      navigate('/bao-gia-minh-triet/tao-moi', { replace: true });
       toast.success('Đã tạo bản sao với số báo giá mới. Hãy lưu để hoàn tất.');
     } catch (error) { toast.error(error.message); }
     finally { setBusy(''); }
@@ -345,7 +345,7 @@ export default function Quotation() {
         <header className={styles.pageHeader}>
           <div><span>QUẢN LÝ BÁO GIÁ</span><h1>{id ? 'CHỈNH SỬA BÁO GIÁ' : 'TẠO BÁO GIÁ'}</h1></div>
           <div className={styles.actions}>
-            <button className={styles.outlineAction} onClick={() => navigate('/admin/bao-gia')}><FaXmark/> Hủy</button>
+            <button className={styles.outlineAction} onClick={() => navigate('/bao-gia-minh-triet')}><FaXmark/> Hủy</button>
             {id ? (
               <button className={styles.outlineAction} onClick={() => handleSave('draft')} disabled={!!busy}><FaFloppyDisk/> Lưu nháp</button>
             ) : (

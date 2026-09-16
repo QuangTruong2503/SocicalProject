@@ -67,7 +67,7 @@ export default function Header() {
     },
     {
       label: 'Báo Giá',
-      path: '/admin/bao-gia',
+      path: '/bao-gia-minh-triet',
       icon: '📜',
     },
     {

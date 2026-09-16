@@ -97,7 +97,7 @@ export default function AdminQuotationsPage() {
                 <tr><td colSpan={tab === 'standard' ? 6 : 5} className={styles.emptyState}>Chưa có báo giá.</td></tr>
               ) : rows.map((row) => {
                 const editHref = tab === 'standard'
-                  ? `/admin/bao-gia/${row.id}/chinh-sua`
+                  ? `/bao-gia-minh-triet/${row.id}/chinh-sua`
                   : `/bao-gia-knm/${row.id}/chinh-sua`;
                 return (
                   <tr key={row.id}>

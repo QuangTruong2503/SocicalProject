@@ -12,7 +12,6 @@ import Footer from './components/Footer.jsx';
 import Header from './components/Header.jsx';
 import ScrollToTopButton from './components/ScrollToTopButton.jsx';
 import MemoryGame from './pages/MemoryGame.jsx';
-import SeoExcelGenerator from './pages/SeoExcelGenerator.jsx';
 import AuthPage from './pages/AuthPage.jsx';
 import AuthCallbackPage from './pages/AuthCallbackPage.jsx';
 import DashboardPage from './pages/DashboardPage.jsx';
@@ -24,6 +23,7 @@ import AdminLayout from './pages/Admin/AdminLayout.jsx';
 import AdminDashboardPage from './pages/Admin/AdminDashboardPage.jsx';
 import AdminUsersPage from './pages/Admin/AdminUsersPage.jsx';
 import AdminQuotationsPage from './pages/Admin/AdminQuotationsPage.jsx';
+import AdminMemoryCardsPage from './pages/Admin/AdminMemoryCardsPage.jsx';
 
 function FeatureCard({ icon, title, description, buttonText, link, badge, delay }) {
   return (
@@ -102,7 +102,7 @@ function HomePage() {
       title: 'Quotation Builder',
       description: 'Tạo phiếu báo giá / đơn hàng, tự tính VAT, lưu draft và in hóa đơn A4.',
       buttonText: 'Mo Tool',
-      link: '/admin/bao-gia',
+      link: '/bao-gia-minh-triet',
       badge: 'New',
       delay: 325,
     },
@@ -317,7 +317,7 @@ export default function App() {
             <Route path="/" element={<HomePage />} />
             <Route path="/aiseo" element={<AISEO />} />
             <Route path="/watermark/dashboard" element={<ProtectedRoute title="Thống kê Watermark cần đăng nhập." description="Khu vực dành cho nhân viên và quản trị viên." details={['Xem thống kê lượt sử dụng Watermark']} loginLabel="Đăng nhập để xem thống kê"><WatermarkDashboardPage /></ProtectedRoute>} />
-            <Route path="/quotation" element={<Navigate to="/admin/bao-gia/tao-moi" replace />} />
+            <Route path="/quotation" element={<Navigate to="/bao-gia-minh-triet/tao-moi" replace />} />
             <Route path="/bao-gia-knm" element={<ProtectedRoute title="Báo giá KNM cần đăng nhập." description="Khu vực dành cho nhân viên và quản trị viên." details={['Tạo báo giá máy móc, thiết bị công nghiệp', 'Xem trước realtime, xuất PDF và in ngay']} loginLabel="Đăng nhập để tạo báo giá KNM"><QuotationKnm /></ProtectedRoute>} />
             <Route path="/bao-gia-knm/quan-ly" element={<ProtectedRoute title="Quản lý báo giá KNM cần đăng nhập." description="Khu vực dành cho nhân viên và quản trị viên." details={['Lưu và chỉnh sửa báo giá KNM']} loginLabel="Đăng nhập để quản lý báo giá KNM"><QuotationKnmList /></ProtectedRoute>} />
             <Route path="/bao-gia-knm/:id/chinh-sua" element={<ProtectedRoute title="Chỉnh sửa báo giá KNM cần đăng nhập." description="Khu vực dành cho nhân viên và quản trị viên." details={['Chỉnh sửa báo giá KNM đã lưu']} loginLabel="Đăng nhập để chỉnh sửa"><QuotationKnm /></ProtectedRoute>} />
@@ -326,11 +326,11 @@ export default function App() {
               <Route path="users" element={<AdminUsersPage />} />
               <Route path="quotations" element={<AdminQuotationsPage />} />
               <Route path="watermark" element={<WatermarkDashboardPage />} />
+              <Route path="memory-cards" element={<AdminMemoryCardsPage />} />
             </Route>
-            <Route path="/admin/bao-gia" element={<ProtectedRoute title="Quản lý báo giá cần đăng nhập." description="Khu vực dành cho nhân viên và quản trị viên." details={['Lưu và chỉnh sửa báo giá', 'Xuất Excel, PDF và in A4']} loginLabel="Đăng nhập để quản lý báo giá"><QuotationList /></ProtectedRoute>} />
-            <Route path="/admin/bao-gia/tao-moi" element={<ProtectedRoute title="Tạo báo giá cần đăng nhập." description="Khu vực dành cho nhân viên và quản trị viên." details={['Tạo báo giá theo mẫu công ty']} loginLabel="Đăng nhập để tạo báo giá"><Quotation /></ProtectedRoute>} />
-            <Route path="/admin/bao-gia/:id/chinh-sua" element={<ProtectedRoute title="Chỉnh sửa báo giá cần đăng nhập." description="Khu vực dành cho nhân viên và quản trị viên." details={['Chỉnh sửa báo giá đã lưu']} loginLabel="Đăng nhập để chỉnh sửa"><Quotation /></ProtectedRoute>} />
-            <Route path="/seo-excel-generator" element={<SeoExcelGenerator />} />
+            <Route path="/bao-gia-minh-triet" element={<ProtectedRoute title="Quản lý báo giá cần đăng nhập." description="Khu vực dành cho nhân viên và quản trị viên." details={['Lưu và chỉnh sửa báo giá', 'Xuất Excel, PDF và in A4']} loginLabel="Đăng nhập để quản lý báo giá"><QuotationList /></ProtectedRoute>} />
+            <Route path="/bao-gia-minh-triet/tao-moi" element={<ProtectedRoute title="Tạo báo giá cần đăng nhập." description="Khu vực dành cho nhân viên và quản trị viên." details={['Tạo báo giá theo mẫu công ty']} loginLabel="Đăng nhập để tạo báo giá"><Quotation /></ProtectedRoute>} />
+            <Route path="/bao-gia-minh-triet/:id/chinh-sua" element={<ProtectedRoute title="Chỉnh sửa báo giá cần đăng nhập." description="Khu vực dành cho nhân viên và quản trị viên." details={['Chỉnh sửa báo giá đã lưu']} loginLabel="Đăng nhập để chỉnh sửa"><Quotation /></ProtectedRoute>} />
             <Route
               path="/auth"
               element={(
