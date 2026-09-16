@@ -1,4 +1,5 @@
-import React, { useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { generateThumbnails } from '../../utils/imageThumbnail.js';
 import '../../styles/ImageUploader.css';
 
 function reorderImages(list, fromIndex, toIndex) {
@@ -42,6 +43,7 @@ export default function ImageUploader({
 }) {
   const fileRef = useRef();
   const dragDepthRef = useRef(0);
+  const imagesRef = useRef(images);
   const [draggedIndex, setDraggedIndex] = useState(null);
   const [dropIndex, setDropIndex] = useState(null);
   const [isDraggingFiles, setIsDraggingFiles] = useState(false);
@@ -81,15 +83,57 @@ export default function ImageUploader({
     options?.tiled,
   ]);
 
+  useEffect(() => {
+    imagesRef.current = images;
+  }, [images]);
+
+  useEffect(() => () => {
+    imagesRef.current.forEach((img) => {
+      URL.revokeObjectURL(img.preview);
+      if (img.thumb) {
+        URL.revokeObjectURL(img.thumb);
+      }
+    });
+  }, []);
+
   const applyFiles = (files) => {
     if (!files.length) return;
-    images.forEach((img) => URL.revokeObjectURL(img.preview));
-    const previews = files.map((file) => ({
+
+    const previousImages = images;
+    const nextImages = files.map((file) => ({
       file,
       preview: URL.createObjectURL(file),
+      thumb: null,
       name: file.name,
     }));
-    onImagesChange(previews);
+
+    onImagesChange(nextImages);
+    previousImages.forEach((img) => {
+      URL.revokeObjectURL(img.preview);
+      if (img.thumb) {
+        URL.revokeObjectURL(img.thumb);
+      }
+    });
+
+    // Thumbnails are generated off the original files (not the replaced
+    // `images` state), so this stays correct even if the user reorders or
+    // removes items while the batch is still being thumbnailed.
+    generateThumbnails(files, {
+      onThumbnailReady: (index, thumbUrl) => {
+        onImagesChange((current) => {
+          const targetIndex = current.findIndex((img) => img.file === files[index]);
+
+          if (targetIndex === -1 || current[targetIndex].thumb) {
+            URL.revokeObjectURL(thumbUrl);
+            return current;
+          }
+
+          const next = [...current];
+          next[targetIndex] = { ...next[targetIndex], thumb: thumbUrl };
+          return next;
+        });
+      },
+    });
   };
 
   const handleFiles = (e) => {
@@ -131,6 +175,9 @@ export default function ImageUploader({
     const removed = images[idx];
     if (removed?.preview) {
       URL.revokeObjectURL(removed.preview);
+    }
+    if (removed?.thumb) {
+      URL.revokeObjectURL(removed.thumb);
     }
     onImagesChange((prev) => prev.filter((_, i) => i !== idx));
   };
@@ -255,7 +302,13 @@ export default function ImageUploader({
               }}
               aria-label={`Phóng to ${img.name}`}
             >
-              <img src={img.preview} alt={img.name} />
+              {img.thumb ? (
+                <img src={img.thumb} alt={img.name} loading="lazy" decoding="async" />
+              ) : (
+                <div className="wm-thumb-loading" aria-hidden="true">
+                  <span className="wm-thumb-loading-spinner" />
+                </div>
+              )}
               {logoPreviewStyle && (
                 <div
                   className={`wm-thumb-watermark${logoPreviewStyle.mode === 'tiled' ? ' is-tiled' : ' is-single'}`}
