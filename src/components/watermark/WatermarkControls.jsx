@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { ensureHexColor } from '../../utils/colorTools.js';
+import { useDialogFocus } from '../../hooks/useDialogFocus.js';
 import '../../styles/WatermarkControls.css';
 
 const ACCENT_COLOR_PRESETS = [
@@ -35,6 +36,7 @@ function PersonalizationModal({
   onClose,
 }) {
   const normalizedValue = ensureHexColor(options.accentColor, '#2563EB');
+  const dialogRef = useDialogFocus(isOpen);
   const [activeTab, setActiveTab] = useState('color');
   const [draftColor, setDraftColor] = useState(normalizedValue);
   const [draftInput, setDraftInput] = useState(normalizedValue);
@@ -98,6 +100,7 @@ function PersonalizationModal({
     <div className="wm-modal-backdrop" role="presentation" onPointerDown={onClose}>
       <section
         className="wm-modal"
+        ref={dialogRef}
         role="dialog"
         aria-modal="true"
         aria-labelledby="wm-personalization-modal-title"
@@ -364,6 +367,18 @@ export default function WatermarkControls({
       )}
 
       {/* Logo Size */}
+      <label className="wm-control-group wm-block-text">
+        <span className="wm-section-label">Tên ảnh xuất</span>
+        <input
+          className="wm-input"
+          type="text"
+          value={options?.productName || ''}
+          onChange={(event) => update('productName', event.target.value)}
+          placeholder="Ví dụ: ao-so-mi"
+          maxLength={180}
+        />
+        <small className="wm-muted-text wm-block-text">Tự thêm số thứ tự và đuôi .jpg. Để trống sẽ dùng tên “image”.</small>
+      </label>
       <div className="wm-control-group">
         <div className="wm-control-row">
           <div className="wm-section-label wm-section-label--compact">
@@ -378,6 +393,7 @@ export default function WatermarkControls({
           min={10}
           max={200}
           value={size}
+          aria-label="Kích thước logo"
           onChange={(e) => update('size', Number(e.target.value))}
         />
         <div className="wm-slider-labels">
@@ -401,6 +417,7 @@ export default function WatermarkControls({
           min={5}
           max={100}
           value={opacity}
+          aria-label="Độ mờ logo"
           onChange={(e) => update('opacity', Number(e.target.value))}
         />
         <div className="wm-slider-labels">
@@ -444,6 +461,7 @@ export default function WatermarkControls({
           <select
             className="wm-input"
             value={logoPosition}
+            aria-label="Vị trí logo"
             onChange={(e) => update('logoPosition', e.target.value)}
           >
             <option value="top-left">⬉ Trên trái</option>

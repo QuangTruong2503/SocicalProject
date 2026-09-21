@@ -10,7 +10,7 @@ export function normalizeLocalPath(path, fallback = '/dashboard') {
   try {
     const url = new URL(path, window.location.origin);
 
-    if (url.origin !== window.location.origin) {
+    if (url.origin !== window.location.origin || /^\/auth(?:\/|$)/i.test(url.pathname)) {
       return fallback;
     }
 
@@ -18,4 +18,8 @@ export function normalizeLocalPath(path, fallback = '/dashboard') {
   } catch {
     return fallback;
   }
+}
+
+export function getAuthReturnPath(location) {
+  return normalizeLocalPath(location.state?.from || new URLSearchParams(location.search).get('next'));
 }

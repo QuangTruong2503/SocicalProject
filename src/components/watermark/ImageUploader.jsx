@@ -5,8 +5,7 @@ import '../../styles/ImageUploader.css';
 function reorderImages(list, fromIndex, toIndex) {
   const next = [...list];
   const [moved] = next.splice(fromIndex, 1);
-  const targetIndex = fromIndex < toIndex ? Math.max(0, toIndex - 1) : toIndex;
-  next.splice(targetIndex, 0, moved);
+  next.splice(toIndex, 0, moved);
   return next;
 }
 
@@ -44,6 +43,8 @@ export default function ImageUploader({
   const fileRef = useRef();
   const dragDepthRef = useRef(0);
   const imagesRef = useRef(images);
+  const batchRef = useRef(0);
+  const [error, setError] = useState('');
   const [draggedIndex, setDraggedIndex] = useState(null);
   const [dropIndex, setDropIndex] = useState(null);
   const [isDraggingFiles, setIsDraggingFiles] = useState(false);
@@ -88,6 +89,7 @@ export default function ImageUploader({
   }, [images]);
 
   useEffect(() => () => {
+    batchRef.current += 1;
     imagesRef.current.forEach((img) => {
       URL.revokeObjectURL(img.preview);
       if (img.thumb) {
@@ -97,7 +99,11 @@ export default function ImageUploader({
   }, []);
 
   const applyFiles = (files) => {
+    const validFiles = files.filter((file) => file.type.startsWith('image/') && file.size > 0);
+    setError(validFiles.length !== files.length ? 'Một số file trống hoặc không phải ảnh đã được bỏ qua.' : '');
+    files = validFiles;
     if (!files.length) return;
+    const batch = ++batchRef.current;
 
     const previousImages = images;
     const nextImages = files.map((file) => ({
@@ -107,6 +113,7 @@ export default function ImageUploader({
       name: file.name,
     }));
 
+    imagesRef.current = nextImages;
     onImagesChange(nextImages);
     previousImages.forEach((img) => {
       URL.revokeObjectURL(img.preview);
@@ -119,7 +126,13 @@ export default function ImageUploader({
     // `images` state), so this stays correct even if the user reorders or
     // removes items while the batch is still being thumbnailed.
     generateThumbnails(files, {
+      concurrency: 2,
+      shouldContinue: () => batchRef.current === batch,
       onThumbnailReady: (index, thumbUrl) => {
+        if (batchRef.current !== batch) {
+          URL.revokeObjectURL(thumbUrl);
+          return;
+        }
         onImagesChange((current) => {
           const targetIndex = current.findIndex((img) => img.file === files[index]);
 
@@ -137,7 +150,7 @@ export default function ImageUploader({
   };
 
   const handleFiles = (e) => {
-    const files = Array.from(e.target.files).filter((f) => f.type.startsWith('image/'));
+    const files = Array.from(e.target.files);
     applyFiles(files);
     e.target.value = '';
   };
@@ -146,7 +159,7 @@ export default function ImageUploader({
     e.preventDefault();
     dragDepthRef.current = 0;
     setIsDraggingFiles(false);
-    const files = Array.from(e.dataTransfer.files).filter((f) => f.type.startsWith('image/'));
+    const files = Array.from(e.dataTransfer.files);
     applyFiles(files);
   };
 
@@ -252,6 +265,15 @@ export default function ImageUploader({
 
       <div
         className={`wm-dropzone${isDraggingFiles ? ' is-dragging' : ''}`}
+        role="button"
+        tabIndex={0}
+        aria-label="Chọn ảnh nguồn"
+        onKeyDown={(event) => {
+          if (event.key === 'Enter' || event.key === ' ') {
+            event.preventDefault();
+            fileRef.current?.click();
+          }
+        }}
         onClick={() => fileRef.current?.click()}
         onDragEnter={handleDragEnter}
         onDragOver={handleDragOver}
@@ -262,6 +284,9 @@ export default function ImageUploader({
         <p className="wm-dropzone-title">Kéo thả hoặc click để chọn ảnh</p>
         <small className="wm-muted-text">Hỗ trợ JPG, PNG, WebP – nhiều file cùng lúc</small>
       </div>
+
+      {error && <p role="alert" className="wm-muted-text">{error}</p>}
+      {images.length > 0 && <p className="wm-muted-text">Chọn bộ ảnh mới sẽ thay thế bộ hiện tại. Kéo ảnh hoặc dùng Alt + ← / → để đổi thứ tự.</p>}
 
       <input
         ref={fileRef}
@@ -276,7 +301,7 @@ export default function ImageUploader({
         <div className="wm-thumb-grid">
           {images.map((img, i) => (
             <div
-              key={i}
+              key={img.preview}
               className={`wm-thumb wm-zoom-trigger${draggedIndex === i ? ' is-dragging' : ''}${dropIndex === i && draggedIndex !== i ? ' is-drop-target' : ''}`}
               role="button"
               tabIndex={0}
@@ -291,6 +316,13 @@ export default function ImageUploader({
                 kicker: `Ảnh nguồn #${i + 1}`,
               })}
               onKeyDown={(event) => {
+                if (event.target !== event.currentTarget) return;
+                if (event.altKey && ['ArrowLeft', 'ArrowRight'].includes(event.key)) {
+                  event.preventDefault();
+                  const target = i + (event.key === 'ArrowLeft' ? -1 : 1);
+                  if (target >= 0 && target < images.length) onImagesChange(reorderImages(images, i, target));
+                  return;
+                }
                 if (event.key === 'Enter' || event.key === ' ') {
                   event.preventDefault();
                   onImagePreview?.({
@@ -330,6 +362,7 @@ export default function ImageUploader({
               </span>
               <button
                 className="wm-thumb-remove"
+                aria-label={`Xóa ảnh ${img.name}`}
                 type="button"
                 onClick={(e) => {
                   e.stopPropagation();

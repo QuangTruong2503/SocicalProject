@@ -1,29 +1,30 @@
+import { lazy, Suspense } from 'react';
 import { Routes, Route, NavLink, useLocation, Navigate } from 'react-router-dom';
 import { HelmetProvider, Helmet } from 'react-helmet-async';
 import { useTheme } from './hooks/useTheme';
 import './styles/auth.css';
-import Watermark from './pages/Watermark.jsx';
-import WatermarkDashboardPage from './pages/WatermarkDashboardPage.jsx';
-import Quotation from './pages/Quotation/Quotation.jsx';
-import QuotationList from './pages/Quotation/QuotationList.jsx';
-import QuotationKnm from './pages/QuotationKnm/QuotationKnm.jsx';
-import QuotationKnmList from './pages/QuotationKnm/QuotationKnmList.jsx';
+const Watermark = lazy(() => import('./pages/Watermark.jsx'));
+const WatermarkDashboardPage = lazy(() => import('./pages/WatermarkDashboardPage.jsx'));
+const Quotation = lazy(() => import('./pages/Quotation/Quotation.jsx'));
+const QuotationList = lazy(() => import('./pages/Quotation/QuotationList.jsx'));
+const QuotationKnm = lazy(() => import('./pages/QuotationKnm/QuotationKnm.jsx'));
+const QuotationKnmList = lazy(() => import('./pages/QuotationKnm/QuotationKnmList.jsx'));
 import Footer from './components/Footer.jsx';
 import Header from './components/Header.jsx';
 import ScrollToTopButton from './components/ScrollToTopButton.jsx';
-import MemoryGame from './pages/MemoryGame.jsx';
-import AuthPage from './pages/AuthPage.jsx';
-import AuthCallbackPage from './pages/AuthCallbackPage.jsx';
-import DashboardPage from './pages/DashboardPage.jsx';
+const MemoryGame = lazy(() => import('./pages/MemoryGame.jsx'));
+const AuthPage = lazy(() => import('./pages/AuthPage.jsx'));
+const AuthCallbackPage = lazy(() => import('./pages/AuthCallbackPage.jsx'));
+const DashboardPage = lazy(() => import('./pages/DashboardPage.jsx'));
 import ProtectedRoute from './components/ProtectedRoute.jsx';
 import AdminRoute from './components/AdminRoute.jsx';
 import PublicRoute from './components/PublicRoute.jsx';
-import AISEO from './pages/AISEO.jsx';
-import AdminLayout from './pages/Admin/AdminLayout.jsx';
-import AdminDashboardPage from './pages/Admin/AdminDashboardPage.jsx';
-import AdminUsersPage from './pages/Admin/AdminUsersPage.jsx';
-import AdminQuotationsPage from './pages/Admin/AdminQuotationsPage.jsx';
-import AdminMemoryCardsPage from './pages/Admin/AdminMemoryCardsPage.jsx';
+const AISEO = lazy(() => import('./pages/AISEO.jsx'));
+const AdminLayout = lazy(() => import('./pages/Admin/AdminLayout.jsx'));
+const AdminDashboardPage = lazy(() => import('./pages/Admin/AdminDashboardPage.jsx'));
+const AdminUsersPage = lazy(() => import('./pages/Admin/AdminUsersPage.jsx'));
+const AdminQuotationsPage = lazy(() => import('./pages/Admin/AdminQuotationsPage.jsx'));
+const AdminMemoryCardsPage = lazy(() => import('./pages/Admin/AdminMemoryCardsPage.jsx'));
 
 function FeatureCard({ icon, title, description, buttonText, link, badge, delay }) {
   return (
@@ -313,6 +314,7 @@ export default function App() {
         {!isAuthPage && <Header />}
 
         <main className={`app-main ${isHomePage ? 'home-page' : 'content-page'} ${isAuthPage ? 'auth-page-shell' : ''}`}>
+          <Suspense fallback={<div role="status" style={{ padding: '48px 24px', textAlign: 'center' }}>Đang tải công cụ…</div>}>
           <Routes>
             <Route path="/" element={<HomePage />} />
             <Route path="/aiseo" element={<AISEO />} />
@@ -358,6 +360,7 @@ export default function App() {
             ))}
             <Route path="*" element={<NotFoundPage />} />
           </Routes>
+          </Suspense>
         </main>
 
         {!isAuthPage && <Footer />}

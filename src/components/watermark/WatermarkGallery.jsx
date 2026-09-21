@@ -1,5 +1,8 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
+import { normalizeImageName } from '../../hooks/useWatermarkProcessor';
+import { useDialogFocus } from '../../hooks/useDialogFocus.js';
+import { HARAVAN_PRESETS, loadHaravanPreferences, normalizeHaravanPrefix, saveHaravanPreferences } from '../../utils/haravanPreferences.js';
 import '../../styles/WatermarkGallery.css';
 
 const BULK_RENAME_TUTORIAL_URL =
@@ -8,21 +11,20 @@ const HARAVAN_PREFIX_GUIDE_IMAGE_URL =
   'https://psqfbcgkgafqtsmrgjqu.supabase.co/storage/v1/object/public/ZepLao/huong-dan-lay-link-haravan.png';
 
 function normalizeDownloadName(fileName) {
-  const trimmed = (fileName || '').trim();
-  const baseName = trimmed ? trimmed.replace(/\.[^.]+$/, '') : 'image';
-  return `${baseName || 'image'}.jpg`;
+  return normalizeImageName(fileName);
 }
 
 function normalizeBulkName(fileName) {
   const trimmed = fileName.trim();
   if (!trimmed) return '';
-  return /\.[^.]+$/.test(trimmed) ? trimmed : `${trimmed}.jpg`;
+  return normalizeImageName(trimmed);
 }
 
 function joinImageUrl(prefix, fileName) {
   const normalizedPrefix = prefix.trim().replace(/\/+$/, '');
-  const normalizedFileName = normalizeBulkName(fileName || '').replace(/^\/+/, '');
-  return normalizedPrefix && normalizedFileName ? `${normalizedPrefix}/${normalizedFileName}` : '';
+  const normalizedFileName = normalizeDownloadName(fileName);
+  if (!/^https?:\/\//i.test(normalizedPrefix)) return '';
+  return normalizedPrefix ? `${normalizedPrefix}/${encodeURIComponent(normalizedFileName)}` : '';
 }
 
 export default function WatermarkGallery({
@@ -30,25 +32,67 @@ export default function WatermarkGallery({
   onClear,
   onDownloadAll,
   onRenameFile,
+  onRenameFiles,
   onRemoveResult,
   isProcessing,
   processingProgress,
   downloadProgress,
+  isBusy = false,
 }) {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isBulkRenameOpen, setIsBulkRenameOpen] = useState(false);
   const [bulkNames, setBulkNames] = useState('');
   const [isHaravanLinksOpen, setIsHaravanLinksOpen] = useState(false);
-  const [haravanPrefix, setHaravanPrefix] = useState('');
+  const [haravanPreferences, setHaravanPreferences] = useState(loadHaravanPreferences);
+  const [isAddingHaravan, setIsAddingHaravan] = useState(false);
+  const [customHaravanName, setCustomHaravanName] = useState('');
+  const [customHaravanPrefix, setCustomHaravanPrefix] = useState('');
+  const [haravanOptionError, setHaravanOptionError] = useState('');
+  const [haravanStorageError, setHaravanStorageError] = useState('');
+  const haravanPrefix = haravanPreferences.selectedPrefix;
+  const haravanOptions = [...HARAVAN_PRESETS, ...haravanPreferences.customOptions];
   const [haravanCopyStatus, setHaravanCopyStatus] = useState('idle');
   const [isHaravanPrefixGuideOpen, setIsHaravanPrefixGuideOpen] = useState(false);
   const [previewResult, setPreviewResult] = useState(null);
   const [isPreviewClosing, setIsPreviewClosing] = useState(false);
+  const renameDialogRef = useDialogFocus(isBulkRenameOpen);
+  const linksDialogRef = useDialogFocus(isHaravanLinksOpen);
   const [viewportSize, setViewportSize] = useState({ width: 0, height: 0, scrollTop: 0 });
   const menuRef = useRef(null);
   const viewportRef = useRef(null);
   const previewCloseTimerRef = useRef(null);
   const isVirtualized = results.length > 24;
+
+  const updateHaravanPreferences = (next) => {
+    setHaravanPreferences(next);
+    setHaravanCopyStatus('idle');
+    setHaravanStorageError(saveHaravanPreferences(next)
+      ? '' : 'Trình duyệt chưa lưu được lựa chọn. Bạn vẫn có thể sử dụng trong phiên này.');
+  };
+
+  const handleAddHaravanOption = (event) => {
+    event.preventDefault();
+    const name = customHaravanName.trim();
+    const prefix = normalizeHaravanPrefix(customHaravanPrefix);
+    if (!name || !prefix) {
+      setHaravanOptionError('Nhập tên và URL thư mục hợp lệ (http/https), không kèm tham số hoặc ký tự #.');
+      return;
+    }
+    if (haravanOptions.some((option) => option.prefix === prefix)) {
+      setHaravanOptionError('Đường dẫn này đã có trong danh sách. Hãy chọn lựa chọn tương ứng.');
+      return;
+    }
+    if (haravanOptions.some((option) => option.name.toLocaleLowerCase('vi') === name.toLocaleLowerCase('vi'))) {
+      setHaravanOptionError('Tên này đã có trong danh sách. Vui lòng dùng tên khác.');
+      return;
+    }
+    updateHaravanPreferences({ customOptions: [...haravanPreferences.customOptions, { name, prefix }], selectedPrefix: prefix });
+    setCustomHaravanName('');
+    setCustomHaravanPrefix('');
+    setHaravanOptionError('');
+    setIsAddingHaravan(false);
+    document.getElementById('wm-haravan-store')?.focus();
+  };
 
   const closePreview = useCallback(() => {
     if (!previewResult || isPreviewClosing) return;
@@ -175,7 +219,7 @@ export default function WatermarkGallery({
     const columnCount = Math.max(1, Math.floor((viewportSize.width + gap) / (minCardWidth + gap)));
     const rowHeight = 392;
     const totalRows = Math.ceil(results.length / columnCount);
-    const visibleStartRow = Math.max(0, Math.floor(viewportSize.scrollTop / rowHeight) - overscanRows);
+    const visibleStartRow = Math.min(totalRows - 1, Math.max(0, Math.floor(viewportSize.scrollTop / rowHeight) - overscanRows));
     const visibleEndRow = Math.min(
       totalRows,
       Math.ceil((viewportSize.scrollTop + viewportSize.height) / rowHeight) + overscanRows
@@ -186,8 +230,8 @@ export default function WatermarkGallery({
     return {
       startIndex,
       endIndex,
-      topPadding: visibleStartRow * rowHeight,
-      bottomPadding: Math.max(0, (totalRows - visibleEndRow) * rowHeight),
+      topPadding: Math.max(0, visibleStartRow * rowHeight - gap),
+      bottomPadding: Math.max(0, (totalRows - visibleEndRow) * rowHeight - gap),
       columnCount,
     };
   }, [isVirtualized, results.length, viewportSize.height, viewportSize.scrollTop, viewportSize.width]);
@@ -237,9 +281,8 @@ export default function WatermarkGallery({
   };
 
   const handleBulkRename = () => {
-    parsedBulkNames.slice(0, results.length).forEach((fileName, index) => {
-      onRenameFile?.(index, fileName);
-    });
+    if (onRenameFiles) onRenameFiles(parsedBulkNames.slice(0, results.length));
+    else parsedBulkNames.slice(0, results.length).forEach((fileName, index) => onRenameFile?.(index, fileName));
     setIsBulkRenameOpen(false);
     setBulkNames('');
   };
@@ -250,7 +293,7 @@ export default function WatermarkGallery({
 
   return (
     <div className="wm-gallery-section">
-      <div className="wm-gallery-header">
+      <div className="wm-gallery-header" inert={isBusy || undefined}>
         <div className="wm-gallery-heading">
           <h5 className="wm-gallery-title">
             <span className="wm-inline-icon" aria-hidden="true">▦</span>
@@ -353,7 +396,7 @@ export default function WatermarkGallery({
       </div>
 
       {isProcessing && (
-        <div className="wm-processing-bar">
+        <div className="wm-processing-bar" role="status" aria-live="polite">
           <div className="wm-processing-track" aria-hidden="true">
             <div
               className="wm-processing-inner"
@@ -374,7 +417,7 @@ export default function WatermarkGallery({
       )}
 
       {downloadProgress && (
-        <div className="wm-processing-bar wm-download-progress">
+        <div className="wm-processing-bar wm-download-progress" role="status" aria-live="polite">
           <div className="wm-processing-track" aria-hidden="true">
             <div
               className="wm-processing-inner"
@@ -399,6 +442,7 @@ export default function WatermarkGallery({
       ) : (
         <div
           ref={viewportRef}
+          inert={isBusy || undefined}
           className={`wm-result-viewport${isVirtualized ? ' is-virtualized' : ''}`}
           style={isVirtualized ? { maxHeight: 'min(82vh, 920px)' } : undefined}
         >
@@ -424,7 +468,7 @@ export default function WatermarkGallery({
                   onRenameFile={onRenameFile}
                   onRemoveResult={onRemoveResult}
                   onPreview={() => openPreview(r, index)}
-                  style={{ animationDelay: `${index * 50}ms` }}
+                  style={{ animationDelay: `${Math.min(i, 7) * 35}ms` }}
                 />
               );
             })}
@@ -456,6 +500,7 @@ export default function WatermarkGallery({
         >
           <div
             className="wm-bulk-rename-modal"
+            ref={renameDialogRef}
             role="dialog"
             aria-modal="true"
             aria-labelledby="wm-bulk-rename-title"
@@ -495,7 +540,7 @@ export default function WatermarkGallery({
                 onChange={(event) => setBulkNames(event.target.value)}
                 placeholder={'Áo sơ mi trắng\nÁo sơ mi xanh\nÁo sơ mi hồng'}
                 rows={10}
-                autoFocus
+                data-dialog-initial
               />
             </label>
             <div className="wm-bulk-rename-summary" aria-live="polite">
@@ -547,6 +592,7 @@ export default function WatermarkGallery({
         >
           <div
             className="wm-bulk-rename-modal wm-haravan-link-modal"
+            ref={linksDialogRef}
             role="dialog"
             aria-modal="true"
             aria-labelledby="wm-haravan-link-title"
@@ -572,6 +618,46 @@ export default function WatermarkGallery({
             </div>
 
             <div className="wm-bulk-rename-field">
+              <label htmlFor="wm-haravan-store"><strong>Chọn cửa hàng</strong></label>
+              <select
+                id="wm-haravan-store"
+                className="wm-haravan-prefix-input"
+                value={haravanPrefix}
+                onChange={(event) => updateHaravanPreferences({ ...haravanPreferences, selectedPrefix: event.target.value })}
+                data-dialog-initial
+              >
+                <optgroup label="Có sẵn">
+                  {HARAVAN_PRESETS.map((option) => <option key={option.prefix} value={option.prefix}>{option.name}</option>)}
+                </optgroup>
+                {haravanPreferences.customOptions.length > 0 && <optgroup label="Đã thêm trên trình duyệt này">
+                  {haravanPreferences.customOptions.map((option) => <option key={option.prefix} value={option.prefix}>{option.name}</option>)}
+                </optgroup>}
+              </select>
+              <small>Lựa chọn gần nhất và các cửa hàng bạn thêm được lưu trên trình duyệt này.</small>
+              <button type="button" className="wm-haravan-prefix-guide-button" aria-expanded={isAddingHaravan} aria-controls="wm-haravan-add-option" onClick={() => {
+                setIsAddingHaravan((open) => !open);
+                setHaravanOptionError('');
+              }}>＋ Thêm lựa chọn khác</button>
+            </div>
+            {isAddingHaravan && (
+              <form id="wm-haravan-add-option" className="wm-haravan-custom-option" onSubmit={handleAddHaravanOption}>
+                <label className="wm-bulk-rename-field">
+                  <strong>Tên cửa hàng</strong>
+                  <input className="wm-haravan-prefix-input" value={customHaravanName} onChange={(event) => setCustomHaravanName(event.target.value)} maxLength={80} placeholder="Ví dụ: Cửa hàng của tôi" required />
+                </label>
+                <label className="wm-bulk-rename-field">
+                  <strong>Đường dẫn thư mục ảnh</strong>
+                  <input className="wm-haravan-prefix-input" type="url" value={customHaravanPrefix} onChange={(event) => setCustomHaravanPrefix(event.target.value)} placeholder="https://cdn.hstatic.net/files/…/file/" required />
+                </label>
+                {haravanOptionError && <p role="alert">{haravanOptionError}</p>}
+                <div className="wm-bulk-rename-action-buttons">
+                  <button className="wm-bulk-rename-cancel" type="button" onClick={() => setIsAddingHaravan(false)}>Hủy</button>
+                  <button className="wm-bulk-rename-confirm" type="submit">Lưu và chọn</button>
+                </div>
+              </form>
+            )}
+            {haravanStorageError && <p role="alert">{haravanStorageError}</p>}
+            <div className="wm-bulk-rename-field">
               <div className="wm-bulk-rename-field-label">
                 <label htmlFor="wm-haravan-prefix"><strong>Tiền tố hình ảnh trên Haravan</strong></label>
                 <button
@@ -590,12 +676,7 @@ export default function WatermarkGallery({
                 className="wm-haravan-prefix-input"
                 type="url"
                 value={haravanPrefix}
-                onChange={(event) => {
-                  setHaravanPrefix(event.target.value);
-                  setHaravanCopyStatus('idle');
-                }}
-                placeholder="https://cdn.hstatic.net/files/200001198818/file/"
-                autoFocus
+                readOnly
               />
             </div>
             {isHaravanPrefixGuideOpen && (
@@ -625,7 +706,7 @@ export default function WatermarkGallery({
                 className="wm-bulk-rename-textarea wm-haravan-links-textarea"
                 value={haravanLinks}
                 placeholder="Nhập tiền tố phía trên để tạo danh sách link..."
-                rows={10}
+                rows={3}
                 readOnly
               />
             </label>
@@ -678,7 +759,7 @@ function ResultCard({ result, index, onPreview, onRenameFile, onRemoveResult, st
           onClick={onPreview}
           aria-label={`Phóng to ${result.fileName}`}
         >
-          <img src={result.url} alt={result.fileName} loading="lazy" />
+          <img src={result.thumb || result.url} alt={result.fileName} loading="lazy" decoding="async" />
         </button>
         <div className="wm-result-overlay">
           <div className="wm-result-action-row">
@@ -743,6 +824,7 @@ function SkeletonResultCard() {
 }
 
 function ImagePreviewModal({ result, isClosing, onClose }) {
+  const dialogRef = useDialogFocus();
   return createPortal(
     <div
       className={`wm-preview-backdrop${isClosing ? ' is-closing' : ''}`}
@@ -751,6 +833,7 @@ function ImagePreviewModal({ result, isClosing, onClose }) {
     >
       <div
         className="wm-preview-modal"
+        ref={dialogRef}
         role="dialog"
         aria-modal="true"
         aria-label={`Xem trước ${result.fileName}`}

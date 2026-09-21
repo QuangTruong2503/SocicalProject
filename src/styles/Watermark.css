@@ -1,5 +1,38 @@
 /* Watermark page theme scoped to .wm-page */
 
+.wm-workspace-heading { margin-bottom: 24px; }
+.wm-workspace-heading h1 { margin: 0 0 8px; font-size: clamp(1.6rem, 4vw, 2.2rem); color: var(--wm-text); }
+.wm-workspace-heading p { margin: 0; color: var(--wm-text-muted); line-height: 1.65; }
+.wm-live-preview { margin-top: 24px; }
+.wm-live-preview .wm-control-row { gap: 12px; flex-wrap: wrap; margin-bottom: 12px; }
+.wm-live-preview small { color: var(--wm-text-muted); }
+.wm-live-preview-frame {
+  display: grid;
+  place-items: center;
+  min-height: 180px;
+  padding: 12px;
+  border: 1px solid var(--wm-border);
+  border-radius: 16px;
+  background: var(--wm-bg-soft);
+}
+.wm-live-preview-frame img { display: block; max-width: 100%; max-height: 320px; object-fit: contain; border-radius: 8px; }
+.wm-page button.wm-dropzone { width: 100%; font: inherit; color: inherit; }
+.wm-page [inert] { opacity: 0.65; }
+.wm-page .wm-result-viewport.is-virtualized .wm-result-card { height: 372px; }
+.wm-page .wm-result-viewport.is-virtualized .wm-result-img-wrap { height: 250px; aspect-ratio: auto; }
+.wm-page .wm-result-viewport.is-virtualized .wm-result-img-wrap img { object-fit: contain; }
+.wm-page :is(button, input, select, textarea, [tabindex]):focus-visible { outline: 3px solid var(--wm-primary); outline-offset: 3px; }
+
+@media (prefers-reduced-motion: reduce) {
+  .wm-page *, body.wm-watermark-theme [role='dialog'] * {
+    animation-duration: 0.01ms !important;
+    animation-delay: 0ms !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+  .wm-seasonal-layer { display: none; }
+}
+
 .wm-page {
   --wm-bg: #f8fafc;
   --wm-bg-soft: #eef4ff;
@@ -814,6 +847,8 @@
   grid-template-columns: repeat(auto-fill, minmax(76px, 1fr));
   gap: 0.55rem;
   margin-top: 1rem;
+  overflow:scroll;
+  max-height: 240px;
 }
 
 .wm-page .wm-thumb {

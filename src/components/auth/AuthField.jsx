@@ -1,5 +1,8 @@
+import { FiEye, FiEyeOff } from 'react-icons/fi';
+
 export default function AuthField({
   id,
+  name,
   type = 'text',
   label,
   value,
@@ -7,6 +10,8 @@ export default function AuthField({
   error,
   disabled,
   autoComplete,
+  hint,
+  placeholder = '',
   showPasswordToggle = false,
   isPasswordVisible = false,
   onTogglePassword,
@@ -15,18 +20,22 @@ export default function AuthField({
 
   return (
     <div className={`auth-field ${error ? 'has-error' : ''}`}>
+      <label className="auth-label" htmlFor={id}>{label}</label>
       <div className="auth-input-wrap">
         <input
           id={id}
+          name={name || id}
           className="auth-input"
           type={inputType}
           value={value}
           onChange={onChange}
           disabled={disabled}
           autoComplete={autoComplete}
-          placeholder=" "
+          placeholder={placeholder}
+          required
+          aria-invalid={Boolean(error)}
+          aria-describedby={error ? `${id}-error` : hint ? `${id}-hint` : undefined}
         />
-        <label className="auth-label" htmlFor={id}>{label}</label>
         {showPasswordToggle && (
           <button
             type="button"
@@ -34,12 +43,14 @@ export default function AuthField({
             onClick={onTogglePassword}
             disabled={disabled}
             aria-label={isPasswordVisible ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'}
+            aria-pressed={isPasswordVisible}
           >
-            {isPasswordVisible ? 'Hide' : 'Show'}
+            {isPasswordVisible ? <FiEyeOff aria-hidden="true" /> : <FiEye aria-hidden="true" />}
           </button>
         )}
       </div>
-      <div className={`auth-error ${error ? 'visible' : ''}`}>{error || ' '}</div>
+      {error ? <p id={`${id}-error`} className="auth-error visible" role="alert">{error}</p>
+        : hint ? <p id={`${id}-hint`} className="auth-field-hint">{hint}</p> : null}
     </div>
   );
 }

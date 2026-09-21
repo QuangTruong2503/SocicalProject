@@ -322,6 +322,22 @@
   outline: 3px solid color-mix(in srgb, #10b981 18%, transparent);
 }
 
+.wm-haravan-custom-option {
+  display: grid;
+  gap: 1rem;
+  margin: 1rem 0;
+  padding: 1rem;
+  border: 1px solid var(--border-color);
+  border-radius: 16px;
+  background: var(--bg-card);
+}
+
+.wm-haravan-custom-option .wm-bulk-rename-field { margin: 0; }
+.wm-haravan-custom-option .wm-bulk-rename-action-buttons { justify-content: flex-end; flex-wrap: wrap; }
+.wm-haravan-custom-option p { margin: 0; color: var(--secondary-color); }
+.wm-haravan-link-modal select option,
+.wm-haravan-link-modal select optgroup { background: var(--bg-card); color: var(--text-light); }
+
 .wm-haravan-prefix-guide-button {
   display: inline-flex;
   align-items: center;
@@ -399,7 +415,6 @@
 }
 
 .wm-haravan-links-textarea {
-  min-height: 210px;
   font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
   font-size: 0.82rem;
 }

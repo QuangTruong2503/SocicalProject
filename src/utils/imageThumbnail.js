@@ -38,6 +38,8 @@ export async function createThumbnailUrl(file, maxDimension = DEFAULT_MAX_DIMENS
     canvas.width = targetWidth;
     canvas.height = targetHeight;
     const ctx = canvas.getContext('2d');
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, targetWidth, targetHeight);
     ctx.drawImage(bitmap, 0, 0, targetWidth, targetHeight);
 
     const blob = await new Promise((resolve, reject) => {
@@ -73,11 +75,12 @@ export async function generateThumbnails(files, {
   quality = DEFAULT_QUALITY,
   concurrency = 4,
   onThumbnailReady,
+  shouldContinue = () => true,
 } = {}) {
   let cursor = 0;
 
   async function worker() {
-    while (cursor < files.length) {
+    while (cursor < files.length && shouldContinue()) {
       const index = cursor;
       cursor += 1;
       const url = await createThumbnailUrl(files[index], maxDimension, quality);

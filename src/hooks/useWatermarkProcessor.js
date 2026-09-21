@@ -1,202 +1,122 @@
-/**
- * useWatermarkProcessor
- * Core logic: renders each source image with the logo watermark onto a canvas,
- * then exports as JPEG blob.
- */
-import imageCompression from 'browser-image-compression';
-
-export async function processWatermark(sourceFile, logoUrl, options = {}) {
-  const {
-    size = 60,
-    opacity = 60,
-    tiled = false,
-    logoPosition = 'bottom-right',
-  } = options;
-
+/** Canvas processing shared by previews and JPEG exports. */
+export function loadWatermarkImage(url) {
   return new Promise((resolve, reject) => {
-    const sourceUrl = URL.createObjectURL(sourceFile);
-    const img = new Image();
-
-    const cleanup = () => {
-      URL.revokeObjectURL(sourceUrl);
+    const image = new Image();
+    const timer = setTimeout(() => finish(new Error('Đọc ảnh quá thời gian. Hãy thử ảnh khác.')), 30000);
+    const finish = (error) => {
+      clearTimeout(timer);
+      image.onload = null;
+      image.onerror = null;
+      if (error) reject(error);
+      else resolve(image);
     };
-
-    img.onload = () => {
-      const exportImage = (logo = null) => {
-        const canvas = document.createElement('canvas');
-        canvas.width = img.naturalWidth;
-        canvas.height = img.naturalHeight;
-        const ctx = canvas.getContext('2d');
-
-        ctx.drawImage(img, 0, 0);
-
-        if (logo) {
-          const scaleFactor = size / 100;
-          const logoW = Math.round(img.naturalWidth * 0.2 * scaleFactor);
-          const logoH = Math.round((logo.naturalHeight / logo.naturalWidth) * logoW);
-
-          ctx.globalAlpha = opacity / 100;
-
-          if (tiled) {
-            const gapX = logoW * 1.5;
-            const gapY = logoH * 1.5;
-            const cols = Math.ceil(canvas.width / gapX) + 1;
-            const rows = Math.ceil(canvas.height / gapY) + 1;
-
-            for (let r = 0; r < rows; r += 1) {
-              for (let c = 0; c < cols; c += 1) {
-                const x = c * gapX - (r % 2 === 0 ? 0 : gapX / 2);
-                const y = r * gapY;
-                ctx.drawImage(logo, x, y, logoW, logoH);
-              }
-            }
-          } else {
-            const pad = Math.round(img.naturalWidth * 0.02);
-            let x = 0;
-            let y = 0;
-
-            if (logoPosition.includes('left')) {
-              x = pad;
-            } else if (logoPosition.includes('right')) {
-              x = canvas.width - logoW - pad;
-            } else {
-              x = (canvas.width - logoW) / 2;
-            }
-
-            if (logoPosition.includes('top')) {
-              y = pad;
-            } else if (logoPosition.includes('bottom')) {
-              y = canvas.height - logoH - pad;
-            } else {
-              y = (canvas.height - logoH) / 2;
-            }
-
-            ctx.drawImage(logo, x, y, logoW, logoH);
-          }
-        }
-
-        ctx.globalAlpha = 1;
-        ctx.shadowColor = 'transparent';
-        ctx.shadowBlur = 0;
-        ctx.shadowOffsetX = 0;
-        ctx.shadowOffsetY = 0;
-
-        canvas.toBlob(
-          (blob) => {
-            cleanup();
-            if (blob) resolve(blob);
-            else reject(new Error('Canvas toBlob failed'));
-          },
-          'image/jpeg',
-          0.92
-        );
-      };
-
-      if (!logoUrl) {
-        exportImage();
-        return;
-      }
-
-      const logo = new Image();
-      logo.onload = () => exportImage(logo);
-
-      logo.onerror = () => {
-        cleanup();
-        reject(new Error('Logo load error'));
-      };
-
-      logo.src = logoUrl;
-    };
-
-    img.onerror = () => {
-      cleanup();
-      reject(new Error('Image load error'));
-    };
-
-    img.src = sourceUrl;
+    image.onload = () => finish();
+    image.onerror = () => finish(new Error('Không thể đọc ảnh. Hãy chọn một ảnh hợp lệ.'));
+    image.src = url;
   });
 }
 
-/**
- * Resize a JPEG blob to 800×600 (letterboxed with black bars)
- */
+function bounded(value, min, max, fallback) {
+  const number = Number(value);
+  return Number.isFinite(number) ? Math.max(min, Math.min(max, number)) : fallback;
+}
+
+async function exportCanvas(canvas, draw, quality = 0.92) {
+  try {
+    const context = canvas.getContext('2d');
+    if (!context) throw new Error('Thiết bị không đủ bộ nhớ để xử lý ảnh này.');
+    context.fillStyle = '#ffffff';
+    context.fillRect(0, 0, canvas.width, canvas.height);
+    draw(context);
+    return await new Promise((resolve, reject) => canvas.toBlob(
+      (blob) => blob ? resolve(blob) : reject(new Error('Không thể xuất ảnh. Hãy thử ảnh nhỏ hơn.')),
+      'image/jpeg', quality,
+    ));
+  } finally {
+    canvas.width = 0;
+    canvas.height = 0;
+  }
+}
+
+export async function processWatermark(sourceFile, logoUrl, options = {}) {
+  const sourceUrl = URL.createObjectURL(sourceFile);
+  try {
+    const img = await loadWatermarkImage(sourceUrl);
+    const logo = logoUrl ? (typeof logoUrl === 'string' ? await loadWatermarkImage(logoUrl) : logoUrl) : null;
+    const canvas = document.createElement('canvas');
+    const scale = options.maxDimension ? Math.min(1, options.maxDimension / Math.max(img.naturalWidth, img.naturalHeight)) : 1;
+    canvas.width = Math.max(1, Math.round(img.naturalWidth * scale));
+    canvas.height = Math.max(1, Math.round(img.naturalHeight * scale));
+    return await exportCanvas(canvas, (ctx) => {
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+      if (!logo) return;
+      const size = bounded(options.size, 10, 200, 60);
+      const ratio = logo.naturalHeight / logo.naturalWidth;
+      const logoW = Math.max(1, Math.min(canvas.width * 0.2 * size / 100, canvas.height * 0.96 / ratio));
+      const logoH = Math.max(1, logoW * ratio);
+      ctx.globalAlpha = bounded(options.opacity, 0, 100, 60) / 100;
+      if (options.tiled) {
+        // Bound draw calls for tiny images and extremely wide or short logos.
+        const gapX = Math.max(logoW * 1.5, canvas.width / 100);
+        const gapY = Math.max(logoH * 1.5, canvas.height / 100);
+        for (let row = 0; row * gapY < canvas.height; row += 1) {
+          for (let col = 0; col * gapX < canvas.width + gapX; col += 1) {
+            ctx.drawImage(logo, col * gapX - (row % 2 ? gapX / 2 : 0), row * gapY, logoW, logoH);
+          }
+        }
+      } else {
+        const position = String(options.logoPosition || 'center');
+        const pad = Math.min(canvas.width, canvas.height) * 0.02;
+        const x = position.includes('left') ? pad : position.includes('right') ? canvas.width - logoW - pad : (canvas.width - logoW) / 2;
+        const y = position.includes('top') ? pad : position.includes('bottom') ? canvas.height - logoH - pad : (canvas.height - logoH) / 2;
+        ctx.drawImage(logo, x, y, logoW, logoH);
+      }
+    });
+  } finally {
+    URL.revokeObjectURL(sourceUrl);
+  }
+}
+
+/** Resize with white letterboxing, preserving the source aspect ratio. */
 export async function resizeBlob(blob, width = 800, height = 600) {
   const url = URL.createObjectURL(blob);
-  
   try {
-    return await new Promise((resolve, reject) => {
-      const img = new Image();
-      
-      img.onload = () => {
-        // Clean up the object URL as soon as the image is loaded
-        URL.revokeObjectURL(url);
-
-        const canvas = document.createElement('canvas');
-        canvas.width = width;
-        canvas.height = height;
-        const ctx = canvas.getContext('2d');
-
-        // Fill background
-        ctx.fillStyle = '#ffffff';
-        ctx.fillRect(0, 0, width, height);
-
-        // Calculate aspect ratio (Contain)
-        const scale = Math.min(width / img.naturalWidth, height / img.naturalHeight);
-        const dw = img.naturalWidth * scale;
-        const dh = img.naturalHeight * scale;
-        const dx = (width - dw) / 2;
-        const dy = (height - dh) / 2;
-
-        ctx.drawImage(img, dx, dy, dw, dh);
-
-        canvas.toBlob(
-          (result) => (result ? resolve(result) : reject(new Error('Canvas to Blob failed'))),
-          'image/jpeg',
-          0.9
-        );
-      };
-
-      img.onerror = () => {
-        URL.revokeObjectURL(url);
-        reject(new Error('Image load error'));
-      };
-
-      img.src = url;
-    });
-  } catch (error) {
-    URL.revokeObjectURL(url); // Safety fallback
-    throw error;
+    const img = await loadWatermarkImage(url);
+    const canvas = document.createElement('canvas');
+    canvas.width = width;
+    canvas.height = height;
+    return await exportCanvas(canvas, (ctx) => {
+      const scale = Math.min(width / img.naturalWidth, height / img.naturalHeight);
+      const dw = img.naturalWidth * scale;
+      const dh = img.naturalHeight * scale;
+      ctx.drawImage(img, (width - dw) / 2, (height - dh) / 2, dw, dh);
+    }, 0.9);
+  } finally {
+    URL.revokeObjectURL(url);
   }
+}
+
+export function normalizeImageName(value, fallback = 'image') {
+  const base = String(value || '').trim().replace(/\.(jpe?g|png|webp|gif|svg|avif|bmp|heic|tiff?)$/i, '')
+    .replace(/[<>:"/\\|?*]/g, '-').replace(/[. ]+$/, '').slice(0, 180);
+  return `${base || fallback}.jpg`;
 }
 
 export function buildFileName(baseName, index, total) {
-  const safeName = baseName.trim() || 'image';
-  if (total === 1) return `${safeName}.jpg`;
-  return `${safeName}_${String(index + 1).padStart(2, '0')}.jpg`;
+  const name = normalizeImageName(baseName).slice(0, -4);
+  return total === 1 ? `${name}.jpg` : `${name}_${String(index + 1).padStart(2, '0')}.jpg`;
 }
 
-/**
- * Resize and compress a JPEG blob to 800×600 and under 100KB
- * Uses browser-image-compression for efficient compression
- */
 export async function compressAndResizeBlob(blob, width = 800, height = 600, maxSizeKB = 100) {
-  try {
-    // First, resize to 800x600
-    const resizedBlob = await resizeBlob(blob, width, height);
-    
-    // Then compress to under maxSizeKB
-    const options = {
-      maxSizeMB: maxSizeKB / 1024, // Convert KB to MB
-      maxWidthOrHeight: Math.max(width, height),
-      useWebWorker: true,
-      quality: 0.8,
-    };
-    
-    const compressedBlob = await imageCompression(resizedBlob, options);
-    return compressedBlob;
-  } catch (err) {
-    console.error('Compression error:', err);
-    // Fallback to just resizing if compression fails
-    return resizeBlob(blob, width, height);
-  }
+  const resized = await resizeBlob(blob, width, height);
+  const { default: imageCompression } = await import('browser-image-compression');
+  const compressed = await imageCompression(resized, {
+    maxSizeMB: maxSizeKB / 1024,
+    maxWidthOrHeight: Math.max(width, height),
+    useWebWorker: true,
+    initialQuality: 0.8,
+    alwaysKeepResolution: true,
+  });
+  if (compressed.size > maxSizeKB * 1024) throw new Error('Không thể nén ảnh dưới 100 KB. Hãy chọn chế độ 800 × 600.');
+  return compressed;
 }

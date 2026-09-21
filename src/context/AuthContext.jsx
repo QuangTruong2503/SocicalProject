@@ -251,9 +251,9 @@ export function AuthProvider({ children }) {
     return result;
   }
 
-  async function signup({ email, password, username }) {
+  async function signup({ email, password, username, redirectPath }) {
     setAuthError(null);
-    const result = await signUp({ email, password, username });
+    const result = await signUp({ email, password, username, redirectPath });
 
     if (result.error) {
       setAuthError(result.error);

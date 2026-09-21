@@ -1,415 +1,164 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
+import { FcGoogle } from 'react-icons/fc';
+import { FiArrowRight, FiMail } from 'react-icons/fi';
 import { useAuth } from '../../hooks/useAuth.js';
 import AuthField from './AuthField.jsx';
-import AuthToast from './AuthToast.jsx';
-import SuccessOverlay from './SuccessOverlay.jsx';
-import { normalizeLocalPath } from '../../utils/authRedirect.js';
+import { getAuthReturnPath } from '../../utils/authRedirect.js';
+import { validateAuthForm } from '../../utils/authValidation.js';
 
-const initialLoginState = {
-  email: '',
-  password: '',
-};
-
-const initialRegisterState = {
-  username: '',
-  email: '',
-  password: '',
-  confirmPassword: '',
-};
-
-function validateEmail(email) {
-  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
-}
+const emptyForm = { username: '', email: '', password: '', confirmPassword: '' };
 
 export default function AuthCard() {
   const navigate = useNavigate();
   const location = useLocation();
   const { login, signup, loginWithGoogle } = useAuth();
-  const [activeTab, setActiveTab] = useState('login');
-  const [loginForm, setLoginForm] = useState(initialLoginState);
-  const [registerForm, setRegisterForm] = useState(initialRegisterState);
-  const [errors, setErrors] = useState({});
-  const [pendingAction, setPendingAction] = useState(null);
-  const [toast, setToast] = useState(null);
-  const [showSuccess, setShowSuccess] = useState(false);
-  const [successMessage, setSuccessMessage] = useState('');
-  const [isShaking, setIsShaking] = useState(false);
-  const [showLoginPassword, setShowLoginPassword] = useState(false);
-  const [showRegisterPassword, setShowRegisterPassword] = useState(false);
-  const [showRegisterConfirmPassword, setShowRegisterConfirmPassword] = useState(false);
-  const returnTarget = normalizeLocalPath(location.state?.from, '/dashboard');
-  const isSubmitting = Boolean(pendingAction);
+  const [mode, setMode] = useState('login');
+  const [form, setForm] = useState(emptyForm);
+  const [errors, setErrors] = useState(() => ({ global: location.state?.authNotice }));
+  const [pending, setPending] = useState(null);
+  const [confirmationEmail, setConfirmationEmail] = useState('');
+  const [visiblePasswords, setVisiblePasswords] = useState({});
+  const requestInFlight = useRef(false);
+  const formRef = useRef(null);
+  const isRegister = mode === 'register';
+  const returnTarget = getAuthReturnPath(location);
 
-  useEffect(() => {
-    if (!toast) {
-      return undefined;
-    }
-
-    const timeoutId = window.setTimeout(() => {
-      setToast(null);
-    }, 3200);
-
-    return () => window.clearTimeout(timeoutId);
-  }, [toast]);
-
-  const registerFields = useMemo(() => ([
-    {
-      id: 'register-username',
-      label: 'Tên người dùng',
-      value: registerForm.username,
-      error: errors.username,
-      autoComplete: 'username',
-      onChange: (event) => {
-        setRegisterForm((prev) => ({ ...prev, username: event.target.value }));
-      },
-    },
-    {
-      id: 'register-email',
-      label: 'Email',
-      value: registerForm.email,
-      error: errors.email,
-      type: 'email',
-      autoComplete: 'email',
-      onChange: (event) => {
-        setRegisterForm((prev) => ({ ...prev, email: event.target.value }));
-      },
-    },
-    {
-      id: 'register-password',
-      label: 'Mật khẩu',
-      value: registerForm.password,
-      error: errors.password,
-      autoComplete: 'new-password',
-      showPasswordToggle: true,
-      isPasswordVisible: showRegisterPassword,
-      onTogglePassword: () => setShowRegisterPassword((prev) => !prev),
-      onChange: (event) => {
-        setRegisterForm((prev) => ({ ...prev, password: event.target.value }));
-      },
-    },
-    {
-      id: 'register-confirm-password',
-      label: 'Nhập lại mật khẩu',
-      value: registerForm.confirmPassword,
-      error: errors.confirmPassword,
-      autoComplete: 'new-password',
-      showPasswordToggle: true,
-      isPasswordVisible: showRegisterConfirmPassword,
-      onTogglePassword: () => setShowRegisterConfirmPassword((prev) => !prev),
-      onChange: (event) => {
-        setRegisterForm((prev) => ({ ...prev, confirmPassword: event.target.value }));
-      },
-    },
-  ]), [errors.confirmPassword, errors.email, errors.password, errors.username, registerForm, showRegisterConfirmPassword, showRegisterPassword]);
-
-  function triggerShake() {
-    setIsShaking(false);
-
-    window.requestAnimationFrame(() => {
-      setIsShaking(true);
-    });
-
-    window.setTimeout(() => {
-      setIsShaking(false);
-    }, 520);
-  }
-
-  function clearStateForTab(nextTab) {
-    setActiveTab(nextTab);
+  function changeMode(nextMode) {
+    if (requestInFlight.current || mode === nextMode) return;
+    setMode(nextMode);
     setErrors({});
-    setIsShaking(false);
-    setShowSuccess(false);
+    setVisiblePasswords({});
+    setForm((previous) => ({ ...emptyForm, email: previous.email }));
   }
 
-  function getSubmitLabel(action, fallback) {
-    if (pendingAction === action) {
-      return (
-        <>
-          <span className="auth-spinner"></span>
-          Đang xử lý...
-        </>
-      );
-    }
-
-    return fallback;
+  function updateField(key, value) {
+    setForm((previous) => ({ ...previous, [key]: value }));
+    setErrors((previous) => ({ ...previous, [key]: undefined, global: undefined,
+      ...(key === 'password' ? { confirmPassword: undefined } : {}),
+    }));
   }
 
-  function validateRegisterForm() {
-    const nextErrors = {};
-
-    if (registerForm.username.trim().length < 3) {
-      nextErrors.username = 'Username phải có ít nhất 3 ký tự.';
-    }
-
-    if (!validateEmail(registerForm.email)) {
-      nextErrors.email = 'Email không đúng định dạng.';
-    }
-
-    if (registerForm.password.length < 6) {
-      nextErrors.password = 'Password phải có ít nhất 6 ký tự.';
-    }
-
-    if (registerForm.confirmPassword !== registerForm.password) {
-      nextErrors.confirmPassword = 'Confirm password không khớp.';
-    }
-
-    setErrors(nextErrors);
-
-    if (Object.keys(nextErrors).length > 0) {
-      triggerShake();
-      return false;
-    }
-
-    return true;
-  }
-
-  function validateLoginForm() {
-    const nextErrors = {};
-
-    if (!validateEmail(loginForm.email)) {
-      nextErrors.email = 'Email không đúng định dạng.';
-    }
-
-    if (loginForm.password.length < 6) {
-      nextErrors.password = 'Password phải có ít nhất 6 ký tự.';
-    }
-
-    setErrors(nextErrors);
-
-    if (Object.keys(nextErrors).length > 0) {
-      triggerShake();
-      return false;
-    }
-
-    return true;
-  }
-
-  async function handleRegisterSubmit(event) {
+  async function submit(event) {
     event.preventDefault();
-
-    if (!validateRegisterForm()) {
+    if (requestInFlight.current) return;
+    const nextErrors = validateAuthForm(mode, form);
+    setErrors(nextErrors);
+    const firstInvalid = Object.keys(nextErrors)[0];
+    if (firstInvalid) {
+      formRef.current?.elements.namedItem(firstInvalid)?.focus();
       return;
     }
-
-    setPendingAction('register');
-    setErrors({});
-
-    const result = await signup({
-      email: registerForm.email.trim().toLowerCase(),
-      password: registerForm.password,
-      username: registerForm.username.trim(),
-    });
-
-    if (result.error) {
-      setPendingAction(null);
-      setErrors({ global: result.error });
-      triggerShake();
-      return;
-    }
-
-    setSuccessMessage('Đăng ký thành công');
-    setShowSuccess(true);
-    setToast({
-      type: 'success',
-      title: 'Đăng ký thành công',
-      message: result.data?.requiresEmailConfirmation
-        ? 'Đăng ký thành công. Thông báo kích hoạt đã được gửi tới email.'
-        : 'Tài khoản đã được tạo và phiên đăng nhập đã sẵn sàng.',
-    });
-
-    window.setTimeout(() => {
-      setShowSuccess(false);
-      setRegisterForm(initialRegisterState);
-      clearStateForTab('login');
-      setPendingAction(null);
-
-      if (!result.data?.requiresEmailConfirmation && result.data?.session) {
+    requestInFlight.current = true;
+    setPending(mode);
+    setConfirmationEmail('');
+    try {
+      const payload = { email: form.email.trim().toLowerCase(), password: form.password,
+        username: form.username.trim(), redirectPath: returnTarget };
+      const result = await (isRegister ? signup(payload) : login(payload));
+      if (result.error) {
+        setErrors({ global: result.error });
+      } else if (result.data?.session) {
         navigate(returnTarget, { replace: true });
+      } else if (isRegister && result.data?.requiresEmailConfirmation) {
+        setConfirmationEmail(payload.email);
+        setForm({ ...emptyForm, email: payload.email });
+        setMode('login');
+        setVisiblePasswords({});
+      } else {
+        setErrors({ global: 'Chưa thể hoàn tất đăng nhập. Vui lòng thử lại.' });
       }
-    }, 1100);
+    } catch {
+      setErrors({ global: 'Không thể kết nối. Vui lòng kiểm tra mạng và thử lại.' });
+    } finally {
+      requestInFlight.current = false;
+      setPending(null);
+    }
   }
 
-  async function handleLoginSubmit(event) {
-    event.preventDefault();
-
-    if (!validateLoginForm()) {
-      return;
-    }
-
-    setPendingAction('login');
+  async function googleLogin() {
+    if (requestInFlight.current) return;
+    requestInFlight.current = true;
+    setPending('google');
     setErrors({});
-
-    const result = await login({
-      email: loginForm.email.trim().toLowerCase(),
-      password: loginForm.password,
-    });
-
-    if (result.error) {
-      setPendingAction(null);
-      setErrors({ global: result.error });
-      triggerShake();
-      return;
-    }
-
-    setSuccessMessage('Đăng nhập thành công');
-    setShowSuccess(true);
-    setToast({
-      type: 'success',
-      title: 'Xin chào!',
-      message: 'Bạn đã đăng nhập thành công.',
-    });
-
-    window.setTimeout(() => {
-      setShowSuccess(false);
-      setPendingAction(null);
-      navigate(returnTarget, { replace: true });
-    }, 900);
-  }
-
-  async function handleGoogleLogin() {
-    setPendingAction('google');
-    setErrors({});
-
-    const result = await loginWithGoogle(returnTarget);
-
-    if (result.error) {
-      setPendingAction(null);
-      setErrors({ global: result.error });
-      triggerShake();
+    try {
+      const result = await loginWithGoogle(returnTarget);
+      if (result.error) setErrors({ global: result.error });
+    } catch {
+      setErrors({ global: 'Không thể mở Google. Vui lòng thử lại.' });
+    } finally {
+      requestInFlight.current = false;
+      setPending(null);
     }
   }
 
-  function renderGoogleButton() {
-    return (
-      <button
-        type="button"
-        className="auth-oauth-btn"
-        onClick={handleGoogleLogin}
-        disabled={isSubmitting}
-      >
-        <span className="auth-google-mark" aria-hidden="true">
-          <span className="auth-google-mark-blue">G</span>
-        </span>
-        {pendingAction === 'google' ? (
-          <>
-            <span className="auth-spinner auth-spinner-dark"></span>
-            Đang mở Google...
-          </>
-        ) : (
-          'Tiếp tục với Google'
-        )}
-      </button>
-    );
+  function field(key, label, options = {}) {
+    return <AuthField key={key} id={mode + '-' + key} name={key} label={label}
+      value={form[key]} onChange={(event) => updateField(key, event.target.value)}
+      error={errors[key]} disabled={Boolean(pending)}
+      isPasswordVisible={Boolean(visiblePasswords[key])}
+      onTogglePassword={() => setVisiblePasswords((previous) => ({ ...previous, [key]: !previous[key] }))}
+      {...options} />;
   }
 
   return (
-    <>
-      <AuthToast toast={toast} />
-
-      <div className={`auth-card auth-appear ${isShaking ? 'auth-shake' : ''}`}>
-        <div className="auth-card-header">
-          <h1>{activeTab === 'login' ? 'Đăng nhập' : 'Đăng ký'}</h1>
-          <p>{activeTab === 'login' ? 'Vào dashboard của bạn.' : 'Tạo tài khoản mới.'}</p>
-        </div>
-
-        <div className="auth-tabs" role="tablist" aria-label="Authentication tabs">
-          <button
-            type="button"
-            className={`auth-tab ${activeTab === 'login' ? 'active' : ''}`}
-            onClick={() => clearStateForTab('login')}
-          >
-            Đăng nhập
-          </button>
-          <button
-            type="button"
-            className={`auth-tab ${activeTab === 'register' ? 'active' : ''}`}
-            onClick={() => clearStateForTab('register')}
-          >
-            Đăng ký
-          </button>
-          <div className={`auth-tab-indicator ${activeTab === 'register' ? 'register' : 'login'}`}></div>
-        </div>
-
-        <div className={`auth-global-error ${errors.global ? 'visible' : ''}`}>
-          {errors.global || ' '}
-        </div>
-
-        <div className={`auth-form-slider ${activeTab === 'register' ? 'register-active' : 'login-active'}`}>
-          <div className="auth-form-track">
-            <section className="auth-form-panel">
-              <form className="auth-form" onSubmit={handleLoginSubmit}>
-                {renderGoogleButton()}
-
-                <div className="auth-divider">
-                  <span>hoặc dùng email</span>
-                </div>
-
-                <AuthField
-                  id="login-email"
-                  label="Email"
-                  type="email"
-                  value={loginForm.email}
-                  onChange={(event) => setLoginForm((prev) => ({ ...prev, email: event.target.value }))}
-                  error={errors.email}
-                  disabled={isSubmitting}
-                  autoComplete="email"
-                />
-
-                <AuthField
-                  id="login-password"
-                  label="Mật khẩu"
-                  value={loginForm.password}
-                  onChange={(event) => setLoginForm((prev) => ({ ...prev, password: event.target.value }))}
-                  error={errors.password}
-                  disabled={isSubmitting}
-                  autoComplete="current-password"
-                  showPasswordToggle
-                  isPasswordVisible={showLoginPassword}
-                  onTogglePassword={() => setShowLoginPassword((prev) => !prev)}
-                />
-
-                <button type="submit" className="auth-submit-btn" disabled={isSubmitting}>
-                  {getSubmitLabel('login', 'Đăng nhập')}
-                </button>
-              </form>
-            </section>
-
-            <section className="auth-form-panel">
-              <form className="auth-form" onSubmit={handleRegisterSubmit}>
-                {renderGoogleButton()}
-
-                <div className="auth-divider">
-                  <span>hoặc dùng email</span>
-                </div>
-
-                {registerFields.map((field) => (
-                  <AuthField
-                    key={field.id}
-                    id={field.id}
-                    label={field.label}
-                    type={field.type}
-                    value={field.value}
-                    onChange={field.onChange}
-                    error={field.error}
-                    disabled={isSubmitting}
-                    autoComplete={field.autoComplete}
-                    showPasswordToggle={field.showPasswordToggle}
-                    isPasswordVisible={field.isPasswordVisible}
-                    onTogglePassword={field.onTogglePassword}
-                  />
-                ))}
-
-                <button type="submit" className="auth-submit-btn" disabled={isSubmitting}>
-                  {getSubmitLabel('register', 'Tạo tài khoản')}
-                </button>
-              </form>
-            </section>
-          </div>
-        </div>
-
-        <SuccessOverlay visible={showSuccess} message={successMessage} />
+    <div className="auth-card">
+      <div className="auth-card-header">
+        <span className="auth-eyebrow">KHÔNG GIAN LÀM VIỆC CỦA BẠN</span>
+        <h1>{isRegister ? 'Bắt đầu cùng AISEO' : 'Chào mừng trở lại'}</h1>
+        <p>{isRegister ? 'Tạo tài khoản để sử dụng các công cụ yêu thích.' : 'Đăng nhập để tiếp tục công việc của bạn.'}</p>
       </div>
-    </>
+
+      {confirmationEmail && <div className="auth-confirmation" role="status">
+        <FiMail aria-hidden="true" />
+        <div><strong>Kiểm tra hộp thư của bạn</strong>
+          <p>Nếu email <b>{confirmationEmail}</b> đủ điều kiện đăng ký, bạn sẽ nhận được liên kết xác nhận. Mở liên kết rồi quay lại đăng nhập. Hãy kiểm tra cả thư rác.</p>
+        </div>
+      </div>}
+
+      <div className="auth-tabs" role="tablist" aria-label="Chọn đăng nhập hoặc đăng ký">
+        {['login', 'register'].map((tab) => (
+          <button key={tab} id={'auth-tab-' + tab} type="button" role="tab"
+            aria-selected={mode === tab} aria-controls="auth-form-panel"
+            tabIndex={mode === tab ? 0 : -1} disabled={Boolean(pending)}
+            className={'auth-tab ' + (mode === tab ? 'active' : '')}
+            onClick={() => changeMode(tab)}
+            onKeyDown={(event) => {
+              if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
+              event.preventDefault();
+              const next = event.key === 'Home' ? 'login' : event.key === 'End' ? 'register' : mode === 'login' ? 'register' : 'login';
+              changeMode(next);
+              document.getElementById('auth-tab-' + next)?.focus();
+            }}>
+            {tab === 'login' ? 'Đăng nhập' : 'Tạo tài khoản'}
+          </button>
+        ))}
+      </div>
+
+      <section id="auth-form-panel" role="tabpanel" aria-labelledby={'auth-tab-' + mode} aria-busy={Boolean(pending)}>
+        <button type="button" className="auth-oauth-btn" onClick={googleLogin} disabled={Boolean(pending)}>
+          <FcGoogle size={22} aria-hidden="true" />
+          {pending === 'google' ? 'Đang mở Google…' : 'Tiếp tục với Google'}
+        </button>
+        <div className="auth-divider"><span>hoặc tiếp tục với email</span></div>
+        {errors.global && <div className="auth-global-error visible" role="alert">{errors.global}</div>}
+        <form ref={formRef} className="auth-form" onSubmit={submit} noValidate>
+          {isRegister && field('username', 'Tên hiển thị', { autoComplete: 'nickname', hint: 'Ít nhất 3 ký tự.' })}
+          {field('email', 'Địa chỉ email', { type: 'email', autoComplete: 'email', placeholder: 'ban@example.com' })}
+          {field('password', 'Mật khẩu', { autoComplete: isRegister ? 'new-password' : 'current-password', showPasswordToggle: true,
+            hint: isRegister ? 'Ít nhất 6 ký tự. Nên kết hợp chữ, số và ký hiệu.' : undefined })}
+          {isRegister && field('confirmPassword', 'Nhập lại mật khẩu', { autoComplete: 'new-password', showPasswordToggle: true })}
+          <button type="submit" className="auth-submit-btn" disabled={Boolean(pending)}>
+            {pending === mode ? <><span className="auth-spinner" aria-hidden="true" />Đang xử lý…</> :
+              <>{isRegister ? 'Tạo tài khoản' : 'Đăng nhập'}<FiArrowRight aria-hidden="true" /></>}
+          </button>
+        </form>
+        <p className="auth-switch-copy">{isRegister ? 'Đã có tài khoản?' : 'Bạn mới đến AISEO?'}{' '}
+          <button type="button" disabled={Boolean(pending)} onClick={() => changeMode(isRegister ? 'login' : 'register')}>
+            {isRegister ? 'Đăng nhập' : 'Tạo tài khoản ngay'}
+          </button>
+        </p>
+      </section>
+    </div>
   );
 }

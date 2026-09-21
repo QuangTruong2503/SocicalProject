@@ -1,5 +1,6 @@
 import { supabase, describeSession } from '../lib/supabase.js';
 import { createServiceResult, normalizeServiceError } from './serviceHelpers.js';
+import { normalizeLocalPath } from '../utils/authRedirect.js';
 
 /**
  * @typedef {Object} AuthSnapshot
@@ -24,12 +25,12 @@ import { createServiceResult, normalizeServiceError } from './serviceHelpers.js'
  * @param {SignUpPayload} payload
  * @returns {Promise<import('./serviceHelpers.js').ServiceResult<{ user: import('@supabase/supabase-js').User | null, session: import('@supabase/supabase-js').Session | null, requiresEmailConfirmation: boolean }>>}
  */
-export async function signUp({ email, password, username }) {
+export async function signUp({ email, password, username, redirectPath }) {
   try {
     console.debug('[authService] signUp start', { email, username });
     const emailRedirectTo = typeof window === 'undefined'
       ? undefined
-      : new URL('/auth/callback?next=/dashboard', window.location.origin).toString();
+      : new URL(`/auth/callback?next=${encodeURIComponent(normalizeLocalPath(redirectPath))}`, window.location.origin).toString();
 
     const { data, error } = await supabase.auth.signUp({
       email,
