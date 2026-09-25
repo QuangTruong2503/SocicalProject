@@ -85,7 +85,8 @@ export function toGrossUnitPrice(netPrice, vatRate) {
 
 export function toNetUnitPrice(grossPrice, vatRate) {
   const rate = Math.max(0, Number(vatRate) || 0);
-  return Math.round((Math.max(0, Number(grossPrice) || 0)) / (1 + rate / 100));
+  // Keep the fractional net price so converting back preserves the entered gross price.
+  return Math.max(0, Number(grossPrice) || 0) / (1 + rate / 100);
 }
 
 export function calculateKnmTotals(items, vatRate) {
@@ -95,8 +96,8 @@ export function calculateKnmTotals(items, vatRate) {
     return sum + quantity * unitPrice;
   }, 0);
   const roundedSubtotal = Math.round(subtotal);
-  const vatAmount = Math.round(roundedSubtotal * (Math.max(0, Number(vatRate) || 0) / 100));
-  const total = roundedSubtotal + vatAmount;
+  const total = Math.round(subtotal * (1 + Math.max(0, Number(vatRate) || 0) / 100));
+  const vatAmount = total - roundedSubtotal;
   return { subtotal: roundedSubtotal, vatAmount, total };
 }
 

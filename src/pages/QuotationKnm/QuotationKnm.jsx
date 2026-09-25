@@ -11,7 +11,7 @@ import ProductEditor from '../../components/quotationKnm/ProductEditor.jsx';
 import TermsEditor from '../../components/quotationKnm/TermsEditor.jsx';
 import QuotePreview from './QuotePreview.jsx';
 import QuotePreviewModal from './QuotePreviewModal.jsx';
-import { calculateKnmTotals, createDraftKnmQuotation, KNM_DEFAULT_COMPANY } from '../../utils/knmQuotation.js';
+import { calculateKnmTotals, createDraftKnmQuotation, KNM_DEFAULT_COMPANY, toNetUnitPrice } from '../../utils/knmQuotation.js';
 import {
   clearCompanyBankQrAsset, clearCompanyLogoAsset, clearCompanyStampAsset, loadCompanyBankQrAsset, loadCompanyInfo,
   loadCompanyLogoAsset, loadCompanyStampAsset, loadTerms, nextQuotationNumberAsync, saveCompanyBankQrAsset,
@@ -278,6 +278,16 @@ export default function QuotationKnm() {
             vatRate={quotation.vatRate}
             vatInclusiveInput={quotation.vatInclusiveInput}
             onChange={(items) => patchQuotation({ items })}
+            onImport={(imported) => setQuotation((current) => ({
+              ...current,
+              items: [
+                ...current.items.filter((item) => item.description.trim() || item.brand.trim() || Number(item.unitPrice) !== 0 || Number(item.quantity) !== 1 || item.unit !== 'Cái' || item.customUnit),
+                ...imported.map((item) => ({
+                  ...item,
+                  unitPrice: current.vatInclusiveInput ? toNetUnitPrice(item.unitPrice, current.vatRate) : item.unitPrice,
+                })),
+              ],
+            }))}
             styles={styles}
           />
           <TermsEditor terms={quotation.terms} onChange={(terms) => patchQuotation({ terms })} styles={styles} />

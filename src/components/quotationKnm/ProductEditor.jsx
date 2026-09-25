@@ -1,13 +1,40 @@
-import { useState } from 'react';
-import { FaPlus } from 'react-icons/fa6';
+import { useRef, useState } from 'react';
+import { FaDownload, FaFileExcel, FaPlus, FaTrash } from 'react-icons/fa6';
+import { toast } from 'react-toastify';
+import { downloadProductImportTemplate } from '../../utils/quotationImport.js';
+import { parseKnmProductImportFile } from '../../utils/knmQuotationImport.js';
 import { formatCurrency } from '../../utils/numberFormat.js';
 import { numberToVietnamese } from '../../utils/numberToVietnamese.js';
 import { newKnmItem } from '../../utils/knmQuotation.js';
 import ProductRow from './ProductRow.jsx';
 
-export default function ProductEditor({ items, totals, vatRate, vatInclusiveInput, error, onChange, styles }) {
+export default function ProductEditor({ items, totals, vatRate, vatInclusiveInput, error, onChange, onImport, styles }) {
+  const fileInput = useRef(null);
+  const [importing, setImporting] = useState(false);
   const [dragIndex, setDragIndex] = useState(null);
   const [dragOverIndex, setDragOverIndex] = useState(null);
+
+  const handleImport = async (event) => {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (!file) return;
+    setImporting(true);
+    try {
+      const imported = await parseKnmProductImportFile(file);
+      onImport(imported);
+      toast.success(`Đã nhập ${imported.length} sản phẩm từ Excel.`);
+    } catch (error) {
+      toast.error(error.message || 'Không thể đọc file Excel.');
+    } finally {
+      setImporting(false);
+    }
+  };
+
+  const clearItems = () => {
+    if (window.confirm('Xóa tất cả sản phẩm trong báo giá hiện tại? Thao tác này không thể hoàn tác.')) {
+      onChange([newKnmItem()]);
+    }
+  };
 
   const updateItem = (index, next) => onChange(items.map((item, i) => (i === index ? next : item)));
   const addItem = () => onChange([...items, newKnmItem()]);
@@ -28,6 +55,17 @@ export default function ProductEditor({ items, totals, vatRate, vatInclusiveInpu
   return (
     <section className={styles.card}>
       <h2>Danh sách sản phẩm</h2>
+      <div className={styles.productToolbar}>
+        <input ref={fileInput} type="file" accept=".xlsx,.xls" hidden onChange={handleImport} />
+        <button type="button" onClick={() => fileInput.current?.click()} disabled={importing}>
+          <FaFileExcel /> {importing ? 'Đang nhập…' : 'Nhập Excel'}
+        </button>
+        <button type="button" onClick={downloadProductImportTemplate}><FaDownload /> Tải file mẫu</button>
+        <button type="button" className={styles.danger} onClick={clearItems} disabled={importing}><FaTrash /> Xóa tất cả sản phẩm</button>
+      </div>
+      <p className={styles.importHint}>
+        Nhập từ sheet đầu tiên, thêm vào danh sách hiện tại. Đơn giá trong file {vatInclusiveInput ? 'đã gồm' : 'chưa gồm'} VAT ({vatRate}%) theo cài đặt báo giá. Xóa dòng ví dụ trước khi nhập dữ liệu của bạn.
+      </p>
       {error && <p className={styles.field}><small>{error}</small></p>}
       <div className={styles.tableWrap}>
         <table className={styles.itemsTable}>

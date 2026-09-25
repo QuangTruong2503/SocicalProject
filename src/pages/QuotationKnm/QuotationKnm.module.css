@@ -16,7 +16,7 @@
 /* Danger (outline) action: Tạo báo giá mới */
 .btnReset{background:#fff!important;color:#b91c1c!important;border-color:#fecaca!important}
 
-.body{max-width:60%;margin:0 auto;padding:22px 24px 70px;display:flex;flex-direction:column;gap:16px}
+.body{max-width:70%;margin:0 auto;padding:22px 24px 70px;display:flex;flex-direction:column;gap:16px}
 
 .card{background:#fff;border:1px solid #dbe1e6;border-radius:14px;padding:18px 20px;box-shadow:0 4px 16px #0f172a12}
 .card h2{margin:0 0 14px;font-size:15.5px;color:#052b49;display:flex;align-items:center;justify-content:space-between;gap:10px}
@@ -86,6 +86,11 @@
 .rowActions button:disabled{opacity:.4;cursor:not-allowed}
 .rowActions .danger{color:#b91c1c;border-color:#fecaca}
 .customUnit{margin-top:6px}
+.productToolbar{display:flex;flex-wrap:wrap;gap:8px}
+.productToolbar button{display:inline-flex;align-items:center;gap:7px;border:1px solid #cbd5e1;background:#fff;color:#073e68;border-radius:8px;padding:9px 12px;font-weight:600;cursor:pointer}
+.productToolbar button:disabled{opacity:.55;cursor:not-allowed}
+.productToolbar .danger{color:#b91c1c;border-color:#fecaca}
+.importHint{margin:10px 0 14px;color:#64748b;font-size:12px;line-height:1.5}
 .addRow{margin-top:12px;display:inline-flex;align-items:center;gap:7px;border:1px dashed #073e68;background:#eaf2f8;color:#073e68;border-radius:9px;padding:9px 14px;font-weight:700;font-size:13px;cursor:pointer}
 
 .summary{margin-top:16px;border-top:1px dashed #e2e8f0;padding-top:14px;display:grid;gap:8px;max-width:340px;margin-left:auto}
