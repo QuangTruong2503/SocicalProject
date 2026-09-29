@@ -11,7 +11,7 @@ import ProductEditor from '../../components/quotationKnm/ProductEditor.jsx';
 import TermsEditor from '../../components/quotationKnm/TermsEditor.jsx';
 import QuotePreview from './QuotePreview.jsx';
 import QuotePreviewModal from './QuotePreviewModal.jsx';
-import { calculateKnmTotals, createDraftKnmQuotation, KNM_DEFAULT_COMPANY, toNetUnitPrice } from '../../utils/knmQuotation.js';
+import { calculateKnmTotals, createDraftKnmQuotation, KNM_DEFAULT_COMPANY, normalizeKnmQuotation } from '../../utils/knmQuotation.js';
 import {
   clearCompanyBankQrAsset, clearCompanyLogoAsset, clearCompanyStampAsset, loadCompanyBankQrAsset, loadCompanyInfo,
   loadCompanyLogoAsset, loadCompanyStampAsset, loadTerms, nextQuotationNumberAsync, saveCompanyBankQrAsset,
@@ -53,7 +53,7 @@ export default function QuotationKnm() {
       try {
         const record = await getKnmQuotation(id);
         setCompany((current) => ({ ...current, ...(record.company || {}) }));
-        setQuotation((current) => ({ ...current, ...(record.quotation || {}) }));
+        setQuotation((current) => ({ ...current, ...normalizeKnmQuotation(record.quotation) }));
       } catch (e) {
         toast.error(e.message || 'Không tìm thấy báo giá.');
       }
@@ -104,7 +104,7 @@ export default function QuotationKnm() {
     return () => window.clearTimeout(timer);
   }, [quotation.terms]);
 
-  const totals = useMemo(() => calculateKnmTotals(quotation.items, quotation.vatRate), [quotation.items, quotation.vatRate]);
+  const totals = useMemo(() => calculateKnmTotals(quotation), [quotation]);
   const fullQuotation = useMemo(() => ({ ...quotation, totals }), [quotation, totals]);
 
   const patchQuotation = (patch) => setQuotation((current) => ({ ...current, ...patch }));
@@ -275,17 +275,12 @@ export default function QuotationKnm() {
           <ProductEditor
             items={quotation.items}
             totals={totals}
-            vatRate={quotation.vatRate}
-            vatInclusiveInput={quotation.vatInclusiveInput}
             onChange={(items) => patchQuotation({ items })}
             onImport={(imported) => setQuotation((current) => ({
               ...current,
               items: [
                 ...current.items.filter((item) => item.description.trim() || item.brand.trim() || Number(item.unitPrice) !== 0 || Number(item.quantity) !== 1 || item.unit !== 'Cái' || item.customUnit),
-                ...imported.map((item) => ({
-                  ...item,
-                  unitPrice: current.vatInclusiveInput ? toNetUnitPrice(item.unitPrice, current.vatRate) : item.unitPrice,
-                })),
+                ...imported,
               ],
             }))}
             styles={styles}

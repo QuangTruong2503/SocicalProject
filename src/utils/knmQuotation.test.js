@@ -1,31 +1,51 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { calculateKnmTotals, toGrossUnitPrice, toNetUnitPrice } from './knmQuotation.js';
+import { calculateKnmTotals, createDraftKnmQuotation, normalizeKnmQuotation } from './knmQuotation.js';
 import { parseKnmProductRows, parseKnmProductImportFile } from './knmQuotationImport.js';
 
 const headers = ['Tên sản phẩm', 'Mô tả', 'Thương hiệu', 'Số lượng', 'ĐVT', 'Đơn giá'];
 
-test('VAT conversion preserves entered gross prices, including 101, after serialization', () => {
-  for (const rate of [0, 5, 8, 10]) {
-    for (let gross = 0; gross <= 10000; gross++) {
-      const net = JSON.parse(JSON.stringify(toNetUnitPrice(gross, rate)));
-      assert.equal(toGrossUnitPrice(net, rate), gross);
-      assert.equal(calculateKnmTotals([{ quantity: 1, unitPrice: net }], rate).total, gross);
-    }
-  }
+test('Gồm VAT: total equals entered prices, no VAT lines', () => {
+  const totals = calculateKnmTotals({ vatMode: 'included', vatRate: 8, items: [{ quantity: 2, unitPrice: 108000 }] });
+  assert.deepEqual(totals, { vatMode: 'included', subtotal: 216000, vatLines: [], vatAmount: 0, total: 216000 });
+  assert.equal(createDraftKnmQuotation().vatMode, 'included');
 });
 
-test('totals retain gross values for multiple quantities and products', () => {
-  const totals = calculateKnmTotals([
-    { quantity: 3, unitPrice: toNetUnitPrice(101, 8) },
-    { quantity: 2, unitPrice: toNetUnitPrice(107, 8) },
-  ], 8);
-  assert.equal(totals.total, 517);
-  assert.equal(totals.subtotal + totals.vatAmount, totals.total);
-  assert.deepEqual(calculateKnmTotals([{ quantity: 2, unitPrice: 100000 }], 8), {
-    subtotal: 200000, vatAmount: 16000, total: 216000,
+test('Chia VAT: one common rate added on top of net prices', () => {
+  const totals = calculateKnmTotals({ vatMode: 'common', vatRate: 8, items: [{ quantity: 2, unitPrice: 100000 }] });
+  assert.equal(totals.subtotal, 200000);
+  assert.deepEqual(totals.vatLines, [{ rate: 8, base: 200000, amount: 16000 }]);
+  assert.equal(totals.total, 216000);
+  assert.deepEqual(calculateKnmTotals({ vatMode: 'common', vatRate: 8, items: [] }).vatLines, [{ rate: 8, base: 0, amount: 0 }]);
+});
+
+test('Chia VAT từng sản phẩm: one VAT line per rate, highest first, default 8%', () => {
+  const totals = calculateKnmTotals({
+    vatMode: 'per_item',
+    vatRate: 10,
+    items: [
+      { quantity: 2, unitPrice: 100000, vatRate: 8 },
+      { quantity: 1, unitPrice: 300000, vatRate: 5 },
+      { quantity: 1, unitPrice: 50000 },
+    ],
   });
-  assert.deepEqual(calculateKnmTotals([], 8), { subtotal: 0, vatAmount: 0, total: 0 });
+  assert.equal(totals.subtotal, 550000);
+  assert.deepEqual(totals.vatLines, [
+    { rate: 8, base: 250000, amount: 20000 },
+    { rate: 5, base: 300000, amount: 15000 },
+  ]);
+  assert.equal(totals.vatAmount, 35000);
+  assert.equal(totals.total, 585000);
+});
+
+test('legacy saved quotations reopen as Chia VAT with the same total', () => {
+  const legacy = { vatRate: 8, vatInclusiveInput: true, items: [{ quantity: 3, unitPrice: 101 / 1.08 }] };
+  const normalized = normalizeKnmQuotation(legacy);
+  assert.equal(normalized.vatMode, 'common');
+  assert.equal('vatInclusiveInput' in normalized, false);
+  assert.equal(normalized.items[0].vatRate, 8);
+  assert.equal(calculateKnmTotals(normalized).total, 303);
+  assert.deepEqual(normalizeKnmQuotation(undefined), {});
 });
 
 test('Excel rows preserve numeric data, descriptions, custom units and unique ids', () => {

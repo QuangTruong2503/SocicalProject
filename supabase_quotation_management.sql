@@ -107,18 +107,24 @@ alter table public.quotations
   alter column vat_mode set default 'included';
 update public.quotations
 set vat_mode = 'included'
-where vat_mode is distinct from 'included';
+where vat_mode is null or vat_mode not in ('included', '5', '8', '10', 'per_item');
 alter table public.quotations
   add constraint quotations_vat_mode_check
   check (vat_mode in ('none', '5', '8', '10', 'included', 'per_item'));
 
 alter table public.quotation_items
   drop column if exists vat_amount,
-  drop column if exists line_total,
-  drop column if exists vat_rate;
+  drop column if exists line_total;
 alter table public.quotation_items
   add column line_total numeric(18,2)
     generated always as (round(quantity * unit_price, 2)) stored;
+-- Thuế suất VAT của từng dòng, dùng khi báo giá ở chế độ vat_mode = 'per_item'.
+alter table public.quotation_items
+  add column if not exists vat_rate numeric(5,2) not null default 8;
+alter table public.quotation_items
+  drop constraint if exists quotation_items_vat_rate_check;
+alter table public.quotation_items
+  add constraint quotation_items_vat_rate_check check (vat_rate in (5, 8, 10));
 
 create index if not exists quotation_customers_search_idx on public.quotation_customers
   using gin (to_tsvector('simple', coalesce(name,'') || ' ' || coalesce(phone,'') || ' ' || coalesce(tax_code,'')))
@@ -208,7 +214,13 @@ declare
   discount_type_value text := coalesce(p_payload->>'discount_type', 'amount');
   discount_value_value numeric := greatest(coalesce((p_payload->>'discount_value')::numeric, 0), 0);
   shipping_value numeric := greatest(coalesce((p_payload->>'shipping_fee')::numeric, 0), 0);
-  vat_value text := 'included';
+  vat_value text := case when p_payload->>'vat_mode' in ('5', '8', '10', 'per_item')
+    then p_payload->>'vat_mode' else 'included' end;
+  item_rate numeric;
+  base_5 numeric := 0;
+  base_8 numeric := 0;
+  base_10 numeric := 0;
+  keep_ratio numeric;
 begin
   if (select auth.uid()) is null then raise exception 'Cần đăng nhập' using errcode = '42501'; end if;
   if nullif(trim(p_payload->>'customer_name'), '') is null then raise exception 'Thiếu tên khách hàng'; end if;
@@ -223,6 +235,11 @@ begin
     if (row_item->>'quantity')::numeric <= 0 then raise exception 'Số lượng phải lớn hơn 0'; end if;
     if (row_item->>'unit_price')::numeric < 0 then raise exception 'Đơn giá không được âm'; end if;
     calc_subtotal := calc_subtotal + round((row_item->>'quantity')::numeric * (row_item->>'unit_price')::numeric, 2);
+    item_rate := case when row_item->>'vat_rate' in ('5', '8', '10') then (row_item->>'vat_rate')::numeric else 8 end;
+    if item_rate = 5 then base_5 := base_5 + round((row_item->>'quantity')::numeric * (row_item->>'unit_price')::numeric, 2);
+    elsif item_rate = 10 then base_10 := base_10 + round((row_item->>'quantity')::numeric * (row_item->>'unit_price')::numeric, 2);
+    else base_8 := base_8 + round((row_item->>'quantity')::numeric * (row_item->>'unit_price')::numeric, 2);
+    end if;
   end loop;
 
   calc_discount := least(calc_subtotal,
@@ -230,6 +247,18 @@ begin
       then round(calc_subtotal * least(discount_value_value, 100) / 100, 2)
       else discount_value_value end);
   calc_total := greatest(calc_subtotal - calc_discount + shipping_value, 0);
+  -- 'included': đơn giá đã gồm VAT; '5' | '8' | '10': đơn giá chưa VAT, cộng VAT chung vào tổng;
+  -- 'per_item': VAT theo thuế suất từng dòng, chiết khấu phân bổ theo tỷ lệ, phí vận chuyển không tính VAT.
+  if vat_value = 'per_item' then
+    keep_ratio := case when calc_subtotal > 0 then (calc_subtotal - calc_discount) / calc_subtotal else 0 end;
+    calc_vat := round(round(base_10 * keep_ratio, 0) * 10 / 100, 0)
+      + round(round(base_8 * keep_ratio, 0) * 8 / 100, 0)
+      + round(round(base_5 * keep_ratio, 0) * 5 / 100, 0);
+    calc_total := calc_total + calc_vat;
+  elsif vat_value <> 'included' then
+    calc_vat := round(calc_total * vat_value::numeric / 100, 0);
+    calc_total := calc_total + calc_vat;
+  end if;
 
   q_id := nullif(p_payload->>'id', '')::uuid;
   if q_id is null then
@@ -273,13 +302,14 @@ begin
   for row_item in select value from jsonb_array_elements(coalesce(p_payload->'items', '[]'::jsonb))
   loop
     insert into public.quotation_items (
-      quotation_id, position, product_id, product_code, product_name, description, brand, quantity, unit, unit_price
+      quotation_id, position, product_id, product_code, product_name, description, brand, quantity, unit, unit_price, vat_rate
     ) values (
       q_id, (row_item->>'position')::integer, nullif(row_item->>'product_id','')::uuid,
       nullif(trim(row_item->>'product_code'),''), trim(row_item->>'product_name'),
       nullif(trim(row_item->>'description'),''),
       nullif(trim(row_item->>'brand'),''), (row_item->>'quantity')::numeric,
-      coalesce(nullif(trim(row_item->>'unit'),''),'Cái'), (row_item->>'unit_price')::numeric
+      coalesce(nullif(trim(row_item->>'unit'),''),'Cái'), (row_item->>'unit_price')::numeric,
+      case when row_item->>'vat_rate' in ('5', '8', '10') then (row_item->>'vat_rate')::numeric else 8 end
     );
   end loop;
   return q_id;

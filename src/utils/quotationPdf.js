@@ -1,7 +1,7 @@
 import dayjs from 'dayjs';
 import { quotationCompany } from '../data/quotationCompany.js';
 import { formatCurrency } from './numberFormat.js';
-import { fileSlug, TERM_LABELS } from './quotation.js';
+import { fileSlug, itemVatRate, TERM_LABELS } from './quotation.js';
 
 const PAGE_WIDTH = 210;
 const PAGE_HEIGHT = 297;
@@ -240,13 +240,17 @@ export async function exportQuotationToPdf(quotation, summary, stamp, stampPosit
   y += cardHeight + 5;
 
   // Product table
-  const widths = [9, 63, 25, 17, 14, 27, 27];
-  const headers = ['STT', 'MÔ TẢ SẢN PHẨM', 'THƯƠNG HIỆU', 'SỐ LƯỢNG', 'ĐVT', 'ĐƠN GIÁ (VND)', 'THÀNH TIỀN (VND)'];
+  const perItemVat = summary.vatMode === 'per_item';
+  const widths = perItemVat ? [9, 53, 23, 15, 13, 26, 12, 31] : [9, 63, 25, 17, 14, 27, 27];
+  const headers = perItemVat
+    ? ['STT', 'MÔ TẢ SẢN PHẨM', 'THƯƠNG HIỆU', 'SỐ LƯỢNG', 'ĐVT', 'ĐƠN GIÁ (VND)', 'VAT', 'THÀNH TIỀN (VND)']
+    : ['STT', 'MÔ TẢ SẢN PHẨM', 'THƯƠNG HIỆU', 'SỐ LƯỢNG', 'ĐVT', 'ĐƠN GIÁ (VND)', 'THÀNH TIỀN (VND)'];
   y = ensureSpace(pdf, y, 12);
   y = drawTableRow(pdf, y, headers, widths, { header: true, height: 9 });
   for (const [index, item] of (quotation.items || []).entries()) {
     const productText = [item.product_name || item.description || '', item.product_name ? item.description : ''].filter(Boolean).join('\n');
-    const cells = [index + 1, productText, item.brand || '', item.quantity, item.unit || '', formatCurrency(item.unit_price), formatCurrency(Number(item.quantity) * Number(item.unit_price))];
+    const cells = [index + 1, productText, item.brand || '', item.quantity, item.unit || '', formatCurrency(item.unit_price),
+      ...(perItemVat ? [`${itemVatRate(item)}%`] : []), formatCurrency(Number(item.quantity) * Number(item.unit_price))];
     const height = Math.max(8, ...cells.map((value, cellIndex) => {
       const lines = String(value ?? '').split('\n');
       const count = lines.reduce((total, line) => total + Math.max(1, pdf.splitTextToSize(line, widths[cellIndex] - 3).length), 0);
@@ -258,14 +262,28 @@ export async function exportQuotationToPdf(quotation, summary, stamp, stampPosit
     }
     y = drawTableRow(pdf, y, cells, widths, { product: true, height });
   }
+  const totalLabelWidth = widths.slice(0, -1).reduce((sum, w) => sum + w, 0);
+  const totalValueWidth = widths[widths.length - 1];
+  if (summary.vatExcluded) {
+    const vatRows = [['TỔNG TIỀN', summary.preVat], ...summary.vatLines.map((line) => [`VAT ${line.rate}%`, line.amount])];
+    y = ensureSpace(pdf, y, vatRows.length * 8 + 10);
+    vatRows.forEach(([label, value]) => {
+      pdf.setFillColor(...COLOR_TOTAL_BG);
+      pdf.rect(MARGIN, y, CONTENT_WIDTH, 8, 'F');
+      pdf.setDrawColor(...COLOR_ROW_BORDER);
+      pdf.rect(MARGIN, y, totalLabelWidth, 8);
+      pdf.rect(MARGIN + totalLabelWidth, y, totalValueWidth, 8);
+      drawWrappedText(pdf, label, MARGIN + totalLabelWidth - 3, y + 2, totalLabelWidth - 6, { font: 'bold', size: 8, align: 'right', color: COLOR_TEXT_DARK });
+      drawWrappedText(pdf, formatCurrency(value), MARGIN + totalLabelWidth + totalValueWidth / 2, y + 2, totalValueWidth - 2, { font: 'bold', size: 8, align: 'center', color: COLOR_TEXT_DARK });
+      y += 8;
+    });
+  }
   y = ensureSpace(pdf, y, 10);
-  const totalLabelWidth = widths.slice(0, 6).reduce((sum, w) => sum + w, 0);
-  const totalValueWidth = widths[6];
   pdf.setFillColor(...COLOR_TOTAL_BG);
   pdf.rect(MARGIN, y, totalLabelWidth, 9, 'F');
   pdf.setDrawColor(...COLOR_ROW_BORDER);
   pdf.rect(MARGIN, y, totalLabelWidth, 9);
-  drawWrappedText(pdf, 'TỔNG CỘNG ĐÃ GỒM VAT', MARGIN + totalLabelWidth - 3, y + 2.5, totalLabelWidth - 6, { font: 'bold', size: 8, align: 'right', color: COLOR_TEXT_DARK });
+  drawWrappedText(pdf, summary.vatExcluded ? 'TỔNG TIỀN ĐÃ GỒM VAT' : 'TỔNG CỘNG ĐÃ GỒM VAT', MARGIN + totalLabelWidth - 3, y + 2.5, totalLabelWidth - 6, { font: 'bold', size: 8, align: 'right', color: COLOR_TEXT_DARK });
   pdf.setFillColor(...COLOR_GREEN_DARK);
   pdf.rect(MARGIN + totalLabelWidth, y, totalValueWidth, 9, 'F');
   drawWrappedText(pdf, formatCurrency(summary.total), MARGIN + totalLabelWidth + totalValueWidth / 2, y + 2.5, totalValueWidth - 2, { font: 'bold', size: 8, align: 'center', color: [255, 255, 255] });

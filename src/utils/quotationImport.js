@@ -12,6 +12,24 @@ export function downloadProductImportTemplate() {
   downloadWorkbook(workbook, 'Mau-nhap-san-pham.xlsx');
 }
 
+// Cùng thứ tự cột với file mẫu nhập để có thể sửa rồi nhập lại; cột Thành tiền chỉ để tham khảo.
+export function exportProductsToExcel(items, filename = 'Danh-sach-san-pham.xlsx') {
+  const rows = (items || [])
+    .filter((item) => item.product_name?.trim() || item.description?.trim())
+    .map((item) => {
+      const quantity = Number(item.quantity) || 0;
+      const unitPrice = Number(item.unit_price) || 0;
+      return [item.product_name || '', item.description || '', item.brand || '', quantity, item.unit || '', unitPrice, quantity * unitPrice];
+    });
+  if (!rows.length) throw new Error('Chưa có sản phẩm nào để xuất.');
+  const sheet = XLSX.utils.aoa_to_sheet([[...TEMPLATE_HEADERS, 'Thành tiền'], ...rows]);
+  sheet['!cols'] = [{ wch: 42 }, { wch: 42 }, { wch: 18 }, { wch: 10 }, { wch: 10 }, { wch: 14 }, { wch: 16 }];
+  const workbook = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(workbook, sheet, 'San pham');
+  downloadWorkbook(workbook, filename);
+  return rows.length;
+}
+
 export async function parseProductImportFile(file) {
   const buffer = await file.arrayBuffer();
   const workbook = XLSX.read(buffer, { type: 'array', cellDates: false, raw: false });

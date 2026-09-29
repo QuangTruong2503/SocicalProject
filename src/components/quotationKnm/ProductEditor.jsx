@@ -8,7 +8,9 @@ import { numberToVietnamese } from '../../utils/numberToVietnamese.js';
 import { newKnmItem } from '../../utils/knmQuotation.js';
 import ProductRow from './ProductRow.jsx';
 
-export default function ProductEditor({ items, totals, vatRate, vatInclusiveInput, error, onChange, onImport, styles }) {
+export default function ProductEditor({ items, totals, error, onChange, onImport, styles }) {
+  const perItemVat = totals.vatMode === 'per_item';
+  const vatSplit = totals.vatMode !== 'included';
   const fileInput = useRef(null);
   const [importing, setImporting] = useState(false);
   const [dragIndex, setDragIndex] = useState(null);
@@ -64,11 +66,11 @@ export default function ProductEditor({ items, totals, vatRate, vatInclusiveInpu
         <button type="button" className={styles.danger} onClick={clearItems} disabled={importing}><FaTrash /> Xóa tất cả sản phẩm</button>
       </div>
       <p className={styles.importHint}>
-        Nhập từ sheet đầu tiên, thêm vào danh sách hiện tại. Đơn giá trong file {vatInclusiveInput ? 'đã gồm' : 'chưa gồm'} VAT ({vatRate}%) theo cài đặt báo giá. Xóa dòng ví dụ trước khi nhập dữ liệu của bạn.
+        Nhập từ sheet đầu tiên, thêm vào danh sách hiện tại. Đơn giá trong file được hiểu theo cách tính VAT đang chọn{perItemVat ? ', VAT từng sản phẩm mặc định 8%' : ''}. Xóa dòng ví dụ trước khi nhập dữ liệu của bạn.
       </p>
       {error && <p className={styles.field}><small>{error}</small></p>}
       <div className={styles.tableWrap}>
-        <table className={styles.itemsTable}>
+        <table className={perItemVat ? `${styles.itemsTable} ${styles.perItemVat}` : styles.itemsTable}>
           <thead>
             <tr>
               <th>STT</th>
@@ -76,8 +78,9 @@ export default function ProductEditor({ items, totals, vatRate, vatInclusiveInpu
               <th>Thương hiệu</th>
               <th>Số lượng</th>
               <th>ĐVT</th>
-              <th>Đơn giá</th>
-              <th>Thành tiền</th>
+              <th>{vatSplit ? 'Đơn giá chưa VAT' : 'Đơn giá'}</th>
+              <th>{vatSplit ? 'Thành tiền chưa VAT' : 'Thành tiền'}</th>
+              {perItemVat && <th>VAT</th>}
               <th></th>
             </tr>
           </thead>
@@ -92,8 +95,7 @@ export default function ProductEditor({ items, totals, vatRate, vatInclusiveInpu
                 canMoveDown={index < items.length - 1}
                 isDragging={dragIndex === index}
                 isDragOver={dragOverIndex === index && dragIndex !== null && dragIndex !== index}
-                vatRate={vatRate}
-                vatInclusiveInput={vatInclusiveInput}
+                perItemVat={perItemVat}
                 onChange={(next) => updateItem(index, next)}
                 onDuplicate={() => duplicateItem(index)}
                 onDelete={() => deleteItem(index)}
@@ -124,9 +126,16 @@ export default function ProductEditor({ items, totals, vatRate, vatInclusiveInpu
       <button type="button" className={styles.addRow} onClick={addItem}><FaPlus /> Thêm sản phẩm</button>
 
       <div className={styles.summary}>
-        <div className={styles.summaryRow}><span>Tạm tính</span><b>{formatCurrency(totals.subtotal)} ₫</b></div>
-        <div className={styles.summaryRow}><span>VAT {vatRate}%</span><b>{formatCurrency(totals.vatAmount)} ₫</b></div>
-        <div className={styles.summaryTotal}><span>TỔNG THANH TOÁN</span><span>{formatCurrency(totals.total)} ₫</span></div>
+        {vatSplit ? (<>
+          <div className={styles.summaryRow}><span>Tổng tiền</span><b>{formatCurrency(totals.subtotal)} ₫</b></div>
+          {totals.vatLines.map((line) => (
+            <div key={line.rate} className={styles.summaryRow}><span>VAT {line.rate}%</span><b>{formatCurrency(line.amount)} ₫</b></div>
+          ))}
+          <div className={styles.summaryTotal}><span>TỔNG TIỀN ĐÃ GỒM VAT</span><span>{formatCurrency(totals.total)} ₫</span></div>
+        </>) : (<>
+          <div className={styles.summaryRow}><span>VAT</span><b>Đã bao gồm</b></div>
+          <div className={styles.summaryTotal}><span>TỔNG THANH TOÁN</span><span>{formatCurrency(totals.total)} ₫</span></div>
+        </>)}
         <p className={styles.summaryWords}>{numberToVietnamese(totals.total)}</p>
       </div>
     </section>

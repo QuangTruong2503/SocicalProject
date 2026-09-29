@@ -1,17 +1,12 @@
 import { FaChevronDown, FaChevronUp, FaCopy, FaGripVertical, FaTrash } from 'react-icons/fa6';
 import { formatCurrency, parseCurrency } from '../../utils/numberFormat.js';
-import { KNM_UNITS, toGrossUnitPrice, toNetUnitPrice } from '../../utils/knmQuotation.js';
+import { KNM_UNITS, KNM_VAT_OPTIONS, knmItemVatRate } from '../../utils/knmQuotation.js';
 
 export default function ProductRow({
-  item, index, canDelete, canMoveUp, canMoveDown, vatRate, vatInclusiveInput, onChange, onDuplicate, onDelete,
+  item, index, canDelete, canMoveUp, canMoveDown, perItemVat, onChange, onDuplicate, onDelete,
   onMoveUp, onMoveDown, onDragStart, onDragEnd, onDragOver, onDrop, isDragging, isDragOver, styles,
 }) {
   const patch = (name, value) => onChange({ ...item, [name]: value });
-  const displayPrice = vatInclusiveInput ? toGrossUnitPrice(item.unitPrice, vatRate) : item.unitPrice;
-  const handlePriceChange = (e) => {
-    const entered = parseCurrency(e.target.value);
-    patch('unitPrice', vatInclusiveInput ? toNetUnitPrice(entered, vatRate) : entered);
-  };
 
   const rowClassName = [isDragging && styles.rowDragging, isDragOver && styles.rowDragOver].filter(Boolean).join(' ') || undefined;
 
@@ -65,10 +60,16 @@ export default function ProductRow({
         )}
       </td>
       <td>
-        <input inputMode="numeric" value={formatCurrency(displayPrice)} onChange={handlePriceChange} />
-        {vatInclusiveInput && <small className={styles.priceHint}>Chưa VAT: {formatCurrency(item.unitPrice)} ₫</small>}
+        <input inputMode="numeric" value={formatCurrency(item.unitPrice)} onChange={(e) => patch('unitPrice', parseCurrency(e.target.value))} />
       </td>
       <td className={styles.money}>{formatCurrency(Number(item.quantity) * Number(item.unitPrice))} ₫</td>
+      {perItemVat && (
+        <td>
+          <select aria-label={`VAT sản phẩm ${index + 1}`} value={knmItemVatRate(item)} onChange={(e) => patch('vatRate', Number(e.target.value))}>
+            {KNM_VAT_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+          </select>
+        </td>
+      )}
       <td>
         <div className={styles.rowActions}>
           <button type="button" onClick={onMoveUp} disabled={!canMoveUp} aria-label="Di chuyển sản phẩm lên"><FaChevronUp /></button>

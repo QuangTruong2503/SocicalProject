@@ -1,11 +1,13 @@
 import dayjs from 'dayjs';
 import { formatCurrency } from '../../utils/numberFormat.js';
 import { numberToVietnamese } from '../../utils/numberToVietnamese.js';
-import { resolveKnmUnit, resolveValidUntil } from '../../utils/knmQuotation.js';
+import { knmItemVatRate, resolveKnmUnit, resolveValidUntil } from '../../utils/knmQuotation.js';
 import styles from './QuotePreview.module.css';
 
 export default function QuotePreview({ company, quotation }) {
-  const { subtotal, vatAmount, total } = quotation.totals;
+  const { subtotal, vatLines, vatMode, total } = quotation.totals;
+  const perItemVat = vatMode === 'per_item';
+  const vatSplit = vatMode !== 'included';
   const validUntil = resolveValidUntil(quotation.quotationDate, quotation.validityDays);
   const hasBankText = company.bankName && company.bankAccountNumber && company.bankAccountHolder;
   const hasBankQr = !!company.bankQr;
@@ -58,8 +60,9 @@ export default function QuotePreview({ company, quotation }) {
             <th className={styles.center}>Thương hiệu</th>
             <th className={styles.center}>Số lượng</th>
             <th className={styles.center}>ĐVT</th>
-            <th className={styles.right}>Đơn giá</th>
-            <th className={styles.right}>Thành tiền</th>
+            <th className={styles.right}>{vatSplit ? 'Đơn giá chưa VAT' : 'Đơn giá'}</th>
+            {perItemVat && <th className={styles.center}>VAT</th>}
+            <th className={styles.right}>{vatSplit ? 'Thành tiền chưa VAT' : 'Thành tiền'}</th>
           </tr>
         </thead>
         <tbody>
@@ -71,6 +74,7 @@ export default function QuotePreview({ company, quotation }) {
               <td className={styles.center}>{item.quantity}</td>
               <td className={styles.center}>{resolveKnmUnit(item)}</td>
               <td className={styles.right}>{formatCurrency(item.unitPrice)} ₫</td>
+              {perItemVat && <td className={styles.center}>{knmItemVatRate(item)}%</td>}
               <td className={styles.right}>{formatCurrency(Number(item.quantity) * Number(item.unitPrice))} ₫</td>
             </tr>
           ))}
@@ -84,9 +88,16 @@ export default function QuotePreview({ company, quotation }) {
         </section>
 
         <div className={styles.totalsBlock}>
-          <div className={styles.totalsRow}><span>Tạm tính</span><b>{formatCurrency(subtotal)} ₫</b></div>
-          <div className={styles.totalsRow}><span>VAT {quotation.vatRate}%</span><b>{formatCurrency(vatAmount)} ₫</b></div>
-          <div className={styles.totalsGrand}><span>TỔNG THANH TOÁN</span><b>{formatCurrency(total)} ₫</b></div>
+          {vatSplit ? (<>
+            <div className={styles.totalsRow}><span>Tổng tiền</span><b>{formatCurrency(subtotal)} ₫</b></div>
+            {vatLines.map((line) => (
+              <div key={line.rate} className={styles.totalsRow}><span>VAT {line.rate}%</span><b>{formatCurrency(line.amount)} ₫</b></div>
+            ))}
+            <div className={styles.totalsGrand}><span>TỔNG TIỀN ĐÃ GỒM VAT</span><b>{formatCurrency(total)} ₫</b></div>
+          </>) : (<>
+            <div className={styles.totalsRow}><span>VAT</span><b>Đã bao gồm</b></div>
+            <div className={styles.totalsGrand}><span>TỔNG THANH TOÁN</span><b>{formatCurrency(total)} ₫</b></div>
+          </>)}
           <p className={styles.words}>Bằng chữ: {numberToVietnamese(total)}</p>
         </div>
       </div>

@@ -23,7 +23,8 @@
 - Chọn khách hàng đã lưu để tự điền thông tin, hoặc nhập thông tin rồi nhấn **Tạo khách hàng mới**.
 - **Lưu nháp** cho phép lưu dữ liệu đang hoàn thiện. **Lưu báo giá** kiểm tra các trường bắt buộc.
 - Biểu mẫu tự lưu cục bộ theo tài khoản và báo giá, nên chuyển tab hoặc rời trang rồi quay lại không mất dữ liệu đang nhập.
-- VAT được chọn riêng cho từng sản phẩm: 5%, 8% hoặc 10%.
+- **Cách tính VAT** (dropdown trên bảng sản phẩm): **Gồm VAT** (đơn giá đã gồm VAT), **Chia VAT** (đơn giá chưa VAT, một mức VAT chung 10%/8%/5%) hoặc **Chia VAT từng sản phẩm** (mỗi dòng chọn VAT riêng, mặc định 8%). Khi chia VAT, phần tổng liệt kê Tổng tiền, từng dòng VAT theo thuế suất và Tổng tiền đã gồm VAT (cả trên bản in, PDF và Excel). Ở chế độ từng sản phẩm, phí vận chuyển không tính VAT.
+- Sau khi cập nhật mã, chạy lại `supabase_quotation_management.sql` để hàm `save_quotation` lưu chế độ VAT và tiền VAT.
 - Mỗi dòng có ô **Tên sản phẩm** và **Mô tả** riêng. Khi xuất Excel/PDF, tên được in đậm; mô tả nằm ở dòng dưới và giữ nguyên các lần xuống dòng.
 - **Xuất Excel** sao chép chính workbook mẫu, chèn số dòng sản phẩm cần thiết và đẩy tổng cộng, điều khoản, chữ ký xuống dưới.
 - **Xuất PDF** tạo và tải xuống file PDF text trực tiếp. **In** mở hộp thoại in chuẩn A4 của trình duyệt.

@@ -2,7 +2,7 @@ import { forwardRef, useRef } from 'react';
 import dayjs from 'dayjs';
 import { FaEnvelope, FaGlobe, FaLocationDot, FaPhone } from 'react-icons/fa6';
 import { formatCurrency } from '../../utils/numberFormat.js';
-import { TERM_LABELS } from '../../utils/quotation.js';
+import { itemVatRate, TERM_LABELS } from '../../utils/quotation.js';
 import styles from '../../pages/Quotation/Quotation.module.css';
 import { quotationCompany } from '../../data/quotationCompany.js';
 import productStyles from '../../pages/Quotation/QuotationProduct.module.css';
@@ -51,6 +51,8 @@ const PrintInvoice = forwardRef(function PrintInvoice({
 
   const validUntil = computeValidUntil(quotation);
   const quotationDateText = dayjs(quotation.quotation_date).format('DD/MM/YYYY');
+  const perItemVat = summary.vatMode === 'per_item';
+  const labelSpan = perItemVat ? 7 : 6;
 
   return <div
     ref={(node) => { containerRef.current = node; setRef(ref, node); }}
@@ -117,7 +119,7 @@ const PrintInvoice = forwardRef(function PrintInvoice({
         <thead>
           <tr>
             <th>STT</th><th>MÔ TẢ SẢN PHẨM</th><th>THƯƠNG HIỆU</th><th>SỐ LƯỢNG</th><th>ĐVT</th>
-            <th>ĐƠN GIÁ (VND)</th><th>THÀNH TIỀN (VND)</th>
+            <th>ĐƠN GIÁ (VND)</th>{perItemVat && <th>VAT</th>}<th>THÀNH TIỀN (VND)</th>
           </tr>
         </thead>
         <tbody>
@@ -131,12 +133,23 @@ const PrintInvoice = forwardRef(function PrintInvoice({
             <td>{item.quantity}</td>
             <td>{item.unit}</td>
             <td>{formatCurrency(item.unit_price)}</td>
+            {perItemVat && <td>{itemVatRate(item)}%</td>}
             <td>{formatCurrency(Number(item.quantity) * Number(item.unit_price))}</td>
           </tr>)}
         </tbody>
         <tfoot>
+          {summary.vatExcluded && <>
+            <tr>
+              <td colSpan={labelSpan} className={styles.invoiceSubtotalLabel}>TỔNG TIỀN</td>
+              <td className={styles.invoiceSubtotalValue}>{formatCurrency(summary.preVat)}</td>
+            </tr>
+            {summary.vatLines.map((line) => <tr key={line.rate}>
+              <td colSpan={labelSpan} className={styles.invoiceSubtotalLabel}>VAT {line.rate}%</td>
+              <td className={styles.invoiceSubtotalValue}>{formatCurrency(line.amount)}</td>
+            </tr>)}
+          </>}
           <tr>
-            <td colSpan="6" className={styles.invoiceTotalLabel}>TỔNG CỘNG ĐÃ GỒM VAT</td>
+            <td colSpan={labelSpan} className={styles.invoiceTotalLabel}>{summary.vatExcluded ? 'TỔNG TIỀN ĐÃ GỒM VAT' : 'TỔNG CỘNG ĐÃ GỒM VAT'}</td>
             <td className={styles.invoiceTotalValue}>{formatCurrency(summary.total)}</td>
           </tr>
         </tfoot>

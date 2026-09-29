@@ -1,6 +1,6 @@
 import JSZip from 'jszip';
 import { saveAs } from './fileSaver.js';
-import { fileSlug, TERM_LABELS } from './quotation.js';
+import { fileSlug, itemVatRate, TERM_LABELS } from './quotation.js';
 
 const TEMPLATE_URL = '/templates/bao-gia-minh-triet.xlsx';
 const NS = 'http://schemas.openxmlformats.org/spreadsheetml/2006/main';
@@ -77,9 +77,23 @@ function setTemplateValue(xml, ref, value, options) {
   return xml.replace(rowPattern, (rowXml) => replaceCell(rowXml, column, row, value, options));
 }
 
+// Báo giá chưa VAT chèn thêm dòng "Tổng tiền" và mỗi dòng "VAT x%" phía trên dòng tổng cộng.
+const vatSummaryRows = (summary) => (summary?.vatExcluded
+  ? [['TỔNG TIỀN', summary.preVat], ...summary.vatLines.map((line) => [`VAT ${line.rate}%`, line.amount])]
+  : []);
+const vatRowCount = (summary) => vatSummaryRows(summary).length;
+
 function buildSheetXml(source, quotation, summary) {
   const itemCount = quotation.items.length;
   const delta = Math.max(0, itemCount - 1);
+  const vatRows = vatSummaryRows(summary);
+  const extra = vatRows.length;
+  const perItemVat = summary.vatMode === 'per_item';
+  // Chế độ VAT từng sản phẩm: ghi thuế suất ngay dưới mô tả vì mẫu Excel không có cột VAT.
+  const productDetails = (item) => [
+    item.product_name ? (item.description || '') : '',
+    perItemVat ? `VAT ${itemVatRate(item)}%` : '',
+  ].filter(Boolean).join('\n');
   const rows = [...source.matchAll(/<row[\s\S]*?<\/row>/g)].map((match) => match[0]);
   const templateProduct = rows.find((row) => /\br="17"/.test(row));
   const rebuilt = [];
@@ -97,7 +111,7 @@ function buildSheetXml(source, quotation, summary) {
           'C',
           rowNumber,
           item.product_name || item.description || '',
-          item.product_name ? (item.description || '') : '',
+          productDetails(item),
         );
         productRow = replaceCell(productRow, 'D', rowNumber, item.brand || '');
         productRow = replaceCell(productRow, 'E', rowNumber, item.quantity, { numeric: true });
@@ -113,19 +127,30 @@ function buildSheetXml(source, quotation, summary) {
         productRow = setProductRowHeight(
           productRow,
           item.product_name || item.description || '',
-          item.product_name ? (item.description || '') : '',
+          productDetails(item),
         );
         rebuilt.push(productRow);
       });
-    } else if (oldRow >= 18) {
-      rebuilt.push(shiftRow(row, oldRow, oldRow + delta));
+    } else if (oldRow === 18) {
+      vatRows.forEach(([label, value], index) => {
+        const rowNumber = 18 + delta + index;
+        let vatRow = shiftRow(row, 18, rowNumber);
+        vatRow = replaceCell(vatRow, 'B', rowNumber, label);
+        vatRow = replaceCell(vatRow, 'H', rowNumber, value, { numeric: true });
+        rebuilt.push(vatRow);
+      });
+      let totalRowXml = shiftRow(row, 18, 18 + delta + extra);
+      if (extra) totalRowXml = replaceCell(totalRowXml, 'B', 18 + delta + extra, 'TỔNG TIỀN ĐÃ GỒM VAT');
+      rebuilt.push(totalRowXml);
+    } else if (oldRow > 18) {
+      rebuilt.push(shiftRow(row, oldRow, oldRow + delta + extra));
     } else {
       rebuilt.push(row);
     }
   }
 
   let xml = source.replace(/<sheetData>[\s\S]*?<\/sheetData>/, `<sheetData>${rebuilt.join('')}</sheetData>`);
-  const totalRow = 18 + delta;
+  const totalRow = 18 + delta + extra;
   const customerLines = [
     quotation.customer_name,
     quotation.tax_code ? `Mã số thuế: ${quotation.tax_code}` : '',
@@ -144,15 +169,17 @@ function buildSheetXml(source, quotation, summary) {
   const terms = quotation.terms || {};
   Object.keys(TERM_LABELS).forEach((key, index) => {
     const baseRow = 19 + index;
-    xml = setTemplateValue(xml, `B${baseRow + delta}`, `${TERM_LABELS[key]}: ${terms[key] || ''}`);
+    xml = setTemplateValue(xml, `B${baseRow + delta + extra}`, `${TERM_LABELS[key]}: ${terms[key] || ''}`);
   });
 
-  xml = xml.replace(/<dimension ref="A1:J\d+"\/>/, `<dimension ref="A1:J${27 + delta}"/>`);
-  xml = xml.replace(/<mergeCell ref="([A-Z]+)(\d+):([A-Z]+)(\d+)"\/>/g, (match, c1, r1, c2, r2) => {
-    const start = Number(r1) >= 18 ? Number(r1) + delta : Number(r1);
-    const end = Number(r2) >= 18 ? Number(r2) + delta : Number(r2);
-    return `<mergeCell ref="${c1}${start}:${c2}${end}"/>`;
-  });
+  const shiftRowNumber = (row) => (row >= 18 ? row + delta + extra : row);
+  xml = xml.replace(/<dimension ref="A1:J\d+"\/>/, `<dimension ref="A1:J${27 + delta + extra}"/>`);
+  xml = xml.replace(/<mergeCell ref="([A-Z]+)(\d+):([A-Z]+)(\d+)"\/>/g, (match, c1, r1, c2, r2) =>
+    `<mergeCell ref="${c1}${shiftRowNumber(Number(r1))}:${c2}${shiftRowNumber(Number(r2))}"/>`);
+  if (extra) {
+    const vatMerges = vatRows.map((_, index) => `<mergeCell ref="B${18 + delta + index}:G${18 + delta + index}"/>`).join('');
+    xml = xml.replace(/<mergeCells count="(\d+)">/, (match, count) => `<mergeCells count="${Number(count) + extra}">${vatMerges}`);
+  }
   return xml;
 }
 
@@ -173,7 +200,7 @@ export async function exportQuotationToExcel(quotation, summary) {
 export async function buildQuotationWorkbook(templateBuffer, quotation, summary) {
   const zip = await JSZip.loadAsync(templateBuffer);
   const sheetPath = 'xl/worksheets/sheet1.xml';
-  const delta = Math.max(0, quotation.items.length - 1);
+  const delta = Math.max(0, quotation.items.length - 1) + vatRowCount(summary);
   zip.file(sheetPath, buildSheetXml(await zip.file(sheetPath).async('string'), quotation, summary));
   const drawingPath = 'xl/drawings/drawing1.xml';
   if (delta && zip.file(drawingPath)) {

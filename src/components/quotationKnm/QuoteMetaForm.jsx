@@ -1,5 +1,11 @@
 import dayjs from 'dayjs';
-import { KNM_VAT_OPTIONS, resolveValidUntil } from '../../utils/knmQuotation.js';
+import { KNM_VAT_MODES, KNM_VAT_OPTIONS, resolveValidUntil } from '../../utils/knmQuotation.js';
+
+const VAT_MODE_HINTS = {
+  included: 'Đơn giá đã bao gồm VAT.',
+  common: 'Đơn giá chưa VAT, áp dụng một mức VAT cho tất cả sản phẩm.',
+  per_item: 'Đơn giá chưa VAT, chọn mức VAT ở từng sản phẩm.',
+};
 
 export default function QuoteMetaForm({ quotation, onChange, styles }) {
   const patch = (name, value) => onChange({ ...quotation, [name]: value });
@@ -27,20 +33,21 @@ export default function QuoteMetaForm({ quotation, onChange, styles }) {
           />
         </label>
         <label className={styles.field}>
-          VAT
-          <select value={quotation.vatRate} onChange={(e) => patch('vatRate', Number(e.target.value))}>
-            {KNM_VAT_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+          Cách tính VAT
+          <select value={quotation.vatMode} onChange={(e) => patch('vatMode', e.target.value)}>
+            {KNM_VAT_MODES.map((mode) => <option key={mode.value} value={mode.value}>{mode.label}</option>)}
           </select>
         </label>
+        {quotation.vatMode === 'common' && (
+          <label className={styles.field}>
+            VAT chung
+            <select value={quotation.vatRate} onChange={(e) => patch('vatRate', Number(e.target.value))}>
+              {KNM_VAT_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+            </select>
+          </label>
+        )}
       </div>
-      <label className={styles.checkboxField}>
-        <input
-          type="checkbox"
-          checked={quotation.vatInclusiveInput}
-          onChange={(e) => patch('vatInclusiveInput', e.target.checked)}
-        />
-        Đơn giá nhập vào đã gồm VAT (tự động tách thành đơn giá chưa VAT)
-      </label>
+      <p className={styles.hint}>{VAT_MODE_HINTS[quotation.vatMode]}</p>
       <p className={styles.hint}>Hiệu lực đến ngày: <b>{dayjs(validUntil).format('DD/MM/YYYY')}</b></p>
     </section>
   );

@@ -6,7 +6,7 @@ import { useReactToPrint } from 'react-to-print';
 import { FaChevronDown, FaCopy, FaEye, FaFileArrowDown, FaFileArrowUp, FaFileExcel, FaFilePdf, FaFloppyDisk, FaGripVertical, FaMagnifyingGlass, FaPlus, FaPrint, FaTrash, FaXmark } from 'react-icons/fa6';
 import { toast } from 'react-toastify';
 import { useAuth } from '../../hooks/useAuth.js';
-import { calculateQuotation, emptyQuotation, newItem, normalizeLocalQuotation, QUOTATION_STATUSES, TERM_LABELS, UNITS, validateQuotation, quotationPayload } from '../../utils/quotation.js';
+import { calculateQuotation, emptyQuotation, fileSlug, newItem, normalizeLocalQuotation, QUOTATION_STATUSES, TERM_LABELS, UNITS, validateQuotation, quotationPayload, DEFAULT_ITEM_VAT_RATE, itemVatRate, VAT_EXCLUDED_NOTE, VAT_INCLUDED_NOTE, VAT_MODES, VAT_RATES, vatModeKind } from '../../utils/quotation.js';
 import { exportQuotationToExcel } from '../../utils/quotationExcel.js';
 import { exportQuotationToPdf } from '../../utils/quotationPdf.js';
 import { getNextQuotationNumber, getQuotation, normalizeQuotation, saveQuotation } from '../../services/quotationService.js';
@@ -16,11 +16,17 @@ import {
   DEFAULT_STAMP_POSITION, clearStampAsset, loadStampAsset, loadStampPosition,
   saveStampAsset, saveStampPosition,
 } from '../../utils/quotationAssets.js';
-import { downloadProductImportTemplate, parseProductImportFile } from '../../utils/quotationImport.js';
+import { downloadProductImportTemplate, exportProductsToExcel, parseProductImportFile } from '../../utils/quotationImport.js';
 import PrintInvoice from '../../components/quotation/PrintInvoice.jsx';
 import ConfirmModal from './ConfirmModal.jsx';
 import styles from './Quotation.module.css';
 import productStyles from './QuotationProduct.module.css';
+
+const VAT_MODE_HINTS = {
+  included: 'Đơn giá đã bao gồm VAT.',
+  common: 'Đơn giá chưa VAT, áp dụng một mức VAT cho tất cả sản phẩm.',
+  per_item: 'Đơn giá chưa VAT, chọn mức VAT ở từng sản phẩm.',
+};
 
 export default function Quotation() {
   const { id } = useParams();
@@ -55,6 +61,16 @@ export default function Quotation() {
   const patchItem = (index, name, value) => setData((current) => ({
     ...current, items: current.items.map((item, itemIndex) => itemIndex === index ? { ...item, [name]: value } : item),
   }));
+  const setVatMode = (kind) => setData((current) => {
+    const excluded = kind !== 'included';
+    const note = current.terms?.note;
+    let nextNote = note;
+    if (excluded && (!note || note === VAT_INCLUDED_NOTE)) nextNote = VAT_EXCLUDED_NOTE;
+    if (!excluded && (!note || note === VAT_EXCLUDED_NOTE)) nextNote = VAT_INCLUDED_NOTE;
+    let vat_mode = kind;
+    if (kind === 'common') vat_mode = vatModeKind(current) === 'common' ? current.vat_mode : String(DEFAULT_ITEM_VAT_RATE);
+    return { ...current, vat_mode, terms: { ...current.terms, note: nextNote } };
+  });
   const dropItem = (index) => {
     setData((current) => {
       if (dragIndex === null || dragIndex === index) return current;
@@ -209,6 +225,15 @@ export default function Quotation() {
       toast.success(`Đã nhập ${imported.length} sản phẩm từ file Excel.`);
     } catch (error) {
       toast.error(error.message || 'Không thể đọc file Excel.');
+    }
+  };
+
+  const handleExportProducts = () => {
+    try {
+      const count = exportProductsToExcel(data.items, `San-pham-${fileSlug(data.quotation_no) || 'bao-gia'}.xlsx`);
+      toast.success(`Đã xuất ${count} sản phẩm ra file Excel.`);
+    } catch (error) {
+      toast.error(error.message || 'Không thể xuất file Excel.');
     }
   };
 
@@ -408,12 +433,28 @@ export default function Quotation() {
                 <FaFileArrowUp/> Nhập từ Excel
                 <input type="file" accept=".xlsx,.xls" onChange={handleImportProducts}/>
               </label>
+              <button type="button" onClick={handleExportProducts}><FaFileExcel/> Xuất sản phẩm ra Excel</button>
               <button className={styles.primary} onClick={() => patch('items', [...data.items, newItem()])}><FaPlus/> Thêm sản phẩm</button>
             </div>
           </div>
+          <div className={styles.vatToggle}>
+            <label>Cách tính VAT
+              <select value={summary.vatMode} onChange={(e) => setVatMode(e.target.value)}>
+                {Object.entries(VAT_MODES).map(([key, label]) => <option key={key} value={key}>{label}</option>)}
+              </select>
+            </label>
+            {summary.vatMode === 'common' && (
+              <label>VAT chung
+                <select value={String(data.vat_mode)} onChange={(e) => patch('vat_mode', e.target.value)}>
+                  {VAT_RATES.map((rate) => <option key={rate} value={rate}>{rate}%</option>)}
+                </select>
+              </label>
+            )}
+            <span>{VAT_MODE_HINTS[summary.vatMode]}</span>
+          </div>
           {errors.items && <p className={styles.error}>{errors.items}</p>}
           <div className={styles.tableWrap}><table className={styles.itemsTable}>
-            <thead><tr><th className={styles.dragCol}></th><th>STT</th><th>Tên và mô tả sản phẩm *</th><th>Thương hiệu</th><th>Số lượng</th><th>ĐVT</th><th>Đơn giá</th><th>Thành tiền</th><th></th></tr></thead>
+            <thead><tr><th className={styles.dragCol}></th><th>STT</th><th>Tên và mô tả sản phẩm *</th><th>Thương hiệu</th><th>Số lượng</th><th>ĐVT</th><th>{summary.vatExcluded ? 'Đơn giá chưa VAT' : 'Đơn giá'}</th><th>{summary.vatExcluded ? 'Thành tiền chưa VAT' : 'Thành tiền'}</th>{summary.vatMode === 'per_item' && <th>VAT</th>}<th></th></tr></thead>
             <tbody>{data.items.map((item, index) => <tr
               key={item.key || item.id}
               onDragOver={(e) => e.preventDefault()}
@@ -428,17 +469,28 @@ export default function Quotation() {
               <td><input list="units" placeholder="ĐVT" value={item.unit} onChange={(e) => patchItem(index, 'unit', e.target.value)}/></td>
               <td><input type="number" min="0" step="1000" value={item.unit_price} onChange={(e) => patchItem(index, 'unit_price', e.target.value)}/>{errors[`item_${index}_unit_price`] && <small>{errors[`item_${index}_unit_price`]}</small>}</td>
               <td className={styles.money}>{formatCurrency(Number(item.quantity) * Number(item.unit_price))}</td>
+              {summary.vatMode === 'per_item' && <td className={styles.vatCell}>
+                <select aria-label={`VAT sản phẩm ${index + 1}`} value={String(itemVatRate(item))} onChange={(e) => patchItem(index, 'vat_rate', Number(e.target.value))}>
+                  {VAT_RATES.map((rate) => <option key={rate} value={rate}>{rate}%</option>)}
+                </select>
+              </td>}
               <td><button className={styles.danger} disabled={data.items.length === 1} onClick={() => setDeleteItemIndex(index)}><FaTrash/></button></td>
             </tr>)}</tbody>
-            <tfoot><tr><td colSpan={9} className={styles.addRow}><button type="button" onClick={() => patch('items', [...data.items, newItem()])}><FaPlus/> Thêm sản phẩm</button></td></tr></tfoot>
+            <tfoot><tr><td colSpan={summary.vatMode === 'per_item' ? 10 : 9} className={styles.addRow}><button type="button" onClick={() => patch('items', [...data.items, newItem()])}><FaPlus/> Thêm sản phẩm</button></td></tr></tfoot>
           </table><datalist id="units">{UNITS.map((unit) => <option key={unit} value={unit}/>)}</datalist></div>
           <div className={styles.totalsRow}>
             <div className={styles.totalsCard}>
               <p><span>Tạm tính</span><b>{formatCurrency(summary.subtotal)} VNĐ</b></p>
               <p><span>Chiết khấu</span><b>-{formatCurrency(summary.discount)} VNĐ</b></p>
               <p><span>Phí vận chuyển</span><b>{formatCurrency(summary.shipping)} VNĐ</b></p>
-              <p><span>VAT</span><b>Đã bao gồm</b></p>
-              <p className={styles.grand}><span>Tổng cộng</span><b>{formatCurrency(summary.total)} VNĐ</b></p>
+              {summary.vatExcluded ? (<>
+                <p><span>Tổng tiền</span><b>{formatCurrency(summary.preVat)} VNĐ</b></p>
+                {summary.vatLines.map((line) => <p key={line.rate}><span>VAT {line.rate}%</span><b>{formatCurrency(line.amount)} VNĐ</b></p>)}
+                <p className={styles.grand}><span>Tổng tiền đã gồm VAT</span><b>{formatCurrency(summary.total)} VNĐ</b></p>
+              </>) : (<>
+                <p><span>VAT</span><b>Đã bao gồm</b></p>
+                <p className={styles.grand}><span>Tổng cộng</span><b>{formatCurrency(summary.total)} VNĐ</b></p>
+              </>)}
               <em>{summary.words}</em>
             </div>
           </div>

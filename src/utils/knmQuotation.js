@@ -9,6 +9,16 @@ export const KNM_VAT_OPTIONS = [
   { value: 10, label: '10%' },
 ];
 
+// included = Gồm VAT (đơn giá đã gồm VAT); common = Chia VAT (một mức VAT chung, quotation.vatRate);
+// per_item = Chia VAT từng sản phẩm (mỗi item.vatRate riêng).
+export const KNM_VAT_MODES = [
+  { value: 'included', label: 'Gồm VAT' },
+  { value: 'common', label: 'Chia VAT' },
+  { value: 'per_item', label: 'Chia VAT từng sản phẩm' },
+];
+
+export const KNM_DEFAULT_ITEM_VAT_RATE = 8;
+
 export const KNM_DEFAULT_VALIDITY_DAYS = 7;
 
 export const KNM_DEFAULT_TERMS = [
@@ -48,6 +58,7 @@ export function newKnmItem() {
     unit: 'Cái',
     customUnit: '',
     unitPrice: 0,
+    vatRate: KNM_DEFAULT_ITEM_VAT_RATE,
   };
 }
 
@@ -61,12 +72,22 @@ export function createDraftKnmQuotation() {
     quotationNo: '',
     quotationDate: today,
     validityDays: KNM_DEFAULT_VALIDITY_DAYS,
+    vatMode: 'included',
     vatRate: 8,
-    vatInclusiveInput: true,
     customer: emptyKnmCustomer(),
     items: [newKnmItem()],
     terms: KNM_DEFAULT_TERMS,
   };
+}
+
+// Báo giá lưu trước khi có vatMode luôn lưu đơn giá chưa VAT + một mức VAT chung → mở lại ở chế độ 'common'.
+export function normalizeKnmQuotation(saved) {
+  if (!saved || typeof saved !== 'object') return {};
+  const rest = { ...saved };
+  delete rest.vatInclusiveInput;
+  rest.vatMode = KNM_VAT_MODES.some((mode) => mode.value === rest.vatMode) ? rest.vatMode : 'common';
+  if (Array.isArray(rest.items)) rest.items = rest.items.map((item) => ({ ...item, vatRate: knmItemVatRate(item) }));
+  return rest;
 }
 
 export function resolveValidUntil(quotationDate, validityDays) {
@@ -78,27 +99,36 @@ export function resolveKnmUnit(item) {
   return item.unit === 'Khác' ? (item.customUnit || '').trim() : item.unit;
 }
 
-export function toGrossUnitPrice(netPrice, vatRate) {
-  const rate = Math.max(0, Number(vatRate) || 0);
-  return Math.round((Math.max(0, Number(netPrice) || 0)) * (1 + rate / 100));
+const isKnmVatRate = (rate) => KNM_VAT_OPTIONS.some((option) => option.value === rate);
+
+export function knmItemVatRate(item) {
+  const rate = Number(item?.vatRate);
+  return item?.vatRate !== '' && item?.vatRate != null && isKnmVatRate(rate) ? rate : KNM_DEFAULT_ITEM_VAT_RATE;
 }
 
-export function toNetUnitPrice(grossPrice, vatRate) {
-  const rate = Math.max(0, Number(vatRate) || 0);
-  // Keep the fractional net price so converting back preserves the entered gross price.
-  return Math.max(0, Number(grossPrice) || 0) / (1 + rate / 100);
-}
-
-export function calculateKnmTotals(items, vatRate) {
-  const subtotal = (items || []).reduce((sum, item) => {
-    const quantity = Math.max(0, Number(item.quantity) || 0);
-    const unitPrice = Math.max(0, Number(item.unitPrice) || 0);
-    return sum + quantity * unitPrice;
-  }, 0);
-  const roundedSubtotal = Math.round(subtotal);
-  const total = Math.round(subtotal * (1 + Math.max(0, Number(vatRate) || 0) / 100));
-  const vatAmount = total - roundedSubtotal;
-  return { subtotal: roundedSubtotal, vatAmount, total };
+/**
+ * @returns {{ vatMode: string, subtotal: number, vatLines: { rate: number, base: number, amount: number }[],
+ *   vatAmount: number, total: number }} vatLines: một dòng "VAT x%" cho mỗi thuế suất, giảm dần.
+ */
+export function calculateKnmTotals(quotation) {
+  const vatMode = quotation?.vatMode || 'included';
+  const bases = new Map();
+  (quotation?.items || []).forEach((item) => {
+    const amount = Math.max(0, Number(item.quantity) || 0) * Math.max(0, Number(item.unitPrice) || 0);
+    const rate = vatMode === 'per_item' ? knmItemVatRate(item)
+      : vatMode === 'common' ? Math.max(0, Number(quotation.vatRate) || 0) : 0;
+    bases.set(rate, (bases.get(rate) || 0) + amount);
+  });
+  // Làm tròn theo từng nhóm thuế suất: VAT = round(base × (1 + r)) − round(base).
+  const groups = [...bases.entries()].sort((a, b) => b[0] - a[0]).map(([rate, base]) => {
+    const roundedBase = Math.round(base);
+    return { rate, base: roundedBase, amount: Math.round(base * (1 + rate / 100)) - roundedBase };
+  });
+  const subtotal = groups.reduce((sum, group) => sum + group.base, 0);
+  const vatLines = vatMode === 'included' ? [] : groups;
+  const vatAmount = vatLines.reduce((sum, line) => sum + line.amount, 0);
+  if (vatMode === 'common' && !vatLines.length) vatLines.push({ rate: Math.max(0, Number(quotation.vatRate) || 0), base: 0, amount: 0 });
+  return { vatMode, subtotal, vatLines, vatAmount, total: subtotal + vatAmount };
 }
 
 const DIACRITIC_MARKS = new RegExp('[̀-ͯ]', 'g');

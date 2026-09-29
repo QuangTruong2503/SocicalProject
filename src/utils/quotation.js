@@ -16,8 +16,12 @@ export const TERM_LABELS = {
   payment: 'Phương thức thanh toán', quality: 'Chất lượng hàng hóa', validity: 'Hiệu lực báo giá',
 };
 
+export const VAT_RATES = ['10', '8', '5'];
+export const VAT_INCLUDED_NOTE = 'Giá đã bao gồm thuế VAT.';
+export const VAT_EXCLUDED_NOTE = 'Giá chưa bao gồm thuế VAT.';
+
 export const DEFAULT_TERMS = {
-  note: 'Giá đã bao gồm thuế VAT.',
+  note: VAT_INCLUDED_NOTE,
   deliveryPlace: 'Chưa gồm phí vận chuyển nếu có.',
   deliveryTime: 'Giao hàng trong vòng 5–7 ngày kể từ ngày nhận đơn đặt hàng.',
   payment: 'Chuyển khoản. Thanh toán 100% ngay sau khi nhận được thông báo giao hàng.',
@@ -28,7 +32,7 @@ export const DEFAULT_TERMS = {
 export const newItem = () => ({
   key: globalThis.crypto?.randomUUID?.() || `item-${Date.now()}-${Math.random().toString(36).slice(2)}`,
   product_id: '', product_code: '', product_name: '', description: '',
-  brand: '', quantity: 1, unit: 'Cái', unit_price: 0,
+  brand: '', quantity: 1, unit: 'Cái', unit_price: 0, vat_rate: DEFAULT_ITEM_VAT_RATE,
 });
 
 export function emptyQuotation(profile = {}, user = {}) {
@@ -61,21 +65,56 @@ export function normalizeLocalQuotation(value, profile = {}, user = {}) {
   };
 }
 
+// vat_mode:
+//   'included'         = Gồm VAT: đơn giá đã bao gồm VAT.
+//   '5' | '8' | '10'   = Chia VAT: đơn giá chưa VAT, một thuế suất chung cho cả báo giá.
+//   'per_item'         = Chia VAT từng sản phẩm: mỗi dòng có vat_rate riêng.
+export const VAT_MODES = { included: 'Gồm VAT', common: 'Chia VAT', per_item: 'Chia VAT từng sản phẩm' };
+export const DEFAULT_ITEM_VAT_RATE = 8;
+
+export function vatModeKind(data) {
+  if (data?.vat_mode === 'per_item') return 'per_item';
+  return VAT_RATES.includes(String(data?.vat_mode)) ? 'common' : 'included';
+}
+
+export function itemVatRate(item) {
+  const rate = Number(item?.vat_rate);
+  return VAT_RATES.includes(String(rate)) ? rate : DEFAULT_ITEM_VAT_RATE;
+}
+
 export function calculateQuotation(data) {
-  const vat = 0;
-  const subtotal = (data.items || []).reduce((sum, item) => {
-    const quantity = Math.max(0, Number(item.quantity) || 0);
-    const price = Math.max(0, Number(item.unit_price) || 0);
-    const lineSubtotal = quantity * price;
-    return sum + lineSubtotal;
-  }, 0);
+  const kind = vatModeKind(data);
+  const lines = (data.items || []).map((item) => ({
+    amount: Math.max(0, Number(item.quantity) || 0) * Math.max(0, Number(item.unit_price) || 0),
+    rate: itemVatRate(item),
+  }));
+  const subtotal = lines.reduce((sum, line) => sum + line.amount, 0);
   const rawDiscount = data.discount_type === 'percent'
     ? subtotal * Math.min(100, Math.max(0, Number(data.discount_value) || 0)) / 100
     : Math.max(0, Number(data.discount_value) || 0);
   const discount = Math.min(subtotal, rawDiscount);
   const shipping = Math.max(0, Number(data.shipping_fee) || 0);
-  const total = Math.round(Math.max(0, subtotal + vat - discount + shipping));
-  return { subtotal: Math.round(subtotal), discount: Math.round(discount), shipping: Math.round(shipping), vat: Math.round(vat), total, words: numberToVietnamese(total) };
+  const preVat = Math.round(Math.max(0, subtotal - discount + shipping));
+
+  // Mỗi phần tử: { rate, base, amount } — một dòng "VAT x%" trong phần tổng tiền, thuế suất giảm dần.
+  let vatLines = [];
+  if (kind === 'common') {
+    const rate = Number(data.vat_mode);
+    vatLines = [{ rate, base: preVat, amount: Math.round(preVat * rate / 100) }];
+  } else if (kind === 'per_item') {
+    // Chiết khấu phân bổ theo tỷ lệ tiền hàng; phí vận chuyển không có thuế suất riêng nên không tính VAT.
+    const keepRatio = subtotal > 0 ? (subtotal - discount) / subtotal : 0;
+    const bases = new Map();
+    lines.forEach((line) => bases.set(line.rate, (bases.get(line.rate) || 0) + line.amount * keepRatio));
+    vatLines = [...bases.entries()].sort((a, b) => b[0] - a[0])
+      .map(([rate, base]) => ({ rate, base: Math.round(base), amount: Math.round(base * rate / 100) }));
+  }
+  const vat = vatLines.reduce((sum, line) => sum + line.amount, 0);
+  const total = preVat + vat;
+  return {
+    subtotal: Math.round(subtotal), discount: Math.round(discount), shipping: Math.round(shipping),
+    vatMode: kind, vatExcluded: kind !== 'included', vatLines, preVat, vat, total, words: numberToVietnamese(total),
+  };
 }
 
 export function validateQuotation(data, draft = false) {
@@ -100,7 +139,7 @@ export function quotationPayload(data, status) {
       product_id: item.product_id || '', product_code: item.product_code || '',
       product_name: (item.product_name || item.description || '').trim(),
       description: (item.description || '').trim(), brand: item.brand || '', quantity: Number(item.quantity),
-      unit: item.unit || 'Cái', unit_price: Number(item.unit_price), position: index + 1,
+      unit: item.unit || 'Cái', unit_price: Number(item.unit_price), vat_rate: itemVatRate(item), position: index + 1,
     })),
   };
 }
