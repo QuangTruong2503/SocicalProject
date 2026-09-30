@@ -205,12 +205,33 @@ function WatermarkCountBoard({
 
 function WatermarkImageZoom({ image, onClose }) {
   const [isCapturing, setIsCapturing] = useState(false);
+  const [isCopying, setIsCopying] = useState(false);
   const dialogRef = useDialogFocus(Boolean(image));
   if (!image) return null;
   const detailItems = Array.isArray(image.items) ? image.items : null;
 
+  const handleCopy = async () => {
+    if (!detailItems || isCopying || isCapturing) return;
+    if (!navigator.clipboard?.write || typeof ClipboardItem === 'undefined') {
+      toast.error('Trình duyệt này chưa hỗ trợ sao chép hình vào clipboard.');
+      return;
+    }
+    setIsCopying(true);
+    try {
+      // Pass the blob as a promise so the clipboard write starts inside the click (required by Safari).
+      const blobPromise = import('../utils/sourceImageCapture.js')
+        .then(({ renderSourceImagesToPngBlob }) => renderSourceImagesToPngBlob(detailItems));
+      await navigator.clipboard.write([new ClipboardItem({ 'image/png': blobPromise })]);
+      toast.success('Đã sao chép ảnh toàn cảnh vào clipboard.');
+    } catch (error) {
+      toast.error(error?.message || 'Không thể sao chép ảnh toàn cảnh.');
+    } finally {
+      setIsCopying(false);
+    }
+  };
+
   const handleCapture = async () => {
-    if (!detailItems || isCapturing) return;
+    if (!detailItems || isCapturing || isCopying) return;
     setIsCapturing(true);
     try {
       const { captureAndDownloadSourceImages } = await import('../utils/sourceImageCapture.js');
@@ -253,10 +274,21 @@ function WatermarkImageZoom({ image, onClose }) {
           <div className="wm-preview-actions">
             {detailItems && (
               <button
+                className="wm-source-capture-button wm-source-copy-button"
+                type="button"
+                onClick={handleCopy}
+                disabled={isCopying || isCapturing}
+              >
+                <span className="wm-source-capture-icon" aria-hidden="true">⧉</span>
+                {isCopying ? 'Đang sao chép…' : 'Sao chép ảnh'}
+              </button>
+            )}
+            {detailItems && (
+              <button
                 className="wm-source-capture-button"
                 type="button"
                 onClick={handleCapture}
-                disabled={isCapturing}
+                disabled={isCapturing || isCopying}
                 data-dialog-initial
               >
                 <span className="wm-source-capture-icon" aria-hidden="true">↓</span>

@@ -15,12 +15,12 @@ function loadImage(url) {
   });
 }
 
-function canvasToBlob(canvas) {
+function canvasToBlob(canvas, type = 'image/jpeg', quality = 0.88) {
   return new Promise((resolve, reject) => {
     canvas.toBlob((blob) => {
       if (blob) resolve(blob);
       else reject(new Error('Không thể tạo ảnh chụp toàn cảnh.'));
-    }, 'image/jpeg', 0.88);
+    }, type, quality);
   });
 }
 
@@ -81,16 +81,24 @@ function paginateRows(cards) {
   return pages;
 }
 
-async function renderPage(rows) {
-  const canvas = document.createElement('canvas');
-  canvas.width = PAGE_PADDING * 2 + CARD_WIDTH * 2 + CARD_GAP;
-  canvas.height = PAGE_PADDING * 2
+function getPageHeight(rows) {
+  return PAGE_PADDING * 2
     + rows.reduce((sum, row) => sum + row.height, 0)
     + Math.max(0, rows.length - 1) * CARD_GAP;
+}
+
+function drawPage(rows, scale = 1) {
+  const width = PAGE_PADDING * 2 + CARD_WIDTH * 2 + CARD_GAP;
+  const height = getPageHeight(rows);
+
+  const canvas = document.createElement('canvas');
+  canvas.width = Math.max(1, Math.round(width * scale));
+  canvas.height = Math.max(1, Math.round(height * scale));
 
   const context = canvas.getContext('2d');
+  context.scale(scale, scale);
   context.fillStyle = '#eef2f7';
-  context.fillRect(0, 0, canvas.width, canvas.height);
+  context.fillRect(0, 0, width, height);
 
   let y = PAGE_PADDING;
   rows.forEach((row) => {
@@ -119,14 +127,35 @@ async function renderPage(rows) {
     y += row.height + CARD_GAP;
   });
 
-  return canvasToBlob(canvas);
+  return canvas;
+}
+
+function renderPage(rows) {
+  return canvasToBlob(drawPage(rows));
+}
+
+async function loadCards(items) {
+  const loadedImages = await Promise.all(items.map((item) => loadImage(item.url)));
+  return prepareCards(items, loadedImages);
+}
+
+// Clipboard only holds one image, so every row goes into a single PNG, scaled down if too tall.
+export async function renderSourceImagesToPngBlob(items) {
+  if (!Array.isArray(items) || items.length === 0) {
+    throw new Error('Không có ảnh nguồn để sao chép.');
+  }
+
+  const cards = await loadCards(items);
+  const rows = paginateRows(cards).flat();
+  const scale = Math.min(1, MAX_CANVAS_HEIGHT / getPageHeight(rows));
+
+  return canvasToBlob(drawPage(rows, scale), 'image/png');
 }
 
 export async function captureAndDownloadSourceImages(items) {
   if (!Array.isArray(items) || items.length === 0) return;
 
-  const loadedImages = await Promise.all(items.map((item) => loadImage(item.url)));
-  const cards = prepareCards(items, loadedImages);
+  const cards = await loadCards(items);
   const pages = paginateRows(cards);
   const pageBlobs = [];
 

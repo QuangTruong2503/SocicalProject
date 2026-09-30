@@ -133,7 +133,7 @@ export default function ProductEditor({ items, totals, error, onChange, onImport
           ))}
           <div className={styles.summaryTotal}><span>TỔNG TIỀN ĐÃ GỒM VAT</span><span>{formatCurrency(totals.total)} ₫</span></div>
         </>) : (<>
-          <div className={styles.summaryRow}><span>VAT</span><b>Đã bao gồm</b></div>
+          <div className={styles.summaryRow}><span>VAT 8%</span><b>Đã bao gồm</b></div>
           <div className={styles.summaryTotal}><span>TỔNG THANH TOÁN</span><span>{formatCurrency(totals.total)} ₫</span></div>
         </>)}
         <p className={styles.summaryWords}>{numberToVietnamese(totals.total)}</p>

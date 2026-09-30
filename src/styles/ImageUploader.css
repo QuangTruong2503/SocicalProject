@@ -130,6 +130,26 @@ body.dtw-watermark-theme .wm-source-capture-button {
   box-shadow: 0 10px 26px rgba(233, 30, 140, 0.22);
 }
 
+body .wm-source-capture-button.wm-source-copy-button {
+  background: #ffffff;
+  color: #2563eb;
+  box-shadow: none;
+}
+
+body .wm-source-copy-button .wm-source-capture-icon {
+  background: rgba(37, 99, 235, 0.1);
+}
+
+body.dtw-watermark-theme .wm-source-capture-button.wm-source-copy-button {
+  background: #ffffff;
+  color: var(--dtw-rose, #e91e8c);
+  box-shadow: none;
+}
+
+body.dtw-watermark-theme .wm-source-copy-button .wm-source-capture-icon {
+  background: rgba(233, 30, 140, 0.1);
+}
+
 body .wm-source-detail-frame {
   display: block;
   overflow: auto;
