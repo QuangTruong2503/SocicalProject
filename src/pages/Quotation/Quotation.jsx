@@ -54,6 +54,8 @@ export default function Quotation() {
   const [termsOpen, setTermsOpen] = useState(false);
   const [confirmReset, setConfirmReset] = useState(false);
   const [deleteItemIndex, setDeleteItemIndex] = useState(null);
+  const [confirmClearItems, setConfirmClearItems] = useState(false);
+  const hasItemContent = data.items.length > 1 || data.items.some((item) => item.product_name?.trim() || item.description?.trim());
   const summary = useMemo(() => calculateQuotation(data), [data]);
 
   const print = useReactToPrint({ contentRef: printRef, documentTitle: `Bao-gia-${data.quotation_no}` });
@@ -434,6 +436,7 @@ export default function Quotation() {
                 <input type="file" accept=".xlsx,.xls" onChange={handleImportProducts}/>
               </label>
               <button type="button" onClick={handleExportProducts}><FaFileExcel/> Xuất sản phẩm ra Excel</button>
+              <button type="button" className={styles.danger} onClick={() => setConfirmClearItems(true)} disabled={!hasItemContent}><FaTrash/> Xóa tất cả sản phẩm</button>
               <button className={styles.primary} onClick={() => patch('items', [...data.items, newItem()])}><FaPlus/> Thêm sản phẩm</button>
             </div>
           </div>
@@ -568,6 +571,20 @@ export default function Quotation() {
           setDeleteItemIndex(null);
         }}
         onCancel={() => setDeleteItemIndex(null)}
+      />
+      <ConfirmModal
+        open={confirmClearItems}
+        title="Xóa tất cả sản phẩm"
+        message={`Xóa toàn bộ ${data.items.length} sản phẩm trong báo giá? Thao tác này không thể hoàn tác.`}
+        confirmLabel="Xóa tất cả"
+        danger
+        onConfirm={() => {
+          patch('items', [newItem()]);
+          setErrors((current) => Object.fromEntries(Object.entries(current).filter(([key]) => key !== 'items' && !key.startsWith('item_'))));
+          setConfirmClearItems(false);
+          toast.success('Đã xóa tất cả sản phẩm.');
+        }}
+        onCancel={() => setConfirmClearItems(false)}
       />
     </>
   );
