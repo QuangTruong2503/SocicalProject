@@ -1,10 +1,15 @@
-import JSZip from 'jszip';
+export const MAX_COPY_SOURCE_IMAGES = 24;
 
 const CARD_WIDTH = 1000;
 const CARD_GAP = 32;
 const PAGE_PADDING = 40;
 const MAX_IMAGE_HEIGHT = 1200;
 const MAX_CANVAS_HEIGHT = 15000;
+const MULTI_DOWNLOAD_DELAY_MS = 400;
+
+function wait(ms) {
+  return new Promise((resolve) => window.setTimeout(resolve, ms));
+}
 
 function loadImage(url) {
   return new Promise((resolve, reject) => {
@@ -144,6 +149,9 @@ export async function renderSourceImagesToPngBlob(items) {
   if (!Array.isArray(items) || items.length === 0) {
     throw new Error('Không có ảnh nguồn để sao chép.');
   }
+  if (items.length > MAX_COPY_SOURCE_IMAGES) {
+    throw new Error(`Chỉ sao chép được tối đa ${MAX_COPY_SOURCE_IMAGES} ảnh. Hãy dùng "Xuất ảnh JPG".`);
+  }
 
   const cards = await loadCards(items);
   const rows = paginateRows(cards).flat();
@@ -153,7 +161,7 @@ export async function renderSourceImagesToPngBlob(items) {
 }
 
 export async function captureAndDownloadSourceImages(items) {
-  if (!Array.isArray(items) || items.length === 0) return;
+  if (!Array.isArray(items) || items.length === 0) return 0;
 
   const cards = await loadCards(items);
   const pages = paginateRows(cards);
@@ -166,13 +174,13 @@ export async function captureAndDownloadSourceImages(items) {
   const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
   if (pageBlobs.length === 1) {
     downloadBlob(pageBlobs[0], `anh-nguon-toan-canh-${timestamp}.jpg`);
-    return;
+    return 1;
   }
 
-  const zip = new JSZip();
-  pageBlobs.forEach((blob, index) => {
-    zip.file(`anh-nguon-toan-canh-${index + 1}.jpg`, blob);
-  });
-  const zipBlob = await zip.generateAsync({ type: 'blob' });
-  downloadBlob(zipBlob, `anh-nguon-toan-canh-${timestamp}.zip`);
+  // Space out the downloads; browsers may drop back-to-back clicks.
+  for (const [index, blob] of pageBlobs.entries()) {
+    if (index > 0) await wait(MULTI_DOWNLOAD_DELAY_MS);
+    downloadBlob(blob, `anh-nguon-toan-canh-${timestamp}-${index + 1}.jpg`);
+  }
+  return pageBlobs.length;
 }

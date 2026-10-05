@@ -7,6 +7,7 @@ import ImageUploader from '../components/watermark/ImageUploader';
 import WatermarkControls from '../components/watermark/WatermarkControls';
 import WatermarkGallery from '../components/watermark/WatermarkGallery';
 import WatermarkLivePreview from '../components/watermark/WatermarkLivePreview';
+import ImageLightbox from '../components/watermark/ImageLightbox';
 import SeasonalEffectLayer from '../components/watermark/SeasonalEffectLayer';
 import { processWatermark, resizeBlob, buildFileName, compressAndResizeBlob, loadWatermarkImage, normalizeImageName } from '../hooks/useWatermarkProcessor';
 import { useAuth } from '../hooks/useAuth.js';
@@ -25,6 +26,11 @@ import {
 } from '../services/watermarkImageCountService.js';
 import { getOrCreateWatermarkVisitorId } from '../utils/watermarkVisitor.js';
 import { createThumbnailUrl } from '../utils/imageThumbnail.js';
+import {
+  MAX_COPY_SOURCE_IMAGES,
+  captureAndDownloadSourceImages,
+  renderSourceImagesToPngBlob,
+} from '../utils/sourceImageCapture.js';
 import '../styles/Watermark.css';
 
 const WATERMARK_COUNT_SOURCE_PAGE = 'watermark';
@@ -204,14 +210,34 @@ function WatermarkCountBoard({
 }
 
 function WatermarkImageZoom({ image, onClose }) {
+  if (!image) return null;
+  if (Array.isArray(image.items)) return <SourceDetailModal image={image} onClose={onClose} />;
+  return (
+    <ImageLightbox
+      items={Array.isArray(image.gallery) ? image.gallery : [image]}
+      initialIndex={image.index || 0}
+      onClose={onClose}
+    />
+  );
+}
+
+function SourceDetailModal({ image, onClose }) {
   const [isCapturing, setIsCapturing] = useState(false);
   const [isCopying, setIsCopying] = useState(false);
-  const dialogRef = useDialogFocus(Boolean(image));
-  if (!image) return null;
-  const detailItems = Array.isArray(image.items) ? image.items : null;
+  const dialogRef = useDialogFocus();
+  const detailItems = image.items;
+  const isCopyBlocked = detailItems.length > MAX_COPY_SOURCE_IMAGES;
+
+  useEffect(() => {
+    const handleEscape = (event) => {
+      if (event.key === 'Escape') onClose();
+    };
+    document.addEventListener('keydown', handleEscape);
+    return () => document.removeEventListener('keydown', handleEscape);
+  }, [onClose]);
 
   const handleCopy = async () => {
-    if (!detailItems || isCopying || isCapturing) return;
+    if (isCopyBlocked || isCopying || isCapturing) return;
     if (!navigator.clipboard?.write || typeof ClipboardItem === 'undefined') {
       toast.error('Trình duyệt này chưa hỗ trợ sao chép hình vào clipboard.');
       return;
@@ -219,8 +245,7 @@ function WatermarkImageZoom({ image, onClose }) {
     setIsCopying(true);
     try {
       // Pass the blob as a promise so the clipboard write starts inside the click (required by Safari).
-      const blobPromise = import('../utils/sourceImageCapture.js')
-        .then(({ renderSourceImagesToPngBlob }) => renderSourceImagesToPngBlob(detailItems));
+      const blobPromise = renderSourceImagesToPngBlob(detailItems);
       await navigator.clipboard.write([new ClipboardItem({ 'image/png': blobPromise })]);
       toast.success('Đã sao chép ảnh toàn cảnh vào clipboard.');
     } catch (error) {
@@ -231,12 +256,13 @@ function WatermarkImageZoom({ image, onClose }) {
   };
 
   const handleCapture = async () => {
-    if (!detailItems || isCapturing || isCopying) return;
+    if (isCapturing || isCopying) return;
     setIsCapturing(true);
     try {
-      const { captureAndDownloadSourceImages } = await import('../utils/sourceImageCapture.js');
-      await captureAndDownloadSourceImages(detailItems);
-      toast.success('Đã chụp và tải toàn bộ ảnh nguồn.');
+      const fileCount = await captureAndDownloadSourceImages(detailItems);
+      toast.success(fileCount > 1
+        ? `Đã tải ${fileCount} ảnh JPG toàn cảnh.`
+        : 'Đã chụp và tải toàn bộ ảnh nguồn.');
     } catch (error) {
       toast.error(error?.message || 'Không thể chụp ảnh toàn cảnh.');
     } finally {
@@ -251,77 +277,70 @@ function WatermarkImageZoom({ image, onClose }) {
       onPointerDown={onClose}
     >
       <div
-        className={`wm-preview-modal wm-preview-modal--zoom${detailItems ? ' wm-preview-modal--source-detail' : ''}`}
+        className="wm-preview-modal wm-preview-modal--zoom wm-preview-modal--source-detail"
         ref={dialogRef}
         role="dialog"
         aria-modal="true"
         aria-label={`Phóng to ${image.title}`}
-        aria-describedby={detailItems ? 'wm-source-detail-description' : undefined}
+        aria-describedby="wm-source-detail-description"
         onPointerDown={(event) => event.stopPropagation()}
       >
-        <div className={`wm-preview-header${detailItems ? ' wm-source-detail-header' : ''}`}>
+        <div className="wm-preview-header wm-source-detail-header">
           <div className="wm-preview-title-wrap">
             <span className="wm-preview-kicker">{image.kicker || 'Xem ảnh'}</span>
             <strong className="wm-preview-title" title={image.title}>
               {image.title}
             </strong>
-            {detailItems && (
-              <span className="wm-source-detail-description" id="wm-source-detail-description">
-                Kiểm tra thứ tự ảnh trước khi xuất bản tổng hợp JPG
-              </span>
-            )}
+            <span className="wm-source-detail-description" id="wm-source-detail-description">
+              {isCopyBlocked
+                ? `Có ${detailItems.length} ảnh — chỉ sao chép được tối đa ${MAX_COPY_SOURCE_IMAGES} ảnh, hãy dùng "Xuất ảnh JPG"`
+                : 'Kiểm tra thứ tự ảnh trước khi xuất bản tổng hợp JPG'}
+            </span>
           </div>
           <div className="wm-preview-actions">
-            {detailItems && (
-              <button
-                className="wm-source-capture-button wm-source-copy-button"
-                type="button"
-                onClick={handleCopy}
-                disabled={isCopying || isCapturing}
-              >
-                <span className="wm-source-capture-icon" aria-hidden="true">⧉</span>
-                {isCopying ? 'Đang sao chép…' : 'Sao chép ảnh'}
-              </button>
-            )}
-            {detailItems && (
-              <button
-                className="wm-source-capture-button"
-                type="button"
-                onClick={handleCapture}
-                disabled={isCapturing || isCopying}
-                data-dialog-initial
-              >
-                <span className="wm-source-capture-icon" aria-hidden="true">↓</span>
-                {isCapturing ? 'Đang tạo JPG…' : 'Xuất ảnh JPG'}
-              </button>
-            )}
+            <button
+              className="wm-source-capture-button wm-source-copy-button"
+              type="button"
+              onClick={handleCopy}
+              disabled={isCopyBlocked || isCopying || isCapturing}
+              title={isCopyBlocked ? `Chỉ sao chép được tối đa ${MAX_COPY_SOURCE_IMAGES} ảnh` : undefined}
+            >
+              <span className="wm-source-capture-icon" aria-hidden="true">⧉</span>
+              {isCopying ? 'Đang sao chép…' : 'Sao chép ảnh'}
+            </button>
+            <button
+              className="wm-source-capture-button"
+              type="button"
+              onClick={handleCapture}
+              disabled={isCapturing || isCopying}
+              data-dialog-initial
+            >
+              <span className="wm-source-capture-icon" aria-hidden="true">↓</span>
+              {isCapturing ? 'Đang tạo JPG…' : 'Xuất ảnh JPG'}
+            </button>
             <button
               className="wm-preview-close"
               type="button"
               onClick={onClose}
-              aria-label="Đóng ảnh phóng to"
-              data-dialog-initial={!detailItems || undefined}
+              aria-label="Đóng (Esc)"
+              title="Đóng (Esc)"
             >
-              <span aria-hidden="true">×</span>
+              <span aria-hidden="true">✕</span>
             </button>
           </div>
         </div>
 
-        <div className={`wm-preview-image-frame${detailItems ? ' wm-source-detail-frame' : ''}`}>
-          {detailItems ? (
-            <div className="wm-source-detail-grid">
-              {detailItems.map((item) => (
-                <figure className="wm-source-detail-item" key={`${item.url}-${item.index}`}>
-                  <div className="wm-source-detail-image-wrap">
-                    <img src={item.url} alt={item.title} loading="lazy" decoding="async" />
-                    <span className="wm-source-detail-index">{item.index}</span>
-                  </div>
-                </figure>
-              ))}
-            </div>
-          ) : (
-            <img src={image.url} alt={image.title} />
-          )}
+        <div className="wm-preview-image-frame wm-source-detail-frame">
+          <div className="wm-source-detail-grid">
+            {detailItems.map((item) => (
+              <figure className="wm-source-detail-item" key={`${item.url}-${item.index}`}>
+                <div className="wm-source-detail-image-wrap">
+                  <img src={item.url} alt={item.title} loading="lazy" decoding="async" />
+                  <span className="wm-source-detail-index">{item.index}</span>
+                </div>
+              </figure>
+            ))}
+          </div>
         </div>
       </div>
     </div>,
@@ -563,20 +582,9 @@ export default function Watermark() {
   useEffect(() => {
     if (!zoomImage) return undefined;
 
-    const handleEscape = (event) => {
-      if (event.key === 'Escape') {
-        closeZoom();
-      }
-    };
-
-    document.addEventListener('keydown', handleEscape);
     document.body.classList.add('wm-modal-open');
-
-    return () => {
-      document.removeEventListener('keydown', handleEscape);
-      document.body.classList.remove('wm-modal-open');
-    };
-  }, [closeZoom, zoomImage]);
+    return () => document.body.classList.remove('wm-modal-open');
+  }, [zoomImage]);
 
   useEffect(() => {
     if (!downloadChoiceMode) return undefined;

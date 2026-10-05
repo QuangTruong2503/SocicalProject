@@ -1,0 +1,311 @@
+/* Single-image viewer used by the Watermark page (source images, logo, results). */
+
+body.wm-watermark-theme .wm-preview-backdrop.wm-lightbox {
+  padding: clamp(0.75rem, 3vw, 2.5rem);
+  background: rgba(2, 6, 23, 0.78);
+  backdrop-filter: blur(14px) saturate(1.1);
+  -webkit-backdrop-filter: blur(14px) saturate(1.1);
+  cursor: zoom-out;
+}
+
+.wm-lightbox__dialog {
+  position: relative;
+  width: min(100%, 1200px);
+  height: min(100%, 900px);
+  display: grid;
+  /* minmax(0, 1fr) stops a long file name from widening the grid past the viewport. */
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: clamp(18px, 2.4vw, 28px);
+  background: var(--wm-surface);
+  color: var(--wm-text);
+  font-family: var(--wm-font-body);
+  box-shadow: 0 40px 100px rgba(0, 0, 0, 0.5);
+  cursor: default;
+  animation: wmModalIn 0.28s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.wm-lightbox.is-closing .wm-lightbox__dialog {
+  animation: wmModalOut 0.18s ease both;
+}
+
+/* ---- Header bar ---- */
+.wm-lightbox__bar {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  min-height: 68px;
+  padding: 0.65rem 0.75rem 0.65rem clamp(0.9rem, 2vw, 1.35rem);
+  border-bottom: 1px solid var(--wm-border);
+}
+
+.wm-lightbox__heading {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.wm-lightbox__kicker {
+  align-self: flex-start;
+  max-width: 100%;
+  overflow: hidden;
+  padding: 0.18rem 0.55rem;
+  border-radius: 999px;
+  background: var(--wm-primary-soft);
+  color: var(--wm-primary-deep);
+  font-family: var(--wm-font-display);
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.wm-lightbox__title {
+  display: block;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--wm-text-strong);
+  font-family: var(--wm-font-display);
+  font-size: clamp(0.9rem, 1.6vw, 1.02rem);
+  font-weight: 800;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.wm-lightbox__tools {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.wm-lightbox__counter {
+  min-width: 3.6rem;
+  padding: 0.35rem 0.6rem;
+  border-radius: 999px;
+  background: var(--wm-primary-soft);
+  color: var(--wm-text);
+  font-size: 0.82rem;
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  text-align: center;
+}
+
+.wm-lightbox__tool,
+.wm-lightbox__close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  flex-shrink: 0;
+  border: 1px solid var(--wm-border);
+  border-radius: 50%;
+  background: var(--wm-surface);
+  color: var(--wm-text);
+  cursor: pointer;
+  font-size: 1.2rem;
+  line-height: 1;
+  text-decoration: none;
+  transition: background 0.16s ease, border-color 0.16s ease, color 0.16s ease, transform 0.16s ease;
+}
+
+.wm-lightbox__tool:hover {
+  border-color: var(--wm-border-strong);
+  background: var(--wm-primary-soft);
+  color: var(--wm-primary);
+}
+
+.wm-lightbox__tool[aria-pressed='true'] {
+  border-color: var(--wm-primary);
+  background: var(--wm-primary);
+  color: #ffffff;
+}
+
+.wm-lightbox__close {
+  width: 48px;
+  height: 48px;
+  margin-left: 0.2rem;
+  border-color: transparent;
+  background: var(--wm-text);
+  color: var(--wm-surface);
+  font-size: 1.15rem;
+  font-weight: 700;
+}
+
+.wm-lightbox__close:hover {
+  background: var(--wm-danger);
+  color: #ffffff;
+  transform: rotate(90deg);
+}
+
+.wm-lightbox :is(.wm-lightbox__tool, .wm-lightbox__close, .wm-lightbox__nav):focus-visible {
+  outline: 3px solid var(--wm-primary);
+  outline-offset: 2px;
+}
+
+/* ---- Image stage ---- */
+.wm-lightbox__stage {
+  position: relative;
+  min-height: 0;
+  background:
+    radial-gradient(circle at 50% 0%, rgba(148, 163, 184, 0.16), transparent 55%),
+    #0b1120;
+}
+
+.wm-lightbox__scroller {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  overflow: hidden;
+  padding: clamp(0.75rem, 2vw, 1.5rem) clamp(3.75rem, 7vw, 5.5rem);
+  touch-action: pan-y;
+}
+
+.wm-lightbox__scroller.is-zoomed {
+  overflow: auto;
+  padding: 0;
+  touch-action: auto;
+  overscroll-behavior: contain;
+}
+
+.wm-lightbox__image {
+  display: block;
+  /* margin:auto centers without clipping the scrollable overflow when zoomed. */
+  margin: auto;
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  border-radius: 10px;
+  box-shadow: 0 18px 50px rgba(0, 0, 0, 0.45);
+  cursor: zoom-in;
+  user-select: none;
+  animation: wmLightboxFade 0.2s ease both;
+}
+
+.wm-lightbox__scroller.is-zoomed .wm-lightbox__image {
+  max-width: none;
+  max-height: none;
+  border-radius: 0;
+  box-shadow: none;
+  cursor: zoom-out;
+}
+
+.wm-lightbox__nav {
+  position: absolute;
+  top: 50%;
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 52px;
+  height: 52px;
+  padding-bottom: 4px;
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  border-radius: 50%;
+  background: rgba(15, 23, 42, 0.62);
+  color: #ffffff;
+  cursor: pointer;
+  font-size: 2.1rem;
+  line-height: 1;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  transform: translateY(-50%);
+  transition: background 0.16s ease, transform 0.16s ease;
+}
+
+.wm-lightbox__nav:hover {
+  background: rgba(255, 255, 255, 0.92);
+  color: #0f172a;
+  transform: translateY(-50%) scale(1.06);
+}
+
+.wm-lightbox__nav--prev { left: clamp(0.5rem, 1.5vw, 1rem); }
+.wm-lightbox__nav--next { right: clamp(0.5rem, 1.5vw, 1rem); }
+
+/* ---- Hint footer ---- */
+.wm-lightbox__hint {
+  margin: 0;
+  padding: 0.6rem 1rem;
+  border-top: 1px solid var(--wm-border);
+  color: var(--wm-text-muted);
+  font-size: 0.78rem;
+  text-align: center;
+}
+
+.wm-lightbox__hint kbd {
+  display: inline-block;
+  min-width: 1.6em;
+  padding: 0.05rem 0.4rem;
+  border: 1px solid var(--wm-border);
+  border-bottom-width: 2px;
+  border-radius: 6px;
+  background: var(--wm-surface);
+  color: var(--wm-text);
+  font-family: inherit;
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+.wm-lightbox__hint-touch { display: none; }
+
+@media (hover: none) {
+  .wm-lightbox__hint-keys { display: none; }
+  .wm-lightbox__hint-touch { display: inline; }
+}
+
+@keyframes wmLightboxFade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* ---- Small screens: edge-to-edge viewer ---- */
+@media (max-width: 640px) {
+  body.wm-watermark-theme .wm-preview-backdrop.wm-lightbox {
+    padding: 0;
+  }
+
+  .wm-lightbox__dialog {
+    width: 100%;
+    height: 100dvh;
+    border: 0;
+    border-radius: 0;
+  }
+
+  .wm-lightbox__bar {
+    min-height: 60px;
+    gap: 0.5rem;
+    padding: 0.5rem 0.5rem 0.5rem 0.85rem;
+  }
+
+  .wm-lightbox__tools { gap: 0.3rem; }
+
+  .wm-lightbox__counter {
+    min-width: 0;
+    padding: 0.3rem 0.45rem;
+    font-size: 0.74rem;
+  }
+
+  .wm-lightbox__tool { width: 40px; height: 40px; font-size: 1.05rem; }
+  .wm-lightbox__close { width: 44px; height: 44px; }
+
+  .wm-lightbox__scroller { padding: 0.5rem; }
+
+  .wm-lightbox__nav {
+    width: 44px;
+    height: 44px;
+    font-size: 1.8rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .wm-lightbox__dialog,
+  .wm-lightbox__image { animation: none; }
+  .wm-lightbox__close:hover { transform: none; }
+}

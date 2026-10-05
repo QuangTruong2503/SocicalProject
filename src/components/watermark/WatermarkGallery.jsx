@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { createPortal } from 'react-dom';
 import { normalizeImageName } from '../../hooks/useWatermarkProcessor';
 import { useDialogFocus } from '../../hooks/useDialogFocus.js';
+import ImageLightbox from './ImageLightbox';
 import { HARAVAN_PRESETS, loadHaravanPreferences, normalizeHaravanPrefix, saveHaravanPreferences } from '../../utils/haravanPreferences.js';
 import '../../styles/WatermarkGallery.css';
 
@@ -53,7 +53,7 @@ export default function WatermarkGallery({
   const haravanOptions = [...HARAVAN_PRESETS, ...haravanPreferences.customOptions];
   const [haravanCopyStatus, setHaravanCopyStatus] = useState('idle');
   const [isHaravanPrefixGuideOpen, setIsHaravanPrefixGuideOpen] = useState(false);
-  const [previewResult, setPreviewResult] = useState(null);
+  const [previewIndex, setPreviewIndex] = useState(null);
   const [isPreviewClosing, setIsPreviewClosing] = useState(false);
   const renameDialogRef = useDialogFocus(isBulkRenameOpen);
   const linksDialogRef = useDialogFocus(isHaravanLinksOpen);
@@ -95,22 +95,29 @@ export default function WatermarkGallery({
   };
 
   const closePreview = useCallback(() => {
-    if (!previewResult || isPreviewClosing) return;
+    if (previewIndex === null || isPreviewClosing) return;
 
     setIsPreviewClosing(true);
     previewCloseTimerRef.current = window.setTimeout(() => {
-      setPreviewResult(null);
+      setPreviewIndex(null);
       setIsPreviewClosing(false);
     }, 180);
-  }, [isPreviewClosing, previewResult]);
+  }, [isPreviewClosing, previewIndex]);
 
-  const openPreview = useCallback((result, index) => {
+  const openPreview = useCallback((index) => {
     if (previewCloseTimerRef.current) {
       window.clearTimeout(previewCloseTimerRef.current);
     }
     setIsPreviewClosing(false);
-    setPreviewResult({ ...result, index });
+    setPreviewIndex(index);
   }, []);
+
+  const previewItems = useMemo(() => results.map((result, index) => ({
+    url: result.url,
+    title: result.fileName,
+    kicker: `Ảnh #${index + 1}`,
+    downloadName: normalizeDownloadName(result.fileName),
+  })), [results]);
 
   useEffect(() => {
     if (!isMenuOpen) return;
@@ -150,23 +157,13 @@ export default function WatermarkGallery({
     return () => document.removeEventListener('keydown', handleEscape);
   }, [isBulkRenameOpen, isHaravanLinksOpen]);
 
+  // ImageLightbox handles its own keyboard shortcuts; this only locks page scrolling.
   useEffect(() => {
-    if (!previewResult) return;
+    if (previewIndex === null) return;
 
-    const handleEscape = (event) => {
-      if (event.key === 'Escape') {
-        closePreview();
-      }
-    };
-
-    document.addEventListener('keydown', handleEscape);
     document.body.classList.add('wm-modal-open');
-
-    return () => {
-      document.removeEventListener('keydown', handleEscape);
-      document.body.classList.remove('wm-modal-open');
-    };
-  }, [closePreview, previewResult]);
+    return () => document.body.classList.remove('wm-modal-open');
+  }, [previewIndex]);
 
   useEffect(() => {
     return () => {
@@ -467,7 +464,7 @@ export default function WatermarkGallery({
                   index={index}
                   onRenameFile={onRenameFile}
                   onRemoveResult={onRemoveResult}
-                  onPreview={() => openPreview(r, index)}
+                  onPreview={() => openPreview(index)}
                   style={{ animationDelay: `${Math.min(i, 7) * 35}ms` }}
                 />
               );
@@ -484,9 +481,10 @@ export default function WatermarkGallery({
         </div>
       )}
 
-      {previewResult && (
-        <ImagePreviewModal
-          result={previewResult}
+      {previewIndex !== null && previewItems.length > 0 && (
+        <ImageLightbox
+          items={previewItems}
+          initialIndex={previewIndex}
           isClosing={isPreviewClosing}
           onClose={closePreview}
         />
@@ -820,47 +818,5 @@ function SkeletonResultCard() {
         <div className="wm-skeleton wm-skeleton--input" />
       </div>
     </div>
-  );
-}
-
-function ImagePreviewModal({ result, isClosing, onClose }) {
-  const dialogRef = useDialogFocus();
-  return createPortal(
-    <div
-      className={`wm-preview-backdrop${isClosing ? ' is-closing' : ''}`}
-      role="presentation"
-      onPointerDown={onClose}
-    >
-      <div
-        className="wm-preview-modal"
-        ref={dialogRef}
-        role="dialog"
-        aria-modal="true"
-        aria-label={`Xem trước ${result.fileName}`}
-        onPointerDown={(event) => event.stopPropagation()}
-      >
-        <div className="wm-preview-header">
-          <div className="wm-preview-title-wrap">
-            <span className="wm-preview-kicker">Ảnh #{result.index + 1}</span>
-            <strong className="wm-preview-title" title={result.fileName}>
-              {result.fileName}
-            </strong>
-          </div>
-          <button
-            className="wm-preview-close"
-            type="button"
-            onClick={onClose}
-            aria-label="Đóng xem trước"
-          >
-            <span aria-hidden="true">×</span>
-          </button>
-        </div>
-
-        <div className="wm-preview-image-frame">
-          <img src={result.url} alt={result.fileName} />
-        </div>
-      </div>
-    </div>,
-    document.body
   );
 }

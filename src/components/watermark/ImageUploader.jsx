@@ -232,6 +232,16 @@ export default function ImageUploader({
     handleDragEnd();
   };
 
+  const openSourcePreview = (index) => onImagePreview?.({
+    gallery: images.map((image, imageIndex) => ({
+      url: image.preview,
+      title: image.name,
+      kicker: `Ảnh nguồn #${imageIndex + 1}`,
+      downloadName: image.name,
+    })),
+    index,
+  });
+
   return (
     <div className="wm-image-uploader">
       <div className="wm-source-heading">
@@ -310,11 +320,7 @@ export default function ImageUploader({
               onDragEnd={handleDragEnd}
               onDragOver={(event) => handleDragOverThumb(event, i)}
               onDrop={(event) => handleDropThumb(event, i)}
-              onClick={() => onImagePreview?.({
-                url: img.preview,
-                title: img.name,
-                kicker: `Ảnh nguồn #${i + 1}`,
-              })}
+              onClick={() => openSourcePreview(i)}
               onKeyDown={(event) => {
                 if (event.target !== event.currentTarget) return;
                 if (event.altKey && ['ArrowLeft', 'ArrowRight'].includes(event.key)) {
@@ -325,11 +331,7 @@ export default function ImageUploader({
                 }
                 if (event.key === 'Enter' || event.key === ' ') {
                   event.preventDefault();
-                  onImagePreview?.({
-                    url: img.preview,
-                    title: img.name,
-                    kicker: `Ảnh nguồn #${i + 1}`,
-                  });
+                  openSourcePreview(i);
                 }
               }}
               aria-label={`Phóng to ${img.name}`}
