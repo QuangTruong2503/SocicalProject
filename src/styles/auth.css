@@ -608,6 +608,11 @@
   transition: transform 0.25s ease, box-shadow 0.25s ease, opacity 0.25s ease, background 0.25s ease;
 }
 
+.auth-captcha {
+  width: 100%;
+  min-height: 65px;
+}
+
 .auth-submit-btn {
   margin-top: 10px;
   color: white;

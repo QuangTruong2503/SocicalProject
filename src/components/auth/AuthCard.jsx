@@ -2,18 +2,24 @@ import { useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { FcGoogle } from 'react-icons/fc';
 import { FiArrowRight, FiMail } from 'react-icons/fi';
+import { Turnstile } from '@marsidev/react-turnstile';
 import { useAuth } from '../../hooks/useAuth.js';
+import { useTheme } from '../../hooks/useTheme.js';
 import AuthField from './AuthField.jsx';
 import { getAuthReturnPath } from '../../utils/authRedirect.js';
 import { validateAuthForm } from '../../utils/authValidation.js';
 
 const emptyForm = { username: '', email: '', password: '', confirmPassword: '' };
+const turnstileSiteKey = import.meta.env.TURNSTILE_CAPTCHA_SITE_KEY;
 
 export default function AuthCard() {
   const navigate = useNavigate();
   const location = useLocation();
   const { login, signup, loginWithGoogle } = useAuth();
+  const { theme } = useTheme();
   const [mode, setMode] = useState('login');
+  const [captchaToken, setCaptchaToken] = useState('');
+  const turnstileRef = useRef(null);
   const [form, setForm] = useState(emptyForm);
   const [errors, setErrors] = useState(() => ({ global: location.state?.authNotice }));
   const [pending, setPending] = useState(null);
@@ -30,6 +36,12 @@ export default function AuthCard() {
     setErrors({});
     setVisiblePasswords({});
     setForm((previous) => ({ ...emptyForm, email: previous.email }));
+  }
+
+  // Turnstile tokens are single-use, so request a fresh one after every attempt.
+  function resetCaptcha() {
+    setCaptchaToken('');
+    turnstileRef.current?.reset();
   }
 
   function updateField(key, value) {
@@ -49,12 +61,16 @@ export default function AuthCard() {
       formRef.current?.elements.namedItem(firstInvalid)?.focus();
       return;
     }
+    if (turnstileSiteKey && !captchaToken) {
+      setErrors({ global: 'Vui lòng hoàn tất xác minh bảo mật trước khi tiếp tục.' });
+      return;
+    }
     requestInFlight.current = true;
     setPending(mode);
     setConfirmationEmail('');
     try {
       const payload = { email: form.email.trim().toLowerCase(), password: form.password,
-        username: form.username.trim(), redirectPath: returnTarget };
+        username: form.username.trim(), redirectPath: returnTarget, captchaToken: captchaToken || undefined };
       const result = await (isRegister ? signup(payload) : login(payload));
       if (result.error) {
         setErrors({ global: result.error });
@@ -73,6 +89,7 @@ export default function AuthCard() {
     } finally {
       requestInFlight.current = false;
       setPending(null);
+      resetCaptcha();
     }
   }
 
@@ -148,6 +165,17 @@ export default function AuthCard() {
           {field('password', 'Mật khẩu', { autoComplete: isRegister ? 'new-password' : 'current-password', showPasswordToggle: true,
             hint: isRegister ? 'Ít nhất 6 ký tự. Nên kết hợp chữ, số và ký hiệu.' : undefined })}
           {isRegister && field('confirmPassword', 'Nhập lại mật khẩu', { autoComplete: 'new-password', showPasswordToggle: true })}
+          {turnstileSiteKey && <Turnstile ref={turnstileRef} className="auth-captcha" siteKey={turnstileSiteKey}
+            options={{ theme, language: 'vi', size: 'flexible' }}
+            onSuccess={(token) => {
+              setCaptchaToken(token);
+              setErrors((previous) => ({ ...previous, global: undefined }));
+            }}
+            onExpire={() => setCaptchaToken('')}
+            onError={() => {
+              setCaptchaToken('');
+              setErrors((previous) => ({ ...previous, global: 'Không thể tải xác minh bảo mật. Vui lòng tải lại trang.' }));
+            }} />}
           <button type="submit" className="auth-submit-btn" disabled={Boolean(pending)}>
             {pending === mode ? <><span className="auth-spinner" aria-hidden="true" />Đang xử lý…</> :
               <>{isRegister ? 'Tạo tài khoản' : 'Đăng nhập'}<FiArrowRight aria-hidden="true" /></>}

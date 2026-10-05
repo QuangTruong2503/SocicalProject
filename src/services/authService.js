@@ -13,19 +13,21 @@ import { normalizeLocalPath } from '../utils/authRedirect.js';
  * @property {string} email
  * @property {string} password
  * @property {string} username
+ * @property {string} [captchaToken]
  */
 
 /**
  * @typedef {Object} LoginPayload
  * @property {string} email
  * @property {string} password
+ * @property {string} [captchaToken]
  */
 
 /**
  * @param {SignUpPayload} payload
  * @returns {Promise<import('./serviceHelpers.js').ServiceResult<{ user: import('@supabase/supabase-js').User | null, session: import('@supabase/supabase-js').Session | null, requiresEmailConfirmation: boolean }>>}
  */
-export async function signUp({ email, password, username, redirectPath }) {
+export async function signUp({ email, password, username, redirectPath, captchaToken }) {
   try {
     console.debug('[authService] signUp start', { email, username });
     const emailRedirectTo = typeof window === 'undefined'
@@ -37,6 +39,7 @@ export async function signUp({ email, password, username, redirectPath }) {
       password,
       options: {
         emailRedirectTo,
+        captchaToken,
         data: {
           username,
         },
@@ -72,13 +75,14 @@ export async function signUp({ email, password, username, redirectPath }) {
  * @param {LoginPayload} payload
  * @returns {Promise<import('./serviceHelpers.js').ServiceResult<AuthSnapshot>>}
  */
-export async function signIn({ email, password }) {
+export async function signIn({ email, password, captchaToken }) {
   try {
     console.debug('[authService] signIn start', { email });
 
     const { data, error } = await supabase.auth.signInWithPassword({
       email,
       password,
+      options: { captchaToken },
     });
 
     if (error) {

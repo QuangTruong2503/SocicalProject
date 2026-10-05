@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@google/genai": "^1.47.0",
+    "@marsidev/react-turnstile": "^1.6.1",
     "@supabase/supabase-js": "^2.105.3",
     "axios": "^1.13.6",
     "browser-image-compression": "^2.0.2",

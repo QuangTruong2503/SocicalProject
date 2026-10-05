@@ -231,9 +231,9 @@ export function AuthProvider({ children }) {
     };
   }, [applySessionState]);
 
-  async function login({ email, password }) {
+  async function login({ email, password, captchaToken }) {
     setAuthError(null);
-    const result = await signIn({ email, password });
+    const result = await signIn({ email, password, captchaToken });
 
     if (result.error) {
       setAuthError(result.error);
@@ -251,9 +251,9 @@ export function AuthProvider({ children }) {
     return result;
   }
 
-  async function signup({ email, password, username, redirectPath }) {
+  async function signup({ email, password, username, redirectPath, captchaToken }) {
     setAuthError(null);
-    const result = await signUp({ email, password, username, redirectPath });
+    const result = await signUp({ email, password, username, redirectPath, captchaToken });
 
     if (result.error) {
       setAuthError(result.error);
