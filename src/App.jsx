@@ -20,7 +20,6 @@ const DashboardPage = lazy(() => import('./pages/DashboardPage.jsx'));
 import ProtectedRoute from './components/ProtectedRoute.jsx';
 import AdminRoute from './components/AdminRoute.jsx';
 import PublicRoute from './components/PublicRoute.jsx';
-const AISEO = lazy(() => import('./pages/AISEO.jsx'));
 const AdminLayout = lazy(() => import('./pages/Admin/AdminLayout.jsx'));
 const AdminDashboardPage = lazy(() => import('./pages/Admin/AdminDashboardPage.jsx'));
 const AdminUsersPage = lazy(() => import('./pages/Admin/AdminUsersPage.jsx'));
@@ -56,15 +55,6 @@ function FeatureCard({ icon, title, description, buttonText, link, badge, delay 
 function HomePage() {
   const features = [
     {
-      icon: '🤖',
-      title: 'AI SEO Generator',
-      description: 'Tạo nội dung SEO-optimized tự động cho sản phẩm, bài viết, và quảng cáo của bạn.',
-      buttonText: 'Mo AISEO',
-      link: '/aiseo',
-      badge: 'Popular',
-      delay: 100,
-    },
-    {
       icon: '🔐',
       title: 'Authentication',
       description: 'Đăng ký, đăng nhập và quản lý phiên người dùng với Supabase Authentication.',
@@ -72,15 +62,6 @@ function HomePage() {
       link: '/auth',
       badge: 'New',
       delay: 150,
-    },
-    {
-      icon: '📊',
-      title: 'SEO Excel Generator',
-      description: 'Upload Excel, tạo tag SEO bằng AI và lưu tiến độ realtime để không mất dữ liệu.',
-      buttonText: 'Mo Tool',
-      link: '/seo-excel-generator',
-      badge: 'New',
-      delay: 225,
     },
     {
       icon: '🎮',
@@ -133,7 +114,7 @@ function HomePage() {
     <>
       <Helmet>
         <title>Trang Chủ - AISEO Tools Suite</title>
-        <meta name="description" content="Bộ công cụ AI toàn diện: SEO Generator, Authentication, Memory Game, Watermark Tool" />
+        <meta name="description" content="Bộ công cụ toàn diện: Watermark Tool, Báo giá, Link ảnh sản phẩm, Memory Game" />
       </Helmet>
 
       <div className="home-page-wrapper loaded">
@@ -258,10 +239,6 @@ function NotFoundPage() {
   );
 }
 
-function AISEOFallbackPage() {
-  return <Navigate to="/" replace />;
-}
-
 const protectedRouteConfigs = [
   {
     path: '/dashboard',
@@ -328,7 +305,6 @@ export default function App() {
           <Suspense fallback={<div role="status" style={{ padding: '48px 24px', textAlign: 'center' }}>Đang tải công cụ…</div>}>
           <Routes>
             <Route path="/" element={<HomePage />} />
-            <Route path="/aiseo" element={<AISEO />} />
             <Route path="/watermark/dashboard" element={<ProtectedRoute title="Thống kê Watermark cần đăng nhập." description="Khu vực dành cho nhân viên và quản trị viên." details={['Xem thống kê lượt sử dụng Watermark']} loginLabel="Đăng nhập để xem thống kê"><WatermarkDashboardPage /></ProtectedRoute>} />
             <Route path="/quotation" element={<Navigate to="/bao-gia-minh-triet/tao-moi" replace />} />
             <Route path="/bao-gia-knm" element={<ProtectedRoute title="Báo giá KNM cần đăng nhập." description="Khu vực dành cho nhân viên và quản trị viên." details={['Tạo báo giá máy móc, thiết bị công nghiệp', 'Xem trước realtime, xuất PDF và in ngay']} loginLabel="Đăng nhập để tạo báo giá KNM"><QuotationKnm /></ProtectedRoute>} />

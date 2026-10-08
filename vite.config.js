@@ -6,12 +6,4 @@ export default defineConfig({
   plugins: [react()],
   // Expose the public Turnstile site key alongside the default VITE_ variables.
   envPrefix: ['VITE_', 'TURNSTILE_CAPTCHA_SITE_KEY'],
-  server: {
-    proxy: {
-      '/api': {
-        target: 'http://localhost:3001',
-        changeOrigin: true,
-      },
-    },
-  },
 })

@@ -13,7 +13,7 @@ test('rejects external redirects, invalid destinations, and auth loops', () => {
   }
 });
 test('router state takes precedence, with query fallback for OAuth and email links', () => {
-  assert.equal(getAuthReturnPath({ state: { from: '/aiseo' }, search: '?next=/dashboard' }), '/aiseo');
+  assert.equal(getAuthReturnPath({ state: { from: '/watermark' }, search: '?next=/dashboard' }), '/watermark');
   assert.equal(getAuthReturnPath({ search: '?next=%2Fbao-gia-knm%3Fdraft%3D1' }), '/bao-gia-knm?draft=1');
   assert.equal(getAuthReturnPath({ search: '' }), '/dashboard');
 });
