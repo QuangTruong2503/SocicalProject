@@ -9,6 +9,7 @@ const Quotation = lazy(() => import('./pages/Quotation/Quotation.jsx'));
 const QuotationList = lazy(() => import('./pages/Quotation/QuotationList.jsx'));
 const QuotationKnm = lazy(() => import('./pages/QuotationKnm/QuotationKnm.jsx'));
 const QuotationKnmList = lazy(() => import('./pages/QuotationKnm/QuotationKnmList.jsx'));
+const ProductLinks = lazy(() => import('./pages/ProductLinks/ProductLinks.jsx'));
 import Footer from './components/Footer.jsx';
 import Header from './components/Header.jsx';
 import ScrollToTopButton from './components/ScrollToTopButton.jsx';
@@ -25,6 +26,7 @@ const AdminDashboardPage = lazy(() => import('./pages/Admin/AdminDashboardPage.j
 const AdminUsersPage = lazy(() => import('./pages/Admin/AdminUsersPage.jsx'));
 const AdminQuotationsPage = lazy(() => import('./pages/Admin/AdminQuotationsPage.jsx'));
 const AdminMemoryCardsPage = lazy(() => import('./pages/Admin/AdminMemoryCardsPage.jsx'));
+const AdminProductLinksPage = lazy(() => import('./pages/Admin/AdminProductLinksPage.jsx'));
 
 function FeatureCard({ icon, title, description, buttonText, link, badge, delay }) {
   return (
@@ -115,6 +117,15 @@ function HomePage() {
       link: '/bao-gia-knm',
       badge: 'New',
       delay: 350,
+    },
+    {
+      icon: '🖼️',
+      title: 'Link ảnh sản phẩm',
+      description: 'Copy nhanh link ảnh theo từng mã sản phẩm, đánh dấu sản phẩm đã làm, đồng bộ realtime với cả nhóm.',
+      buttonText: 'Mo Tool',
+      link: '/link-anh-san-pham',
+      badge: 'New',
+      delay: 375,
     },
   ];
 
@@ -323,12 +334,14 @@ export default function App() {
             <Route path="/bao-gia-knm" element={<ProtectedRoute title="Báo giá KNM cần đăng nhập." description="Khu vực dành cho nhân viên và quản trị viên." details={['Tạo báo giá máy móc, thiết bị công nghiệp', 'Xem trước realtime, xuất PDF và in ngay']} loginLabel="Đăng nhập để tạo báo giá KNM"><QuotationKnm /></ProtectedRoute>} />
             <Route path="/bao-gia-knm/quan-ly" element={<ProtectedRoute title="Quản lý báo giá KNM cần đăng nhập." description="Khu vực dành cho nhân viên và quản trị viên." details={['Lưu và chỉnh sửa báo giá KNM']} loginLabel="Đăng nhập để quản lý báo giá KNM"><QuotationKnmList /></ProtectedRoute>} />
             <Route path="/bao-gia-knm/:id/chinh-sua" element={<ProtectedRoute title="Chỉnh sửa báo giá KNM cần đăng nhập." description="Khu vực dành cho nhân viên và quản trị viên." details={['Chỉnh sửa báo giá KNM đã lưu']} loginLabel="Đăng nhập để chỉnh sửa"><QuotationKnm /></ProtectedRoute>} />
+            <Route path="/link-anh-san-pham" element={<ProtectedRoute title="Link ảnh sản phẩm cần đăng nhập." description="Khu vực dành cho nhân viên được quản trị viên cấp quyền." details={['Copy nhanh link ảnh sản phẩm', 'Đánh dấu sản phẩm đã làm', 'Xem hoạt động của cả nhóm theo thời gian thực']} loginLabel="Đăng nhập để mở trang"><ProductLinks /></ProtectedRoute>} />
             <Route path="/admin" element={<AdminRoute><AdminLayout /></AdminRoute>}>
               <Route index element={<AdminDashboardPage />} />
               <Route path="users" element={<AdminUsersPage />} />
               <Route path="quotations" element={<AdminQuotationsPage />} />
               <Route path="watermark" element={<WatermarkDashboardPage />} />
               <Route path="memory-cards" element={<AdminMemoryCardsPage />} />
+              <Route path="product-links" element={<AdminProductLinksPage />} />
             </Route>
             <Route path="/bao-gia-minh-triet" element={<ProtectedRoute title="Quản lý báo giá cần đăng nhập." description="Khu vực dành cho nhân viên và quản trị viên." details={['Lưu và chỉnh sửa báo giá', 'Xuất Excel, PDF và in A4']} loginLabel="Đăng nhập để quản lý báo giá"><QuotationList /></ProtectedRoute>} />
             <Route path="/bao-gia-minh-triet/tao-moi" element={<ProtectedRoute title="Tạo báo giá cần đăng nhập." description="Khu vực dành cho nhân viên và quản trị viên." details={['Tạo báo giá theo mẫu công ty']} loginLabel="Đăng nhập để tạo báo giá"><Quotation /></ProtectedRoute>} />

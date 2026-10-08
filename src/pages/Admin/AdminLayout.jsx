@@ -1,5 +1,5 @@
 import { NavLink, Outlet } from 'react-router-dom';
-import { FaChartPie, FaDroplet, FaFileInvoiceDollar, FaImages, FaUsers } from 'react-icons/fa6';
+import { FaChartPie, FaDroplet, FaFileInvoiceDollar, FaImages, FaLink, FaUsers } from 'react-icons/fa6';
 import styles from './Admin.module.css';
 
 const NAV_ITEMS = [
@@ -8,6 +8,7 @@ const NAV_ITEMS = [
   { to: '/admin/quotations', label: 'Báo giá', icon: <FaFileInvoiceDollar /> },
   { to: '/admin/watermark', label: 'Watermark', icon: <FaDroplet /> },
   { to: '/admin/memory-cards', label: 'Memory Game', icon: <FaImages /> },
+  { to: '/admin/product-links', label: 'Link ảnh SP', icon: <FaLink /> },
 ];
 
 export default function AdminLayout() {
