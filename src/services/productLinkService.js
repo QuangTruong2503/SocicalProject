@@ -5,7 +5,7 @@ import { createServiceResult, normalizeServiceError } from './serviceHelpers.js'
 const ITEMS = 'product_link_items';
 const LOGS = 'product_link_logs';
 const ACCESS = 'product_link_access';
-const ITEM_SELECT = 'id, seq, code, links, note, is_done, done_by, done_by_name, done_at, created_by, created_at, updated_at';
+const ITEM_SELECT = 'id, seq, code, links, note, is_done, done_by, done_by_name, done_at, is_pinned, pinned_by, pinned_by_name, pinned_at, created_by, created_at, updated_at';
 const LOG_SELECT = 'id, user_id, actor_name, action, item_id, item_code, details, created_at';
 const PAGE_SIZE = 1000;
 
@@ -19,7 +19,7 @@ export const ACCESS_LEVELS = {
 export const ACCESS_LEVEL_OPTIONS = [
   { value: '', label: 'Không có quyền', hint: 'Không thấy trang' },
   { value: 'viewer', label: 'Xem & copy', hint: 'Xem danh sách, copy link' },
-  { value: 'checker', label: 'Đánh dấu hoàn thành', hint: '+ Tick đã làm, sửa ghi chú' },
+  { value: 'checker', label: 'Đánh dấu hoàn thành', hint: '+ Tick đã làm, ghim, sửa ghi chú' },
   { value: 'editor', label: 'Quản lý dữ liệu', hint: '+ Nhập file, thêm/sửa/xóa sản phẩm' },
 ];
 
@@ -76,6 +76,11 @@ export async function listProductLinkItems() {
 export function setProductLinkDone(id, isDone) {
   return run('setDone', 'Không thể cập nhật trạng thái.', () => supabase
     .from(ITEMS).update({ is_done: isDone }).eq('id', id).select(ITEM_SELECT).single());
+}
+
+export function setProductLinkPinned(id, isPinned) {
+  return run('setPinned', 'Không thể ghim sản phẩm.', () => supabase
+    .from(ITEMS).update({ is_pinned: isPinned }).eq('id', id).select(ITEM_SELECT).single());
 }
 
 export function updateProductLinkNote(id, note) {

@@ -6,6 +6,7 @@ import {
   FaImage,
   FaNoteSticky,
   FaPen,
+  FaThumbtack,
   FaTrashCan,
   FaUpRightFromSquare,
 } from 'react-icons/fa6';
@@ -22,6 +23,7 @@ function ProductLinkCard({
   copiedLinks,
   justCopied,
   onToggleDone,
+  onTogglePin,
   onToggleExpand,
   onCopyLink,
   onCopyAll,
@@ -34,9 +36,11 @@ function ProductLinkCard({
   const copiedCount = item.links.filter((link) => copiedLinks.has(link)).length;
   const canCheck = level >= 2;
   const canEdit = level >= 3;
+  const pinned = Boolean(item.is_pinned) && !item.is_done;
   const cardClass = [
     styles.card,
     item.is_done ? styles.cardDone : '',
+    pinned ? styles.cardPinned : '',
     flash ? styles.cardFlash : '',
   ].join(' ');
 
@@ -56,17 +60,25 @@ function ProductLinkCard({
         </button>
 
         <div className={styles.cardTitle}>
-          <button
-            type="button"
-            className={`${styles.codeBtn} ${justCopied === `code:${item.id}` ? styles.codeBtnCopied : ''}`}
-            onClick={() => onCopyCode(item)}
-            title="Bấm để copy mã sản phẩm"
-          >
-            <span>{item.code}</span>
-            {justCopied === `code:${item.id}` ? <FaCheck /> : <FaCopy />}
-          </button>
+          <div className={styles.cardTitleRow}>
+            {pinned && <span className={styles.pinBadge}><FaThumbtack /> Ưu tiên</span>}
+            <button
+              type="button"
+              className={`${styles.codeBtn} ${justCopied === `code:${item.id}` ? styles.codeBtnCopied : ''}`}
+              onClick={() => onCopyCode(item)}
+              title="Bấm để copy mã sản phẩm"
+            >
+              <span>{item.code}</span>
+              {justCopied === `code:${item.id}` ? <FaCheck /> : <FaCopy />}
+            </button>
+          </div>
           <div className={styles.cardMeta}>
             <span>{item.links.length} link</span>
+            {pinned && (
+              <span className={styles.metaPinned}>
+                <FaThumbtack /> Ghim bởi {item.pinned_by_name || 'Không rõ'} · {formatDateTime(item.pinned_at)}
+              </span>
+            )}
             {copiedCount > 0 && (
               <span className={styles.metaCopied}>đã copy {copiedCount}/{item.links.length}</span>
             )}
@@ -88,6 +100,19 @@ function ProductLinkCard({
             {justCopied === `all:${item.id}` ? <FaCheck /> : <FaCopy />}
             <span>{justCopied === `all:${item.id}` ? 'Đã copy' : 'Copy tất cả'}</span>
           </button>
+          {canCheck && !item.is_done && (
+            <button
+              type="button"
+              className={`${styles.iconBtn} ${styles.pinBtn} ${pinned ? styles.pinBtnActive : ''}`}
+              onClick={() => onTogglePin(item)}
+              disabled={pending}
+              aria-pressed={pinned}
+              title={pinned ? 'Bỏ ghim' : 'Ghim sản phẩm quan trọng lên đầu'}
+              aria-label={pinned ? `Bỏ ghim ${item.code}` : `Ghim ${item.code}`}
+            >
+              <FaThumbtack />
+            </button>
+          )}
           {canCheck && (
             <button type="button" className={styles.iconBtn} onClick={() => onEditNote(item)} title="Ghi chú" aria-label="Ghi chú">
               <FaNoteSticky />

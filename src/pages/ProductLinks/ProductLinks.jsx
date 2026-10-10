@@ -1,4 +1,4 @@
-import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
+import { Fragment, useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
@@ -8,6 +8,7 @@ import {
   FaMagnifyingGlass,
   FaPlus,
   FaRotate,
+  FaThumbtack,
   FaXmark,
 } from 'react-icons/fa6';
 import { useAuth } from '../../hooks/useAuth.js';
@@ -22,6 +23,7 @@ import {
   listProductLinkLogs,
   logProductLinkCopy,
   setProductLinkDone,
+  setProductLinkPinned,
   subscribeProductLinks,
   updateProductLinkItem,
   updateProductLinkNote,
@@ -68,6 +70,9 @@ async function writeClipboard(text) {
     return ok;
   }
 }
+
+// Finished items are never shown as pinned (the server unpins them too).
+const isPinned = (item) => Boolean(item.is_pinned) && !item.is_done;
 
 function upsertById(list, row) {
   const index = list.findIndex((item) => item.id === row.id);
@@ -221,6 +226,7 @@ export default function ProductLinks() {
       total: items.length,
       done,
       todo: items.length - done,
+      pinned: items.filter(isPinned).length,
       links: items.reduce((sum, item) => sum + item.links.length, 0),
       percent: items.length ? Math.round((done / items.length) * 100) : 0,
     };
@@ -242,10 +248,13 @@ export default function ProductLinks() {
         || item.links.some((link) => link.toLowerCase().includes(term));
     });
 
-    if (sort === 'code') return rows.sort((a, b) => a.code.localeCompare(b.code, 'vi', { numeric: true }));
-    if (sort === 'recent') return rows.sort((a, b) => String(b.updated_at).localeCompare(String(a.updated_at)));
-    return rows;
+    if (sort === 'code') rows.sort((a, b) => a.code.localeCompare(b.code, 'vi', { numeric: true }));
+    if (sort === 'recent') rows.sort((a, b) => String(b.updated_at).localeCompare(String(a.updated_at)));
+    // Pinned items stay on top whatever the sort (sort is stable).
+    return rows.sort((a, b) => Number(isPinned(b)) - Number(isPinned(a)));
   }, [items, filter, sort, deferredSearch]);
+
+  const pinnedInList = useMemo(() => filtered.filter(isPinned).length, [filtered]);
 
   const listKey = `${filter}|${sort}|${deferredSearch}`;
   const visibleCount = paging.key === listKey ? paging.count : PAGE_SIZE;
@@ -339,23 +348,12 @@ export default function ProductLinks() {
     logCopy(item, { kind: 'code' });
   }, [markJustCopied, logCopy]);
 
-  const toggleDone = useCallback(async (item) => {
-    const nextDone = !item.is_done;
+  // Applies `patch` locally right away, then reconciles with the server row (or reverts).
+  const optimisticUpdate = useCallback(async (item, patch, request) => {
     setPendingIds((current) => new Set(current).add(item.id));
-    setItems((current) => current.map((row) => (row.id === item.id
-      ? { ...row, is_done: nextDone, done_by_name: nextDone ? actorName : null, done_at: nextDone ? new Date().toISOString() : null }
-      : row)));
-    // Finished cards fold away so the next one is in view.
-    if (nextDone) {
-      setExpandedIds((current) => {
-        if (!current.has(item.id)) return current;
-        const next = new Set(current);
-        next.delete(item.id);
-        return next;
-      });
-    }
+    setItems((current) => current.map((row) => (row.id === item.id ? { ...row, ...patch } : row)));
 
-    const result = await setProductLinkDone(item.id, nextDone);
+    const result = await request();
 
     if (result.error) {
       toast.error(result.error);
@@ -368,7 +366,32 @@ export default function ProductLinks() {
       next.delete(item.id);
       return next;
     });
-  }, [actorName]);
+  }, []);
+
+  const toggleDone = useCallback((item) => {
+    const nextDone = !item.is_done;
+    // Finished cards fold away so the next one is in view.
+    if (nextDone) {
+      setExpandedIds((current) => {
+        if (!current.has(item.id)) return current;
+        const next = new Set(current);
+        next.delete(item.id);
+        return next;
+      });
+    }
+
+    // The server also unpins finished items.
+    const patch = nextDone
+      ? { is_done: true, done_by_name: actorName, done_at: new Date().toISOString(), is_pinned: false, pinned_by_name: null, pinned_at: null }
+      : { is_done: false, done_by_name: null, done_at: null };
+    return optimisticUpdate(item, patch, () => setProductLinkDone(item.id, nextDone));
+  }, [actorName, optimisticUpdate]);
+
+  const togglePin = useCallback((item) => {
+    const nextPinned = !item.is_pinned;
+    const patch = { is_pinned: nextPinned, pinned_by_name: nextPinned ? actorName : null, pinned_at: nextPinned ? new Date().toISOString() : null };
+    return optimisticUpdate(item, patch, () => setProductLinkPinned(item.id, nextPinned));
+  }, [actorName, optimisticUpdate]);
 
   async function submitImport(parsedItems, mode) {
     setSaving(true);
@@ -469,7 +492,7 @@ export default function ProductLinks() {
         <div className={styles.heroText}>
           <span className={styles.overline}>Công cụ nội bộ</span>
           <h1>Link ảnh sản phẩm</h1>
-          <p>Bấm vào một link để copy. Tick vào ô tròn khi đã làm xong — mọi người thấy ngay theo thời gian thực.</p>
+          <p>Bấm vào một link để copy. Tick vào ô tròn khi đã làm xong, ghim <FaThumbtack aria-label="ghim" /> sản phẩm quan trọng để luôn nằm trên đầu — mọi người thấy ngay theo thời gian thực.</p>
         </div>
         <div className={styles.heroActions}>
           <span className={styles.levelBadge} title="Quyền của bạn trên trang này">
@@ -500,7 +523,11 @@ export default function ProductLinks() {
         </div>
         <div className={styles.stat}><span>Sản phẩm</span><strong>{stats.total}</strong></div>
         <div className={`${styles.stat} ${styles.statDone}`}><span>Đã làm</span><strong>{stats.done}</strong></div>
-        <div className={`${styles.stat} ${styles.statTodo}`}><span>Còn lại</span><strong>{stats.todo}</strong></div>
+        <div className={`${styles.stat} ${styles.statTodo}`}>
+          <span>Còn lại</span>
+          <strong>{stats.todo}</strong>
+          {stats.pinned > 0 && <small className={styles.statPinned}><FaThumbtack /> {stats.pinned} đang ghim</small>}
+        </div>
         <div className={styles.stat}><span>Tổng link</span><strong>{stats.links}</strong></div>
       </section>
 
@@ -588,25 +615,35 @@ export default function ProductLinks() {
             </div>
           ) : (
             <div className={styles.cardList}>
-              {visible.map((item) => (
-                <ProductLinkCard
-                  key={item.id}
-                  item={item}
-                  level={level}
-                  expanded={expandedIds.has(item.id)}
-                  pending={pendingIds.has(item.id)}
-                  flash={flashIds.has(item.id)}
-                  copiedLinks={copiedLinks}
-                  justCopied={justCopied}
-                  onToggleDone={toggleDone}
-                  onToggleExpand={toggleExpand}
-                  onCopyLink={copyLink}
-                  onCopyAll={copyAll}
-                  onCopyCode={copyCode}
-                  onEditNote={openEditNote}
-                  onEdit={openEdit}
-                  onDelete={openDelete}
-                />
+              {visible.map((item, index) => (
+                <Fragment key={item.id}>
+                  {pinnedInList > 0 && index === 0 && (
+                    <div className={`${styles.groupLabel} ${styles.groupLabelPinned}`}>
+                      <FaThumbtack /> Đã ghim · {pinnedInList}
+                    </div>
+                  )}
+                  {pinnedInList > 0 && index === pinnedInList && (
+                    <div className={styles.groupLabel}>Sản phẩm khác · {filtered.length - pinnedInList}</div>
+                  )}
+                  <ProductLinkCard
+                    item={item}
+                    level={level}
+                    expanded={expandedIds.has(item.id)}
+                    pending={pendingIds.has(item.id)}
+                    flash={flashIds.has(item.id)}
+                    copiedLinks={copiedLinks}
+                    justCopied={justCopied}
+                    onToggleDone={toggleDone}
+                    onTogglePin={togglePin}
+                    onToggleExpand={toggleExpand}
+                    onCopyLink={copyLink}
+                    onCopyAll={copyAll}
+                    onCopyCode={copyCode}
+                    onEditNote={openEditNote}
+                    onEdit={openEdit}
+                    onDelete={openDelete}
+                  />
+                </Fragment>
               ))}
               {visible.length < filtered.length && (
                 <div ref={sentinelRef} className={styles.sentinel}>

@@ -4,10 +4,11 @@
 --
 -- Access model (per user, managed by admins in /admin/product-links):
 --   viewer  (1) xem + copy link
---   checker (2) + đánh dấu hoàn thành, sửa ghi chú
+--   checker (2) + đánh dấu hoàn thành, sửa ghi chú, ghim sản phẩm
 --   editor  (3) + nhập dữ liệu, thêm/sửa/xóa sản phẩm
 -- profiles.role = 'admin' always gets level 3; suspended accounts get 0.
 -- Every write to items is logged by trigger, so logs cannot be skipped or forged.
+-- Safe to re-run: later additions (e.g. pinning) are applied as ALTERs.
 
 -- ── Access ───────────────────────────────────────────────────────────
 create table if not exists public.product_link_access (
@@ -100,6 +101,13 @@ create table if not exists public.product_link_items (
   updated_at timestamptz not null default now()
 );
 
+-- Pinning: important unfinished items stay on top for everyone.
+alter table public.product_link_items
+  add column if not exists is_pinned boolean not null default false,
+  add column if not exists pinned_by uuid references public.profiles(id) on delete set null,
+  add column if not exists pinned_by_name text,
+  add column if not exists pinned_at timestamptz;
+
 create unique index if not exists product_link_items_code_key on public.product_link_items (lower(code));
 create index if not exists product_link_items_seq_idx on public.product_link_items (seq);
 
@@ -109,7 +117,7 @@ create table if not exists public.product_link_logs (
   user_id uuid default auth.uid() references public.profiles(id) on delete set null,
   actor_name text,
   action text not null check (action in (
-    'create', 'update', 'delete', 'check', 'uncheck', 'note', 'import', 'copy', 'grant', 'revoke'
+    'create', 'update', 'delete', 'check', 'uncheck', 'pin', 'unpin', 'note', 'import', 'copy', 'grant', 'revoke'
   )),
   item_id uuid,
   item_code text,
@@ -117,11 +125,17 @@ create table if not exists public.product_link_logs (
   created_at timestamptz not null default now()
 );
 
+alter table public.product_link_logs drop constraint if exists product_link_logs_action_check;
+alter table public.product_link_logs add constraint product_link_logs_action_check check (action in (
+  'create', 'update', 'delete', 'check', 'uncheck', 'pin', 'unpin', 'note', 'import', 'copy', 'grant', 'revoke'
+));
+
 create index if not exists product_link_logs_created_idx on public.product_link_logs (created_at desc);
 create index if not exists product_link_logs_user_idx on public.product_link_logs (user_id, created_at desc);
 
--- Server-side bookkeeping: done_by/done_at come from the caller's JWT, never
--- from the client, and checkers cannot touch code/links.
+-- Server-side bookkeeping: done_by/done_at and pinned_by/pinned_at come from the
+-- caller's JWT, never from the client, and checkers cannot touch code/links.
+-- Finishing an item unpins it.
 create or replace function public.product_link_items_before_write()
 returns trigger
 language plpgsql
@@ -130,13 +144,19 @@ set search_path = public
 as $$
 declare
   v_done_changed boolean;
+  v_pin_changed boolean;
 begin
   new.code := trim(new.code);
+
+  if new.is_done then
+    new.is_pinned := false;
+  end if;
 
   if tg_op = 'INSERT' then
     new.created_by := public.product_links_actor_id();
     new.created_at := now();
     v_done_changed := true;
+    v_pin_changed := true;
   else
     if public.product_links_level() < 3 and (
       new.code is distinct from old.code
@@ -154,6 +174,14 @@ begin
       new.done_by_name := old.done_by_name;
       new.done_at := old.done_at;
     end if;
+
+    v_pin_changed := new.is_pinned is distinct from old.is_pinned;
+
+    if not v_pin_changed then
+      new.pinned_by := case when new.pinned_by is null then null else old.pinned_by end;
+      new.pinned_by_name := old.pinned_by_name;
+      new.pinned_at := old.pinned_at;
+    end if;
   end if;
 
   if v_done_changed then
@@ -165,6 +193,18 @@ begin
       new.done_by := null;
       new.done_by_name := null;
       new.done_at := null;
+    end if;
+  end if;
+
+  if v_pin_changed then
+    if new.is_pinned then
+      new.pinned_by := public.product_links_actor_id();
+      new.pinned_by_name := public.product_links_actor_name();
+      new.pinned_at := now();
+    else
+      new.pinned_by := null;
+      new.pinned_by_name := null;
+      new.pinned_at := null;
     end if;
   end if;
 
@@ -210,6 +250,8 @@ begin
     v_code := new.code;
     if new.is_done is distinct from old.is_done then
       v_action := case when new.is_done then 'check' else 'uncheck' end;
+    elsif new.is_pinned is distinct from old.is_pinned then
+      v_action := case when new.is_pinned then 'pin' else 'unpin' end;
     elsif new.code is distinct from old.code or new.links is distinct from old.links then
       v_action := 'update';
       v_details := jsonb_build_object(

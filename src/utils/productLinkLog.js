@@ -7,6 +7,8 @@ const LEVEL_LABELS = {
 export const LOG_ACTION_OPTIONS = [
   { value: 'check', label: 'Đánh dấu hoàn thành' },
   { value: 'uncheck', label: 'Bỏ đánh dấu' },
+  { value: 'pin', label: 'Ghim sản phẩm' },
+  { value: 'unpin', label: 'Bỏ ghim' },
   { value: 'copy', label: 'Copy link' },
   { value: 'import', label: 'Nhập dữ liệu' },
   { value: 'create', label: 'Thêm sản phẩm' },
@@ -21,6 +23,8 @@ export const LOG_ACTION_OPTIONS = [
 export const LOG_ACTION_TONE = {
   check: 'success',
   uncheck: 'warning',
+  pin: 'warning',
+  unpin: 'neutral',
   copy: 'neutral',
   import: 'primary',
   create: 'primary',
@@ -44,6 +48,10 @@ export function describeProductLinkLog(log) {
       return { verb: 'đã hoàn thành', target, extra: null };
     case 'uncheck':
       return { verb: 'đã bỏ đánh dấu', target, extra: null };
+    case 'pin':
+      return { verb: 'đã ghim', target, extra: null };
+    case 'unpin':
+      return { verb: 'đã bỏ ghim', target, extra: null };
     case 'copy':
       if (d.kind === 'code') return { verb: 'đã copy mã', target, extra: null };
       if (d.kind === 'all') return { verb: `đã copy tất cả ${d.count ?? ''} link`.replace(/\s+/g, ' '), target, extra: null };

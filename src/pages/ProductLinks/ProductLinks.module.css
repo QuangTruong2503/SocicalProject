@@ -10,6 +10,8 @@
   --pl-warning-soft: rgba(217, 119, 6, 0.12);
   --pl-danger: #dc2626;
   --pl-danger-soft: rgba(220, 38, 38, 0.1);
+  --pl-pin: #ea580c;
+  --pl-pin-soft: rgba(234, 88, 12, 0.1);
   --pl-radius: 12px;
 
   max-width: 1360px;
@@ -29,6 +31,8 @@
   --pl-warning-soft: rgba(251, 191, 36, 0.12);
   --pl-danger: #f87171;
   --pl-danger-soft: rgba(248, 113, 113, 0.12);
+  --pl-pin: #fb923c;
+  --pl-pin-soft: rgba(251, 146, 60, 0.14);
 }
 
 /* ── Buttons ─────────────────────────────────────────────────────── */
@@ -159,6 +163,8 @@
 .stat strong { font-size: 22px; font-variant-numeric: tabular-nums; letter-spacing: -0.02em; }
 .statDone strong { color: var(--pl-success); }
 .statTodo strong { color: var(--pl-warning); }
+.statPinned { display: inline-flex; align-items: center; gap: 4px; margin-left: 8px; color: var(--pl-pin); font-size: 12px; font-weight: 700; }
+.statPinned svg { font-size: 10px; }
 .progressBlock { display: flex; flex-direction: column; justify-content: center; gap: 8px; }
 .progressLabel { display: flex; justify-content: space-between; align-items: baseline; }
 .progressLabel span { margin: 0; }
@@ -286,6 +292,12 @@
 }
 .card:hover { box-shadow: var(--shadow-hover); }
 .cardDone { background: color-mix(in srgb, var(--color-surface) 92%, var(--pl-success)); border-color: color-mix(in srgb, var(--color-border) 60%, var(--pl-success)); }
+.cardPinned {
+  background: color-mix(in srgb, var(--color-surface) 93%, var(--pl-pin));
+  border-color: color-mix(in srgb, var(--color-border) 35%, var(--pl-pin));
+  box-shadow: inset 4px 0 0 var(--pl-pin);
+}
+.cardPinned:hover { box-shadow: inset 4px 0 0 var(--pl-pin), var(--shadow-hover); }
 .cardFlash { animation: plFlash 1.8s ease; }
 @keyframes plFlash {
   0%, 30% { box-shadow: 0 0 0 3px var(--pl-primary-soft); border-color: var(--pl-primary); }
@@ -322,6 +334,24 @@
 .checkBtn:disabled:not([aria-pressed='true']) { opacity: 0.45; }
 
 .cardTitle { flex: 1; min-width: 0; }
+.cardTitleRow { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.pinBadge {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--pl-pin);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+.pinBadge svg { font-size: 9px; }
+[data-theme='dark'] .pinBadge { color: #0f1115; }
+.cardTitleRow .pinBadge + .codeBtn { margin-left: 0; }
 .codeBtn {
   display: inline-flex;
   align-items: center;
@@ -359,6 +389,8 @@
 .metaCopied { color: var(--pl-primary); font-weight: 600; }
 .metaDone { display: inline-flex; align-items: center; gap: 5px; color: var(--pl-success); font-weight: 600; }
 .metaDone svg { font-size: 10px; }
+.metaPinned { display: inline-flex; align-items: center; gap: 5px; color: var(--pl-pin); font-weight: 600; }
+.metaPinned svg { font-size: 10px; }
 
 .cardActions { display: flex; align-items: center; gap: 6px; }
 .copyAllBtn {
@@ -382,6 +414,29 @@
 [data-theme='dark'] .copyAllBtn:hover:not(:disabled) { color: #0f1115; }
 .copyAllBtn:disabled { opacity: 0.45; cursor: not-allowed; }
 .copyAllBtnCopied, .copyAllBtnCopied:hover:not(:disabled) { background: var(--pl-success); border-color: var(--pl-success); color: #fff; }
+
+.pinBtn svg { transform: rotate(45deg); transition: transform 0.15s; }
+.iconBtn.pinBtn:hover:not(:disabled) { color: var(--pl-pin); border-color: var(--pl-pin); background: var(--pl-pin-soft); }
+.iconBtn.pinBtnActive,
+.iconBtn.pinBtnActive:hover:not(:disabled) { background: var(--pl-pin); border-color: var(--pl-pin); color: #fff; }
+[data-theme='dark'] .iconBtn.pinBtnActive { color: #0f1115; }
+.pinBtnActive svg { transform: none; }
+
+.groupLabel {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 6px 2px 0;
+  color: var(--color-text-secondary);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.groupLabel::after { content: ''; flex: 1; height: 1px; background: var(--color-border); }
+.groupLabel:first-child { margin-top: 0; }
+.groupLabelPinned { color: var(--pl-pin); }
+.groupLabelPinned::after { background: color-mix(in srgb, var(--color-border) 50%, var(--pl-pin)); }
 
 .expandBtn svg { transition: transform 0.2s; }
 .expandBtnOpen svg { transform: rotate(180deg); }
