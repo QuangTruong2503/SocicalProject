@@ -101,10 +101,113 @@
 .modalActions button { border: 1px solid var(--color-border); background: var(--color-surface); color: var(--color-text); border-radius: 8px; padding: 9px 16px; font: inherit; font-weight: 600; cursor: pointer; }
 .primary { background: #166534 !important; color: #fff !important; border-color: #166534 !important; }
 .primary:disabled { opacity: .6; cursor: not-allowed; }
+.dangerButton { background: #b91c1c !important; color: #fff !important; border-color: #b91c1c !important; }
+.dangerButton:disabled { opacity: .6; cursor: not-allowed; }
+
+/* ── AdminDialog (modal + side drawer) ── */
+.dialogHead { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 16px; }
+.dialogHead h3 { margin: 0; font-size: 18px; line-height: 1.35; }
+.dialogClose {
+  flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px;
+  border: 0; border-radius: 8px; background: transparent; color: var(--color-text-secondary); cursor: pointer;
+}
+.dialogClose:hover:not(:disabled) { background: var(--color-nav-hover); color: var(--color-text); }
+.dialogClose:disabled { opacity: .4; cursor: not-allowed; }
+
+.drawerBackdrop { position: fixed; inset: 0; z-index: 1000; display: flex; justify-content: flex-end; background: rgba(15, 23, 42, .55); }
+.drawer {
+  width: min(500px, 100%); height: 100%; box-sizing: border-box; overflow-y: auto; padding: 22px 24px 28px;
+  background: var(--color-surface); color: var(--color-text); box-shadow: var(--shadow-lg);
+  animation: adminDrawerIn .18s ease-out;
+}
+@keyframes adminDrawerIn { from { transform: translateX(24px); opacity: 0; } to { transform: none; opacity: 1; } }
+
+/* ── Shared page parts (header actions, alerts, skeletons, sortable tables, paging) ── */
+
+.headerActions { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 10px; }
+/* .pageHeader styles every span as a kicker; undo that for the action area. */
+.headerActions span { letter-spacing: normal; }
+
+.actionButton {
+  display: inline-flex; align-items: center; gap: 8px; min-height: 38px; padding: 0 14px;
+  border: 1px solid var(--color-border); border-radius: 9px; background: var(--color-surface); color: var(--color-text);
+  font: inherit; font-size: 13px; font-weight: 600; text-decoration: none; cursor: pointer;
+}
+.actionButton:hover:not(:disabled) { background: var(--color-nav-hover); }
+.actionButton:disabled { opacity: .6; cursor: not-allowed; }
+
+.spin { animation: adminSpin .9s linear infinite; }
+
+.alert {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 16px; padding: 12px 14px;
+  border: 1px solid rgba(239, 68, 68, .35); border-radius: 12px; background: rgba(239, 68, 68, .08); color: #b91c1c; font-size: 14px;
+}
+[data-theme="dark"] .alert { color: #fca5a5; }
+.alert button {
+  flex-shrink: 0; border: 1px solid currentColor; border-radius: 8px; padding: 6px 12px;
+  background: transparent; color: inherit; font: inherit; font-weight: 600; cursor: pointer;
+}
+
+.skeletonValue,
+.skeletonLine {
+  display: block; border-radius: 6px;
+  background: linear-gradient(90deg, var(--color-nav-hover), var(--color-border), var(--color-nav-hover));
+  background-size: 200% 100%; animation: adminShimmer 1.2s ease-in-out infinite;
+}
+.skeletonValue { width: 90px; height: 31px; margin: 0 !important; }
+.skeletonLine { width: 80%; height: 14px; }
+
+.toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-bottom: 16px; }
+.control {
+  min-height: 40px; box-sizing: border-box; border: 1px solid var(--color-border); border-radius: 9px;
+  padding: 8px 12px; background: var(--color-surface); color: var(--color-text); font: inherit; font-size: 14px;
+}
+.search { flex: 1 1 220px; min-width: 0; }
+
+.cardHead { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 6px 16px; margin-bottom: 18px; }
+.cardHead h2 { margin: 0; font-size: 17px; }
+.cardHead span { font-size: 13px; color: var(--color-text-secondary); }
+
+.dateCell { white-space: nowrap; color: var(--color-text-secondary); font-size: 13px; }
+
+.tableBusy { opacity: .6; transition: opacity .15s ease; }
+
+.sortButton { display: inline-flex; align-items: center; gap: 6px; padding: 0; border: 0; background: none; color: inherit; font: inherit; cursor: pointer; }
+.sortButton svg { opacity: .45; font-size: 11px; }
+.sortButtonActive { color: var(--color-text); }
+.sortButtonActive svg { opacity: 1; }
+.alignRight { text-align: right !important; }
+.alignRight .sortButton { flex-direction: row-reverse; }
+.numberCell { text-align: right !important; font-variant-numeric: tabular-nums; font-weight: 700; white-space: nowrap; }
+
+.copyButton {
+  display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px; padding: 0;
+  border: 0; border-radius: 6px; background: transparent; color: var(--color-text-secondary); font-size: 11px; cursor: pointer;
+}
+.copyButton:hover { background: var(--color-nav-hover); color: var(--color-text); }
+
+.pagination {
+  display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px;
+  margin-top: 14px; font-size: 13px; color: var(--color-text-secondary);
+}
+.pagination div { display: flex; align-items: center; gap: 10px; }
+.pagination button {
+  display: inline-flex; align-items: center; justify-content: center; width: 34px; height: 34px;
+  border: 1px solid var(--color-border); border-radius: 8px; background: var(--color-surface); color: var(--color-text); cursor: pointer;
+}
+.pagination button:disabled { opacity: .45; cursor: not-allowed; }
+
+@keyframes adminSpin { to { transform: rotate(360deg); } }
+@keyframes adminShimmer { 0% { background-position: 100% 0; } 100% { background-position: -100% 0; } }
+
+@media (prefers-reduced-motion: reduce) {
+  .spin, .skeletonValue, .skeletonLine, .drawer { animation: none; }
+}
 
 @media (max-width: 900px) {
   .shell { flex-direction: column; }
   .sidebar { width: 100%; position: static; border-right: none; border-bottom: 1px solid var(--color-border); }
   .sidebarNav { flex-direction: row; flex-wrap: wrap; }
   .filters { grid-template-columns: 1fr; }
+  .headerActions { justify-content: flex-start; }
 }

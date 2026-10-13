@@ -4,7 +4,6 @@ import { createServiceResult, normalizeServiceError } from './serviceHelpers.js'
 // Tables/RPCs are defined in supabase_product_links.sql.
 const ITEMS = 'product_link_items';
 const LOGS = 'product_link_logs';
-const ACCESS = 'product_link_access';
 const ITEM_SELECT = 'id, seq, code, links, note, is_done, done_by, done_by_name, done_at, is_pinned, pinned_by, pinned_by_name, pinned_at, created_by, created_at, updated_at';
 const LOG_SELECT = 'id, user_id, actor_name, action, item_id, item_code, details, created_at';
 const PAGE_SIZE = 1000;
@@ -31,6 +30,13 @@ function failure(error, fallback, scope) {
   }
   if (error?.code === '42501') {
     return createServiceResult(null, error.message || 'Bạn không có quyền thực hiện thao tác này.');
+  }
+  // Validation errors raised on purpose by the RPCs carry a message meant for the UI.
+  if (error?.code === '22023' && error.message) {
+    return createServiceResult(null, error.message);
+  }
+  if (error?.code === 'PGRST202') {
+    return createServiceResult(null, 'Chưa tạo RPC quản trị Link ảnh trên Supabase. Hãy chạy supabase_product_links_admin.sql.');
   }
 
   return createServiceResult(null, normalizeServiceError(error, fallback));
@@ -114,17 +120,15 @@ export function importProductLinks(items, mode) {
 }
 
 /**
- * @param {{ limit?: number, beforeId?: number, action?: string, userId?: string, search?: string }} [options]
+ * Activity feed for the product links page. Admin search/filters use adminListProductLinkLogs.
+ * @param {{ limit?: number, beforeId?: number, action?: string, userId?: string }} [options]
  */
-export function listProductLinkLogs({ limit = 50, beforeId, action, userId, search } = {}) {
+export function listProductLinkLogs({ limit = 50, beforeId, action, userId } = {}) {
   return run('listLogs', 'Không thể tải nhật ký.', () => {
     let query = supabase.from(LOGS).select(LOG_SELECT).order('id', { ascending: false }).limit(limit);
     if (beforeId) query = query.lt('id', beforeId);
     if (action) query = query.eq('action', action);
     if (userId) query = query.eq('user_id', userId);
-
-    const safeSearch = String(search || '').replace(/[%(),.]/g, ' ').trim();
-    if (safeSearch) query = query.or(`item_code.ilike.%${safeSearch}%,actor_name.ilike.%${safeSearch}%`);
 
     return query;
   });
@@ -163,22 +167,100 @@ export function subscribeProductLinks({ onItem, onLog }) {
   };
 }
 
-// ── Admin ────────────────────────────────────────────────────────────
+/**
+ * New log entries only (for the admin log view). Returns an unsubscribe function.
+ * @param {(row: Object) => void} onLog
+ */
+export function subscribeProductLinkLogs(onLog) {
+  const channel = supabase
+    .channel(`product-link-logs-${Math.random().toString(36).slice(2)}`)
+    .on('postgres_changes', { event: 'INSERT', schema: 'public', table: LOGS }, (payload) => onLog(payload.new))
+    .subscribe();
 
-export function listProductLinkAccess() {
-  return run('listAccess', 'Không thể tải danh sách phân quyền.', () => supabase
-    .from(ACCESS).select('user_id, level, granted_by, updated_at'));
+  return () => {
+    supabase.removeChannel(channel);
+  };
 }
 
-/** @param {string} userId @param {'' | 'viewer' | 'checker' | 'editor'} level '' revokes access */
-export function setProductLinkAccess(userId, level, grantedBy) {
-  if (!level) {
-    return run('revokeAccess', 'Không thể thu hồi quyền.', () => supabase.from(ACCESS).delete().eq('user_id', userId));
-  }
+// ── Admin (RPCs in supabase_product_links_admin.sql) ─────────────────
 
-  return run('grantAccess', 'Không thể cấp quyền.', () => supabase
-    .from(ACCESS)
-    .upsert({ user_id: userId, level, granted_by: grantedBy, updated_at: new Date().toISOString() }, { onConflict: 'user_id' })
-    .select('user_id, level, granted_by, updated_at')
-    .single());
+/**
+ * Users with their access level, filtered/sorted/paged server-side.
+ * @param {{ search?: string, level?: string, status?: string, sort?: 'name' | 'level' | 'updated_at', desc?: boolean, limit?: number, offset?: number }} [options]
+ * @returns {Promise<import('./serviceHelpers.js').ServiceResult<{ rows: Array<Object>, totalCount: number }>>}
+ */
+export async function adminListProductLinkAccess({
+  search = '',
+  level = '',
+  status = '',
+  sort = 'name',
+  desc = false,
+  limit = 50,
+  offset = 0,
+} = {}) {
+  const result = await run('adminListAccess', 'Không thể tải danh sách phân quyền.', () => supabase.rpc('admin_product_link_access_list', {
+    p_search: search.trim() || null,
+    p_level: level || null,
+    p_status: status || null,
+    p_sort: sort,
+    p_desc: desc,
+    p_limit: limit,
+    p_offset: offset,
+  }));
+
+  if (result.error) return result;
+
+  const rows = result.data ?? [];
+  return createServiceResult({ rows, totalCount: Number(rows[0]?.total_count) || 0 });
+}
+
+/**
+ * Grant, change or revoke ('' level) access for one or many users. Admins are skipped server-side.
+ * @param {string[]} userIds
+ * @param {'' | 'viewer' | 'checker' | 'editor'} level
+ * @returns {Promise<import('./serviceHelpers.js').ServiceResult<Array<{ user_id: string, level: string | null, granted_by: string | null, granted_by_name: string | null, updated_at: string | null }>>>}
+ */
+export function adminSetProductLinkAccess(userIds, level) {
+  return run(
+    'adminSetAccess',
+    level ? 'Không thể cấp quyền.' : 'Không thể thu hồi quyền.',
+    () => supabase.rpc('admin_product_link_set_access', { p_user_ids: userIds, p_level: level || null }),
+  );
+}
+
+export function getAdminProductLinkStats() {
+  return run('adminStats', 'Không thể tải thống kê.', () => supabase.rpc('admin_product_link_stats'));
+}
+
+/**
+ * @param {{ search?: string, action?: string, userId?: string, from?: string | null, hideCopy?: boolean, beforeId?: number | null, limit?: number }} [options]
+ */
+export function adminListProductLinkLogs({
+  search = '',
+  action = '',
+  userId = '',
+  from = null,
+  hideCopy = false,
+  beforeId = null,
+  limit = 50,
+} = {}) {
+  return run('adminListLogs', 'Không thể tải nhật ký.', () => supabase.rpc('admin_product_link_logs', {
+    p_search: search.trim() || null,
+    p_action: action || null,
+    p_user_id: userId || null,
+    p_from: from,
+    p_hide_copy: hideCopy,
+    p_before_id: beforeId,
+    p_limit: limit,
+  }));
+}
+
+/** People who acted in the last 90 days, newest first. */
+export function adminListProductLinkLogActors() {
+  return run('adminLogActors', 'Không thể tải danh sách người thực hiện.', () => supabase.rpc('admin_product_link_log_actors'));
+}
+
+/** Deletes "copy" log entries older than the 14-day retention. Returns the number removed. */
+export function adminPurgeProductLinkCopyLogs() {
+  return run('adminPurgeCopyLogs', 'Không thể dọn nhật ký.', () => supabase.rpc('admin_product_link_purge_copy_logs'));
 }

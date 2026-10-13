@@ -1,25 +1,15 @@
 import { useEffect, useRef, useState } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { toast } from 'react-toastify';
-import {
-  FaArrowDown,
-  FaArrowsRotate,
-  FaArrowUp,
-  FaCheck,
-  FaChevronLeft,
-  FaChevronRight,
-  FaCopy,
-  FaFileCsv,
-  FaSort,
-  FaSortDown,
-  FaSortUp,
-} from 'react-icons/fa6';
+import { FaArrowDown, FaArrowsRotate, FaArrowUp, FaFileCsv } from 'react-icons/fa6';
 import {
   getWatermarkAdminOverview,
   getWatermarkVisitorStats,
   subscribeToWatermarkImageCounts,
 } from '../../services/watermarkImageCountService.js';
 import WatermarkImagesChart from './WatermarkImagesChart.jsx';
+import { CopyButton, Pagination, SortHeader } from './AdminTableParts.jsx';
+import { downloadCsv, formatDateTime, formatNumber, formatRelative, shortId } from './adminUtils.js';
 import styles from './Admin.module.css';
 import wm from './AdminWatermark.module.css';
 
@@ -44,57 +34,10 @@ const SOURCE_LABELS = {
   'watermark/doantrang': 'Đoan Trang',
 };
 
-const numberFormatter = new Intl.NumberFormat('vi-VN');
-const dateTimeFormatter = new Intl.DateTimeFormat('vi-VN', { dateStyle: 'medium', timeStyle: 'short' });
 const timeFormatter = new Intl.DateTimeFormat('vi-VN', { timeStyle: 'medium' });
-const relativeFormatter = new Intl.RelativeTimeFormat('vi', { numeric: 'auto' });
-const RELATIVE_UNITS = [
-  ['year', 31536000],
-  ['month', 2592000],
-  ['week', 604800],
-  ['day', 86400],
-  ['hour', 3600],
-  ['minute', 60],
-];
-
-function formatNumber(value) {
-  return numberFormatter.format(Number(value) || 0);
-}
-
-function parseDate(value) {
-  const date = value ? new Date(value) : null;
-  return date && !Number.isNaN(date.getTime()) ? date : null;
-}
-
-function formatDateTime(value) {
-  const date = parseDate(value);
-  return date ? dateTimeFormatter.format(date) : '—';
-}
-
-function formatRelative(value) {
-  const date = parseDate(value);
-
-  if (!date) {
-    return '—';
-  }
-
-  const diffSeconds = (date.getTime() - Date.now()) / 1000;
-
-  for (const [unit, seconds] of RELATIVE_UNITS) {
-    if (Math.abs(diffSeconds) >= seconds) {
-      return relativeFormatter.format(Math.round(diffSeconds / seconds), unit);
-    }
-  }
-
-  return 'vừa xong';
-}
 
 function getSourceLabel(sourcePage) {
   return SOURCE_LABELS[sourcePage] || sourcePage;
-}
-
-function shortId(value) {
-  return value ? `${value.slice(0, 8)}…` : '—';
 }
 
 /** Start of the range at local midnight, so "7 ngày" = today + the 6 days before it. */
@@ -136,35 +79,23 @@ function getDelta(current, previous) {
   };
 }
 
-function escapeCsv(value) {
-  const text = String(value ?? '');
-  return /[",\n\r]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
-}
-
-function downloadCsv(rows, fileName) {
-  const header = ['Tên', 'Email', 'User ID', 'Visitor ID', 'Số visitor', 'Tổng ảnh', 'Lượt tạo', 'Nguồn', 'Lần đầu', 'Gần nhất'];
-  const lines = rows.map((row) => [
-    getRowLabel(row),
-    row.userEmail,
-    row.userId,
-    row.visitorId,
-    row.visitorCount,
-    row.totalImages,
-    row.entryCount,
-    row.sourcePages.join(' | '),
-    row.firstSeenAt,
-    row.lastSeenAt,
-  ].map(escapeCsv).join(','));
-
-  // BOM so Excel opens the UTF-8 Vietnamese text correctly.
-  const BOM = String.fromCharCode(0xfeff);
-  const blob = new Blob([BOM, [header.join(','), ...lines].join('\r\n')], { type: 'text/csv;charset=utf-8' });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement('a');
-  link.href = url;
-  link.download = fileName;
-  link.click();
-  URL.revokeObjectURL(url);
+function exportVisitorCsv(rows, fileName) {
+  downloadCsv(
+    ['Tên', 'Email', 'User ID', 'Visitor ID', 'Số visitor', 'Tổng ảnh', 'Lượt tạo', 'Nguồn', 'Lần đầu', 'Gần nhất'],
+    rows.map((row) => [
+      getRowLabel(row),
+      row.userEmail,
+      row.userId,
+      row.visitorId,
+      row.visitorCount,
+      row.totalImages,
+      row.entryCount,
+      row.sourcePages.join(' | '),
+      row.firstSeenAt,
+      row.lastSeenAt,
+    ]),
+    fileName,
+  );
 }
 
 function StatTile({ label, value, previous, hint, loading }) {
@@ -174,7 +105,7 @@ function StatTile({ label, value, previous, hint, loading }) {
   return (
     <article className={styles.statCard}>
       <span>{label}</span>
-      {loading ? <span className={wm.skeletonValue} aria-hidden="true" /> : <strong>{formatNumber(value)}</strong>}
+      {loading ? <span className={styles.skeletonValue} aria-hidden="true" /> : <strong>{formatNumber(value)}</strong>}
       {delta ? (
         <small className={`${wm.delta} ${wm[`delta_${delta.direction}`]}`}>
           {DeltaIcon && <DeltaIcon aria-hidden="true" />} {delta.text}
@@ -183,53 +114,6 @@ function StatTile({ label, value, previous, hint, loading }) {
         <small>{hint}</small>
       )}
     </article>
-  );
-}
-
-function CopyButton({ value, label }) {
-  const [copied, setCopied] = useState(false);
-  const timeoutRef = useRef(null);
-
-  useEffect(() => () => window.clearTimeout(timeoutRef.current), []);
-
-  async function handleCopy() {
-    try {
-      await navigator.clipboard.writeText(value);
-      setCopied(true);
-      window.clearTimeout(timeoutRef.current);
-      timeoutRef.current = window.setTimeout(() => setCopied(false), 1500);
-    } catch {
-      toast.error('Không copy được, hãy thử lại.');
-    }
-  }
-
-  return (
-    <button
-      type="button"
-      className={wm.copyButton}
-      onClick={handleCopy}
-      title={copied ? 'Đã copy' : `Copy ${label}`}
-      aria-label={copied ? 'Đã copy' : `Copy ${label}`}
-    >
-      {copied ? <FaCheck aria-hidden="true" /> : <FaCopy aria-hidden="true" />}
-    </button>
-  );
-}
-
-function SortHeader({ label, sortKey, sort, onSort, align }) {
-  const isActive = sort.key === sortKey;
-  const Icon = !isActive ? FaSort : sort.desc ? FaSortDown : FaSortUp;
-
-  return (
-    <th
-      aria-sort={isActive ? (sort.desc ? 'descending' : 'ascending') : 'none'}
-      className={align === 'right' ? wm.alignRight : undefined}
-    >
-      <button type="button" className={`${wm.sortButton} ${isActive ? wm.sortButtonActive : ''}`} onClick={() => onSort(sortKey)}>
-        {label}
-        <Icon aria-hidden="true" />
-      </button>
-    </th>
   );
 }
 
@@ -397,7 +281,7 @@ export default function AdminWatermarkPage() {
     }
 
     const stamp = new Date().toISOString().slice(0, 10);
-    downloadCsv(result.data.rows, `watermark-${groupBy}-${range}-${stamp}.csv`);
+    exportVisitorCsv(result.data.rows, `watermark-${groupBy}-${range}-${stamp}.csv`);
 
     if (result.data.totalCount > result.data.rows.length) {
       toast.warning(`Chỉ xuất ${formatNumber(result.data.rows.length)}/${formatNumber(result.data.totalCount)} dòng đầu tiên.`);
@@ -410,7 +294,6 @@ export default function AdminWatermarkPage() {
   const isOverviewPending = overview.loading && !overview.data;
   const isTablePending = table.loading && !table.loaded;
   const isRefreshing = overview.loading || table.loading;
-  const pageCount = Math.max(1, Math.ceil(table.totalCount / PAGE_SIZE));
   const rangeLabel = RANGE_OPTIONS.find((item) => item.value === range)?.label || '';
   const errors = [...new Set([overview.error, table.error].filter(Boolean))];
   const sourceOptions = sourcePage && !sources.some((item) => item.sourcePage === sourcePage)
@@ -423,7 +306,7 @@ export default function AdminWatermarkPage() {
 
       <header className={styles.pageHeader}>
         <div><span>QUẢN TRỊ HỆ THỐNG</span><h1>WATERMARK</h1></div>
-        <div className={wm.headerActions}>
+        <div className={styles.headerActions}>
           <span className={`${wm.liveBadge} ${isLive ? wm.liveBadgeOn : ''}`} title={isLive ? 'Tự cập nhật khi có ảnh mới' : 'Chưa kết nối realtime'}>
             <span className={wm.liveDot} aria-hidden="true" />
             {isLive ? 'Trực tiếp' : 'Ngoại tuyến'}
@@ -431,18 +314,18 @@ export default function AdminWatermarkPage() {
           {lastUpdatedAt && (
             <span className={wm.updatedAt}>Cập nhật {timeFormatter.format(lastUpdatedAt)}</span>
           )}
-          <button type="button" className={wm.actionButton} onClick={refresh} disabled={isRefreshing}>
-            <FaArrowsRotate aria-hidden="true" className={isRefreshing ? wm.spin : undefined} />
+          <button type="button" className={styles.actionButton} onClick={refresh} disabled={isRefreshing}>
+            <FaArrowsRotate aria-hidden="true" className={isRefreshing ? styles.spin : undefined} />
             Làm mới
           </button>
-          <button type="button" className={wm.actionButton} onClick={handleExport} disabled={isExporting || isTablePending}>
+          <button type="button" className={styles.actionButton} onClick={handleExport} disabled={isExporting || isTablePending}>
             <FaFileCsv aria-hidden="true" />
             {isExporting ? 'Đang xuất…' : 'Xuất CSV'}
           </button>
         </div>
       </header>
 
-      <section className={wm.toolbar} aria-label="Bộ lọc">
+      <section className={styles.toolbar} aria-label="Bộ lọc">
         <div className={wm.segmented} role="group" aria-label="Khoảng thời gian">
           {RANGE_OPTIONS.map((option) => (
             <button
@@ -458,7 +341,7 @@ export default function AdminWatermarkPage() {
         </div>
 
         <select
-          className={wm.control}
+          className={styles.control}
           value={sourcePage}
           onChange={(event) => handleSourceChange(event.target.value)}
           aria-label="Nguồn"
@@ -487,7 +370,7 @@ export default function AdminWatermarkPage() {
 
         <input
           type="search"
-          className={`${wm.control} ${wm.search}`}
+          className={`${styles.control} ${styles.search}`}
           value={searchInput}
           onChange={(event) => setSearchInput(event.target.value)}
           placeholder="Tên, email, visitor ID, user ID…"
@@ -496,7 +379,7 @@ export default function AdminWatermarkPage() {
       </section>
 
       {errors.length > 0 && (
-        <div className={wm.alert} role="alert">
+        <div className={styles.alert} role="alert">
           <span>{errors.join(' · ')}</span>
           <button type="button" onClick={refresh}>Thử lại</button>
         </div>
@@ -534,7 +417,7 @@ export default function AdminWatermarkPage() {
       </section>
 
       <section className={styles.card}>
-        <div className={wm.cardHead}>
+        <div className={styles.cardHead}>
           <h2>Số ảnh theo {overview.data?.bucket === 'month' ? 'tháng' : overview.data?.bucket === 'week' ? 'tuần' : 'ngày'}</h2>
           <span>{sourcePage ? getSourceLabel(sourcePage) : 'Tất cả nguồn'} · {rangeLabel}</span>
         </div>
@@ -546,12 +429,12 @@ export default function AdminWatermarkPage() {
       </section>
 
       <section className={styles.card}>
-        <div className={wm.cardHead}>
+        <div className={styles.cardHead}>
           <h2>{groupBy === 'user' ? 'Theo tài khoản' : 'Theo visitor'}</h2>
           <span>{isTablePending ? 'Đang tải…' : `${formatNumber(table.totalCount)} dòng`}</span>
         </div>
 
-        <div className={`${styles.tableWrap} ${table.loading && table.loaded ? wm.tableBusy : ''}`} aria-busy={table.loading}>
+        <div className={`${styles.tableWrap} ${table.loading && table.loaded ? styles.tableBusy : ''}`} aria-busy={table.loading}>
           <table className={styles.table}>
             <thead>
               <tr>
@@ -567,7 +450,7 @@ export default function AdminWatermarkPage() {
               {isTablePending && Array.from({ length: 6 }, (_, index) => (
                 <tr key={`skeleton-${index}`} aria-hidden="true">
                   {Array.from({ length: 6 }, (__, cell) => (
-                    <td key={cell}><span className={wm.skeletonLine} /></td>
+                    <td key={cell}><span className={styles.skeletonLine} /></td>
                   ))}
                 </tr>
               ))}
@@ -607,8 +490,8 @@ export default function AdminWatermarkPage() {
                       </span>
                     </div>
                   </td>
-                  <td className={wm.numberCell}>{formatNumber(row.totalImages)}</td>
-                  <td className={wm.numberCell}>{formatNumber(row.entryCount)}</td>
+                  <td className={styles.numberCell}>{formatNumber(row.totalImages)}</td>
+                  <td className={styles.numberCell}>{formatNumber(row.entryCount)}</td>
                   <td>
                     <div className={wm.tags}>
                       {row.sourcePages.map((source) => (
@@ -616,30 +499,21 @@ export default function AdminWatermarkPage() {
                       ))}
                     </div>
                   </td>
-                  <td className={wm.dateCell} title={formatDateTime(row.firstSeenAt)}>{formatRelative(row.firstSeenAt)}</td>
-                  <td className={wm.dateCell} title={formatDateTime(row.lastSeenAt)}>{formatRelative(row.lastSeenAt)}</td>
+                  <td className={styles.dateCell} title={formatDateTime(row.firstSeenAt)}>{formatRelative(row.firstSeenAt)}</td>
+                  <td className={styles.dateCell} title={formatDateTime(row.lastSeenAt)}>{formatRelative(row.lastSeenAt)}</td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
 
-        {table.totalCount > PAGE_SIZE && (
-          <nav className={wm.pagination} aria-label="Phân trang">
-            <span>
-              {formatNumber(page * PAGE_SIZE + 1)}–{formatNumber(Math.min((page + 1) * PAGE_SIZE, table.totalCount))} / {formatNumber(table.totalCount)}
-            </span>
-            <div>
-              <button type="button" onClick={() => setPage((current) => current - 1)} disabled={page === 0 || table.loading} aria-label="Trang trước">
-                <FaChevronLeft aria-hidden="true" />
-              </button>
-              <span>Trang {page + 1}/{pageCount}</span>
-              <button type="button" onClick={() => setPage((current) => current + 1)} disabled={page + 1 >= pageCount || table.loading} aria-label="Trang sau">
-                <FaChevronRight aria-hidden="true" />
-              </button>
-            </div>
-          </nav>
-        )}
+        <Pagination
+          page={page}
+          pageSize={PAGE_SIZE}
+          totalCount={table.totalCount}
+          disabled={table.loading}
+          onPageChange={setPage}
+        />
       </section>
     </>
   );

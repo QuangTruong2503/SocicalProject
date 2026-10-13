@@ -1,0 +1,228 @@
+/* /admin/users — extends Admin.module.css, uses the shared theme tokens. */
+
+/* ── Stat tiles that act as quick filters ── */
+.statButton {
+  display: block;
+  width: 100%;
+  text-align: left;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+
+.statButton:hover { border-color: var(--color-text-secondary); }
+.statButtonActive { border-color: #166534; box-shadow: 0 0 0 1px #166534; }
+[data-theme="dark"] .statButtonActive { border-color: #4ade80; box-shadow: 0 0 0 1px #4ade80; }
+
+/* ── List header / bulk bar ── */
+.listMeta {
+  display: flex;
+  align-items: center;
+  min-height: 40px;
+  margin-bottom: 12px;
+  font-size: 13px;
+  color: var(--color-text-secondary);
+}
+
+.bulkBar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 6px 10px;
+  border-radius: 10px;
+  background: rgba(34, 197, 94, 0.1);
+  color: var(--color-text);
+}
+
+.linkButton {
+  margin-left: 6px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--color-text-secondary);
+  font: inherit;
+  font-weight: 600;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+/* ── Table ── */
+.usersTable { min-width: 980px; }
+.usersTable td { vertical-align: middle; }
+
+.checkCell { width: 36px; }
+.checkCell input { width: 16px; height: 16px; cursor: pointer; }
+.checkCell input:disabled { cursor: not-allowed; }
+
+.rowSelected td { background: rgba(34, 197, 94, 0.07); }
+
+.userCell {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 220px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.userCell > span { display: flex; flex-direction: column; min-width: 0; }
+.userCell strong { display: inline-flex; align-items: center; gap: 6px; }
+.userCell:hover strong { text-decoration: underline; }
+.userCell small {
+  max-width: 260px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--color-text-secondary);
+  font-size: 12px;
+}
+
+.selfBadge { font-size: 11px !important; padding: 2px 7px !important; }
+
+.planCell strong { display: block; font-size: 13px; }
+.planCell small { color: var(--color-text-secondary); font-size: 12px; white-space: nowrap; }
+
+.avatar {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 999px;
+  object-fit: cover;
+  background: rgba(99, 102, 241, 0.14);
+  color: var(--color-primary);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.avatarLarge { width: 56px; height: 56px; font-size: 18px; }
+
+/* ── Edit modal ── */
+.formGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0 12px;
+}
+
+.formGrid input[type="number"] {
+  min-height: 42px;
+  border: 1px solid var(--color-border);
+  border-radius: 9px;
+  padding: 9px 12px;
+  background: var(--color-surface);
+  color: var(--color-text);
+  font: inherit;
+}
+
+.formGrid input[aria-invalid="true"] { border-color: #dc2626; }
+
+.fieldError { color: #b91c1c; font-size: 12px; font-weight: 500; }
+[data-theme="dark"] .fieldError { color: #fca5a5; }
+
+.changeList {
+  margin: 0 0 16px;
+  padding: 10px 12px;
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  list-style: none;
+  font-size: 13px;
+}
+
+.changeList li { display: flex; justify-content: space-between; gap: 12px; padding: 3px 0; }
+.changeList li > span:first-child { color: var(--color-text-secondary); }
+
+.warningBox {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 14px;
+  padding: 12px;
+  border-radius: 10px;
+  background: rgba(245, 158, 11, 0.12);
+  color: var(--color-text);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.warningBox svg { flex-shrink: 0; margin-top: 3px; color: #b45309; }
+[data-theme="dark"] .warningBox svg { color: #fbbf24; }
+.warningBox p { margin: 0; }
+
+.confirmMessage { margin: 0 0 18px; line-height: 1.55; color: var(--color-text-secondary); }
+
+/* ── Detail drawer ── */
+.drawerIdentity { display: flex; align-items: center; gap: 14px; margin-bottom: 14px; }
+.drawerIdentity > div { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.drawerIdentity strong { font-size: 17px; }
+.drawerIdentity > div > span { color: var(--color-text-secondary); font-size: 13px; overflow-wrap: anywhere; }
+
+.badgeRow { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; }
+
+.drawerActions { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 8px; }
+
+.mutedNote { margin: 6px 0 0; color: var(--color-text-secondary); font-size: 13px; }
+
+.drawerSection { margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--color-border); }
+.drawerSection h4 {
+  margin: 0 0 10px;
+  font-size: 12px;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--color-text-secondary);
+}
+
+.infoList { margin: 0; }
+.infoRow {
+  display: grid;
+  grid-template-columns: 140px minmax(0, 1fr);
+  gap: 10px;
+  padding: 5px 0;
+  font-size: 14px;
+}
+
+.infoRow dt { color: var(--color-text-secondary); }
+.infoRow dd { margin: 0; overflow-wrap: anywhere; white-space: pre-line; }
+
+.inlineCode { display: inline-flex; align-items: center; gap: 4px; }
+.inlineCode code { font-size: 12px; }
+
+.activityGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: 10px;
+}
+
+.activityGrid > div {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 12px;
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+}
+
+.activityGrid span,
+.activityGrid small { color: var(--color-text-secondary); font-size: 12px; }
+.activityGrid strong { font-size: 20px; }
+.activityGrid .activityText { font-size: 14px; }
+
+.auditList { margin: 0; padding: 0; list-style: none; }
+.auditList > li { padding: 10px 0; border-bottom: 1px solid var(--color-border); font-size: 13px; }
+.auditList > li:last-child { border-bottom: 0; }
+.auditList ul { margin: 6px 0 0; padding-left: 18px; }
+
+.auditMeta { display: flex; justify-content: space-between; gap: 10px; }
+.auditMeta time { color: var(--color-text-secondary); white-space: nowrap; }
+
+@media (max-width: 600px) {
+  .formGrid { grid-template-columns: 1fr; }
+  .infoRow { grid-template-columns: 1fr; gap: 2px; }
+}

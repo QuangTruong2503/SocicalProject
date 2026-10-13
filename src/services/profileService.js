@@ -214,38 +214,162 @@ export async function ensureProfile(user) {
   return updateProfile(user.id, missingUpdates);
 }
 
+const ADMIN_RPC_MISSING_MESSAGE = 'Chưa cập nhật RPC quản trị trên Supabase. Hãy chạy lại supabase_admin_profiles_policies.sql.';
+// Errors raised on purpose by the admin RPCs carry a Vietnamese message meant for the UI.
+const ADMIN_RPC_USER_ERROR_CODES = new Set(['42501', '22023', 'P0002']);
+
+function toAdminError(error, fallbackMessage) {
+  if (error?.code === 'PGRST202') {
+    return ADMIN_RPC_MISSING_MESSAGE;
+  }
+
+  if (ADMIN_RPC_USER_ERROR_CODES.has(error?.code) && error?.message) {
+    return error.message;
+  }
+
+  return normalizeServiceError(error, fallbackMessage);
+}
+
+async function callAdminRpc(name, params, fallbackMessage) {
+  try {
+    const { data, error } = await supabase.rpc(name, params);
+
+    if (error) {
+      console.error(`[profileService] ${name} failed`, error);
+      return createServiceResult(null, toAdminError(error, fallbackMessage));
+    }
+
+    return createServiceResult(data);
+  } catch (error) {
+    console.error(`[profileService] ${name} exception`, error);
+    return createServiceResult(null, normalizeServiceError(error, fallbackMessage));
+  }
+}
+
 /**
- * Admin-only: list profiles with search/role/status filters.
+ * Admin-only: search, filter, sort and page profiles server-side.
+ * Returns only the columns the admin table needs, plus the total match count.
+ * @param {{
+ *   search?: string, role?: string, status?: string, verified?: boolean | null,
+ *   sort?: 'created_at' | 'last_login_at' | 'name' | 'email', desc?: boolean, limit?: number, offset?: number,
+ * }} [options]
+ * @returns {Promise<import('./serviceHelpers.js').ServiceResult<{ rows: Array<Object>, totalCount: number }>>}
+ */
+export async function adminListProfiles({
+  search = '',
+  role = '',
+  status = '',
+  verified = null,
+  sort = 'created_at',
+  desc = true,
+  limit = 50,
+  offset = 0,
+} = {}) {
+  const result = await callAdminRpc('admin_list_profiles', {
+    p_search: String(search || '').trim() || null,
+    p_role: role || null,
+    p_status: status || null,
+    p_verified: typeof verified === 'boolean' ? verified : null,
+    p_sort: sort,
+    p_desc: desc,
+    p_limit: limit,
+    p_offset: offset,
+  }, 'Không thể tải danh sách người dùng.');
+
+  if (result.error) {
+    return result;
+  }
+
+  const rows = result.data ?? [];
+  return createServiceResult({ rows, totalCount: Number(rows[0]?.total_count) || 0 });
+}
+
+/**
+ * Admin-only: list profiles with search/role/status filters (first 1000 matches).
  * @param {{ search?: string, role?: string, status?: string }} [filters]
  * @returns {Promise<import('./serviceHelpers.js').ServiceResult<Array<Object>>>}
  */
 export async function listProfiles(filters = {}) {
+  const result = await adminListProfiles({ ...filters, limit: 1000 });
+  return result.error ? result : createServiceResult(result.data.rows);
+}
+
+/**
+ * Admin-only: counters for the summary tiles.
+ * @returns {Promise<import('./serviceHelpers.js').ServiceResult<{ total: number, admins: number, suspended: number, verified: number, new_7d: number, active_7d: number }>>}
+ */
+export function getAdminProfileStats() {
+  return callAdminRpc('admin_profile_stats', {}, 'Không thể tải thống kê người dùng.');
+}
+
+/**
+ * Admin-only: lock/unlock many users at once (the caller is skipped server-side).
+ * @param {string[]} userIds
+ * @param {'active' | 'suspended'} status
+ * @returns {Promise<import('./serviceHelpers.js').ServiceResult<number>>}
+ */
+export function adminBulkUpdateStatus(userIds, status) {
+  return callAdminRpc('admin_bulk_update_status', {
+    p_user_ids: userIds,
+    p_status: status,
+  }, 'Không thể cập nhật hàng loạt người dùng.');
+}
+
+/**
+ * Admin-only: full profile of one user, for the detail panel.
+ * @param {string} userId
+ */
+export async function getAdminProfileDetail(userId) {
   try {
-    let query = supabase
+    const { data, error } = await supabase
       .from('profiles')
       .select(PROFILE_SELECT)
-      .order('created_at', { ascending: false })
-      .range(0, 199);
-
-    const safeSearch = String(filters.search || '').replace(/[%(),.]/g, ' ').trim();
-    if (safeSearch) {
-      query = query.or(`username.ilike.%${safeSearch}%,email.ilike.%${safeSearch}%,full_name.ilike.%${safeSearch}%`);
-    }
-    if (filters.role) query = query.eq('role', filters.role);
-    if (filters.status) query = query.eq('status', filters.status);
-
-    const { data, error } = await query;
+      .eq('id', userId)
+      .maybeSingle();
 
     if (error) {
-      console.error('[profileService] listProfiles failed', error);
-      return createServiceResult(null, normalizeServiceError(error, 'Không thể tải danh sách người dùng.'));
+      console.error('[profileService] getAdminProfileDetail failed', error);
+      return createServiceResult(null, normalizeServiceError(error, 'Không thể tải hồ sơ người dùng.'));
+    }
+
+    return createServiceResult(data);
+  } catch (error) {
+    console.error('[profileService] getAdminProfileDetail exception', error);
+    return createServiceResult(null, normalizeServiceError(error, 'Không thể tải hồ sơ người dùng.'));
+  }
+}
+
+/**
+ * Admin-only: watermark / quotation / product-link usage of one user.
+ * @param {string} userId
+ */
+export function getAdminUserActivity(userId) {
+  return callAdminRpc('admin_user_activity', { p_user_id: userId }, 'Không thể tải hoạt động người dùng.');
+}
+
+/**
+ * Admin-only: change history of one user from admin_audit_log.
+ * @param {string} userId
+ * @param {number} [limit]
+ */
+export async function listAdminAuditLog(userId, limit = 20) {
+  try {
+    const { data, error } = await supabase
+      .from('admin_audit_log')
+      .select('id, actor_id, actor_email, action, changes, created_at')
+      .eq('target_id', userId)
+      .order('created_at', { ascending: false })
+      .limit(limit);
+
+    if (error) {
+      console.error('[profileService] listAdminAuditLog failed', error);
+      return createServiceResult(null, normalizeServiceError(error, 'Không thể tải lịch sử thay đổi.'));
     }
 
     return createServiceResult(data ?? []);
   } catch (error) {
-    const message = normalizeServiceError(error, 'Không thể tải danh sách người dùng.');
-    console.error('[profileService] listProfiles exception', error);
-    return createServiceResult(null, message);
+    console.error('[profileService] listAdminAuditLog exception', error);
+    return createServiceResult(null, normalizeServiceError(error, 'Không thể tải lịch sử thay đổi.'));
   }
 }
 
@@ -256,30 +380,15 @@ export async function listProfiles(filters = {}) {
  * @param {{ role?: string, status?: string, is_verified?: boolean, plan?: string, credits?: number }} updates
  * @returns {Promise<import('./serviceHelpers.js').ServiceResult<Object>>}
  */
-export async function adminUpdateProfile(userId, updates = {}) {
-  try {
-    console.debug('[profileService] adminUpdateProfile start', { userId, fields: Object.keys(updates) });
-
-    const { data, error } = await supabase.rpc('admin_update_profile', {
-      p_user_id: userId,
-      p_role: updates.role ?? null,
-      p_status: updates.status ?? null,
-      p_is_verified: updates.is_verified ?? null,
-      p_plan: updates.plan ?? null,
-      p_credits: updates.credits ?? null,
-    });
-
-    if (error) {
-      console.error('[profileService] adminUpdateProfile failed', error);
-      return createServiceResult(null, normalizeServiceError(error, 'Không thể cập nhật người dùng.'));
-    }
-
-    return createServiceResult(data);
-  } catch (error) {
-    const message = normalizeServiceError(error, 'Không thể cập nhật người dùng.');
-    console.error('[profileService] adminUpdateProfile exception', error);
-    return createServiceResult(null, message);
-  }
+export function adminUpdateProfile(userId, updates = {}) {
+  return callAdminRpc('admin_update_profile', {
+    p_user_id: userId,
+    p_role: updates.role ?? null,
+    p_status: updates.status ?? null,
+    p_is_verified: updates.is_verified ?? null,
+    p_plan: updates.plan ?? null,
+    p_credits: updates.credits ?? null,
+  }, 'Không thể cập nhật người dùng.');
 }
 
 /**

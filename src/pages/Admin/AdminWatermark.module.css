@@ -1,16 +1,5 @@
 /* Watermark stats page — extends Admin.module.css, uses the shared theme tokens. */
 
-.headerActions {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 10px;
-}
-
-/* Admin.module.css styles every `.pageHeader span` as a kicker; undo that here. */
-.headerActions span { letter-spacing: normal; }
-
 .liveBadge {
   display: inline-flex;
   align-items: center;
@@ -44,36 +33,7 @@
   letter-spacing: normal;
 }
 
-.actionButton {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  min-height: 38px;
-  padding: 0 14px;
-  border: 1px solid var(--color-border);
-  border-radius: 9px;
-  background: var(--color-surface);
-  color: var(--color-text);
-  font: inherit;
-  font-size: 13px;
-  font-weight: 600;
-  cursor: pointer;
-}
-
-.actionButton:hover:not(:disabled) { background: var(--color-nav-hover); }
-.actionButton:disabled { opacity: 0.6; cursor: not-allowed; }
-
-.spin { animation: spin 0.9s linear infinite; }
-
-/* ── Filters (one row above the charts) ───────────────────────────────── */
-.toolbar {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 10px;
-  margin-bottom: 16px;
-}
-
+/* ── Filters ──────────────────────────────────────────────────────────── */
 .segmented {
   display: inline-flex;
   padding: 3px;
@@ -103,51 +63,6 @@
   color: #fff;
 }
 
-.control {
-  min-height: 40px;
-  box-sizing: border-box;
-  border: 1px solid var(--color-border);
-  border-radius: 9px;
-  padding: 8px 12px;
-  background: var(--color-surface);
-  color: var(--color-text);
-  font: inherit;
-  font-size: 14px;
-}
-
-.search {
-  flex: 1 1 220px;
-  min-width: 0;
-}
-
-.alert {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  margin-bottom: 16px;
-  padding: 12px 14px;
-  border: 1px solid rgba(239, 68, 68, 0.35);
-  border-radius: 12px;
-  background: rgba(239, 68, 68, 0.08);
-  color: #b91c1c;
-  font-size: 14px;
-}
-
-[data-theme="dark"] .alert { color: #fca5a5; }
-
-.alert button {
-  flex-shrink: 0;
-  border: 1px solid currentColor;
-  border-radius: 8px;
-  padding: 6px 12px;
-  background: transparent;
-  color: inherit;
-  font: inherit;
-  font-weight: 600;
-  cursor: pointer;
-}
-
 /* ── Stat tiles ───────────────────────────────────────────────────────── */
 .delta {
   display: inline-flex !important;
@@ -161,31 +76,6 @@
 .delta_flat { color: var(--color-text-secondary) !important; }
 [data-theme="dark"] .delta_up { color: #34d399 !important; }
 [data-theme="dark"] .delta_down { color: #f87171 !important; }
-
-.skeletonValue,
-.skeletonLine {
-  display: block;
-  border-radius: 6px;
-  background: linear-gradient(90deg, var(--color-nav-hover), var(--color-border), var(--color-nav-hover));
-  background-size: 200% 100%;
-  animation: shimmer 1.2s ease-in-out infinite;
-}
-
-.skeletonValue { width: 90px; height: 31px; margin: 0 !important; }
-.skeletonLine { width: 80%; height: 14px; }
-
-/* ── Cards ────────────────────────────────────────────────────────────── */
-.cardHead {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 6px 16px;
-  margin-bottom: 18px;
-}
-
-.cardHead h2 { margin: 0; font-size: 17px; }
-.cardHead span { font-size: 13px; color: var(--color-text-secondary); }
 
 /* ── Chart ────────────────────────────────────────────────────────────── */
 .chart {
@@ -330,36 +220,6 @@
 .chartTableWrap th:not(:first-child) { text-align: right; font-variant-numeric: tabular-nums; }
 
 /* ── Table ────────────────────────────────────────────────────────────── */
-.tableBusy { opacity: 0.6; transition: opacity 0.15s ease; }
-
-.sortButton {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 0;
-  border: 0;
-  background: none;
-  color: inherit;
-  font: inherit;
-  cursor: pointer;
-}
-
-.sortButton svg { opacity: 0.45; font-size: 11px; }
-.sortButtonActive { color: var(--color-text); }
-.sortButtonActive svg { opacity: 1; }
-
-.alignRight { text-align: right !important; }
-.alignRight .sortButton { flex-direction: row-reverse; }
-
-.numberCell {
-  text-align: right !important;
-  font-variant-numeric: tabular-nums;
-  font-weight: 700;
-  white-space: nowrap;
-}
-
-.dateCell { white-space: nowrap; color: var(--color-text-secondary); font-size: 13px; }
-
 .identity { display: flex; flex-direction: column; gap: 3px; min-width: 240px; }
 .identityName { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
 .identityMeta {
@@ -373,23 +233,6 @@
 
 .identityMeta code { font-size: 12px; }
 
-.copyButton {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 22px;
-  height: 22px;
-  padding: 0;
-  border: 0;
-  border-radius: 6px;
-  background: transparent;
-  color: var(--color-text-secondary);
-  font-size: 11px;
-  cursor: pointer;
-}
-
-.copyButton:hover { background: var(--color-nav-hover); color: var(--color-text); }
-
 .tags { display: flex; flex-wrap: wrap; gap: 5px; }
 
 .tag {
@@ -400,36 +243,6 @@
   font-weight: 600;
   white-space: nowrap;
 }
-
-.pagination {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  margin-top: 14px;
-  font-size: 13px;
-  color: var(--color-text-secondary);
-}
-
-.pagination div { display: flex; align-items: center; gap: 10px; }
-
-.pagination button {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 34px;
-  height: 34px;
-  border: 1px solid var(--color-border);
-  border-radius: 8px;
-  background: var(--color-surface);
-  color: var(--color-text);
-  cursor: pointer;
-}
-
-.pagination button:disabled { opacity: 0.45; cursor: not-allowed; }
-
-@keyframes spin { to { transform: rotate(360deg); } }
 
 @keyframes shimmer {
   0% { background-position: 100% 0; }
@@ -443,16 +256,12 @@
 }
 
 @media (max-width: 700px) {
-  .headerActions { justify-content: flex-start; }
   .segmented { overflow-x: auto; max-width: 100%; }
   .chart { --wm-tick-width: 36px; }
   .chartPlot { height: 200px; }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .spin,
   .liveBadgeOn .liveDot,
-  .skeletonValue,
-  .skeletonLine,
   .chartSkeleton { animation: none; }
 }

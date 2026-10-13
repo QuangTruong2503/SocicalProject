@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { Link } from 'react-router-dom';
-import { listProfiles } from '../../services/profileService.js';
+import { getAdminProfileStats } from '../../services/profileService.js';
 import { listQuotations } from '../../services/quotationService.js';
 import { listKnmQuotations } from '../../services/knmQuotationService.js';
 import { getWatermarkImageCountTotal } from '../../services/watermarkImageCountService.js';
@@ -20,8 +20,8 @@ export default function AdminDashboardPage() {
 
     async function load() {
       setLoading(true);
-      const [profilesResult, quotations, knmQuotations, watermarkResult] = await Promise.all([
-        listProfiles({}),
+      const [profileStatsResult, quotations, knmQuotations, watermarkResult] = await Promise.all([
+        getAdminProfileStats(),
         listQuotations({}).catch(() => []),
         listKnmQuotations({}).catch(() => []),
         getWatermarkImageCountTotal({}),
@@ -30,7 +30,7 @@ export default function AdminDashboardPage() {
       if (!isActive) return;
 
       setStats({
-        users: profilesResult.data?.length ?? 0,
+        users: Number(profileStatsResult.data?.total) || 0,
         quotations: quotations?.length ?? 0,
         knmQuotations: knmQuotations?.length ?? 0,
         watermarkImages: watermarkResult.data ?? 0,

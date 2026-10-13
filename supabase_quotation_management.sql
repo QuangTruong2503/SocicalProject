@@ -139,6 +139,8 @@ alter table public.quotation_counters enable row level security;
 alter table public.quotations enable row level security;
 alter table public.quotation_items enable row level security;
 
+-- Baseline policies. supabase_quotation_active_user_policies.sql replaces them
+-- with versions that also block suspended accounts; run it after this file.
 drop policy if exists quotation_customers_staff_select on public.quotation_customers;
 drop policy if exists quotation_customers_staff_insert on public.quotation_customers;
 drop policy if exists quotation_customers_staff_update on public.quotation_customers;
