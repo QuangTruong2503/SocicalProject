@@ -3,6 +3,8 @@ import { createServiceResult, normalizeServiceError } from './serviceHelpers.js'
 
 const WATERMARK_IMAGE_COUNTS_TABLE = 'watermark_image_counts';
 const WATERMARK_BROADCAST_TOPIC = 'watermark-image-counts';
+// Matches the watermark_image_counts_image_count_max check constraint.
+const MAX_IMAGES_PER_ROW = 1000;
 const STATS_RPC_MISSING_MESSAGE = 'Chưa tạo RPC thống kê watermark trên Supabase. Hãy chạy supabase_watermark_stats_rpc.sql.';
 
 /**
@@ -62,9 +64,15 @@ export async function createWatermarkImageCount({
       image_count: Math.floor(normalizedCount),
     };
 
+    // The table caps one row at MAX_IMAGES_PER_ROW, so a big batch becomes several rows.
+    const rows = [];
+    for (let remaining = payload.image_count; remaining > 0; remaining -= MAX_IMAGES_PER_ROW) {
+      rows.push({ ...payload, image_count: Math.min(remaining, MAX_IMAGES_PER_ROW) });
+    }
+
     const { error } = await supabase
       .from(WATERMARK_IMAGE_COUNTS_TABLE)
-      .insert([payload]);
+      .insert(rows);
 
     if (error) {
       console.error('[watermarkImageCountService] createWatermarkImageCount error', { error, payload });
@@ -99,6 +107,26 @@ export async function getWatermarkImageCountTotal({ sourcePage = null, visitorId
   } catch (error) {
     console.error('[watermarkImageCountService] getWatermarkImageCountTotal exception', { error, sourcePage, visitorId });
     return createServiceResult(null, normalizeServiceError(error, 'Không thể tải số lượng ảnh watermark.'));
+  }
+}
+
+/**
+ * Total images created by the signed-in account (all devices, all sources),
+ * the same number /dashboard/overview shows.
+ */
+export async function getMyWatermarkImageTotal() {
+  try {
+    const { data, error } = await supabase.rpc('my_watermark_image_total');
+
+    if (error) {
+      console.error('[watermarkImageCountService] getMyWatermarkImageTotal error', { error });
+      return createServiceResult(null, toStatsError(error, 'Không thể tải số ảnh của bạn.'));
+    }
+
+    return createServiceResult(Number(data) || 0);
+  } catch (error) {
+    console.error('[watermarkImageCountService] getMyWatermarkImageTotal exception', { error });
+    return createServiceResult(null, normalizeServiceError(error, 'Không thể tải số ảnh của bạn.'));
   }
 }
 

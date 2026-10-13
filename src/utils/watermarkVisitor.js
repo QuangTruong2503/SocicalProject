@@ -51,10 +51,13 @@ export function getWatermarkVisitorId() {
   return readCookie(WATERMARK_VISITOR_COOKIE);
 }
 
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 export function getOrCreateWatermarkVisitorId() {
   const existingVisitorId = getWatermarkVisitorId();
 
-  if (existingVisitorId) {
+  // visitor_id is a uuid column; a damaged cookie would make every count insert fail.
+  if (existingVisitorId && UUID_PATTERN.test(existingVisitorId)) {
     return existingVisitorId;
   }
 

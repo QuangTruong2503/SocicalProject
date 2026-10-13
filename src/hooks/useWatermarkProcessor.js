@@ -1,4 +1,10 @@
-/** Canvas processing shared by previews and JPEG exports. */
+/**
+ * Main-thread canvas processing. Used directly for previews of the logo and as
+ * the fallback of src/utils/watermarkEngine.js when Web Workers / OffscreenCanvas
+ * are unavailable. Drawing itself lives in src/utils/watermarkRender.js.
+ */
+import { drawLetterboxed, drawWatermark, fitWithin } from '../utils/watermarkRender.js';
+
 export function loadWatermarkImage(url) {
   return new Promise((resolve, reject) => {
     const image = new Image();
@@ -16,17 +22,10 @@ export function loadWatermarkImage(url) {
   });
 }
 
-function bounded(value, min, max, fallback) {
-  const number = Number(value);
-  return Number.isFinite(number) ? Math.max(min, Math.min(max, number)) : fallback;
-}
-
 async function exportCanvas(canvas, draw, quality = 0.92) {
   try {
     const context = canvas.getContext('2d');
     if (!context) throw new Error('Thiết bị không đủ bộ nhớ để xử lý ảnh này.');
-    context.fillStyle = '#ffffff';
-    context.fillRect(0, 0, canvas.width, canvas.height);
     draw(context);
     return await new Promise((resolve, reject) => canvas.toBlob(
       (blob) => blob ? resolve(blob) : reject(new Error('Không thể xuất ảnh. Hãy thử ảnh nhỏ hơn.')),
@@ -38,40 +37,25 @@ async function exportCanvas(canvas, draw, quality = 0.92) {
   }
 }
 
-export async function processWatermark(sourceFile, logoUrl, options = {}) {
+/**
+ * @param {File | Blob} sourceFile
+ * @param {string | HTMLImageElement | HTMLCanvasElement | ImageBitmap | null} logo URL or decoded image
+ * @param {{ maxDimension?: number, quality?: number } & Record<string, unknown>} options
+ */
+export async function processWatermark(sourceFile, logo, options = {}) {
   const sourceUrl = URL.createObjectURL(sourceFile);
   try {
     const img = await loadWatermarkImage(sourceUrl);
-    const logo = logoUrl ? (typeof logoUrl === 'string' ? await loadWatermarkImage(logoUrl) : logoUrl) : null;
+    const logoImage = typeof logo === 'string' ? await loadWatermarkImage(logo) : logo;
     const canvas = document.createElement('canvas');
-    const scale = options.maxDimension ? Math.min(1, options.maxDimension / Math.max(img.naturalWidth, img.naturalHeight)) : 1;
-    canvas.width = Math.max(1, Math.round(img.naturalWidth * scale));
-    canvas.height = Math.max(1, Math.round(img.naturalHeight * scale));
-    return await exportCanvas(canvas, (ctx) => {
-      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-      if (!logo) return;
-      const size = bounded(options.size, 10, 200, 60);
-      const ratio = logo.naturalHeight / logo.naturalWidth;
-      const logoW = Math.max(1, Math.min(canvas.width * 0.2 * size / 100, canvas.height * 0.96 / ratio));
-      const logoH = Math.max(1, logoW * ratio);
-      ctx.globalAlpha = bounded(options.opacity, 0, 100, 60) / 100;
-      if (options.tiled) {
-        // Bound draw calls for tiny images and extremely wide or short logos.
-        const gapX = Math.max(logoW * 1.5, canvas.width / 100);
-        const gapY = Math.max(logoH * 1.5, canvas.height / 100);
-        for (let row = 0; row * gapY < canvas.height; row += 1) {
-          for (let col = 0; col * gapX < canvas.width + gapX; col += 1) {
-            ctx.drawImage(logo, col * gapX - (row % 2 ? gapX / 2 : 0), row * gapY, logoW, logoH);
-          }
-        }
-      } else {
-        const position = String(options.logoPosition || 'center');
-        const pad = Math.min(canvas.width, canvas.height) * 0.02;
-        const x = position.includes('left') ? pad : position.includes('right') ? canvas.width - logoW - pad : (canvas.width - logoW) / 2;
-        const y = position.includes('top') ? pad : position.includes('bottom') ? canvas.height - logoH - pad : (canvas.height - logoH) / 2;
-        ctx.drawImage(logo, x, y, logoW, logoH);
-      }
-    });
+    const size = fitWithin(img.naturalWidth, img.naturalHeight, options.maxDimension);
+    canvas.width = size.width;
+    canvas.height = size.height;
+    return await exportCanvas(
+      canvas,
+      (ctx) => drawWatermark(ctx, img, logoImage, options, size.width, size.height),
+      options.quality ?? 0.92,
+    );
   } finally {
     URL.revokeObjectURL(sourceUrl);
   }
@@ -85,12 +69,7 @@ export async function resizeBlob(blob, width = 800, height = 600) {
     const canvas = document.createElement('canvas');
     canvas.width = width;
     canvas.height = height;
-    return await exportCanvas(canvas, (ctx) => {
-      const scale = Math.min(width / img.naturalWidth, height / img.naturalHeight);
-      const dw = img.naturalWidth * scale;
-      const dh = img.naturalHeight * scale;
-      ctx.drawImage(img, (width - dw) / 2, (height - dh) / 2, dw, dh);
-    }, 0.9);
+    return await exportCanvas(canvas, (ctx) => drawLetterboxed(ctx, img, width, height), 0.9);
   } finally {
     URL.revokeObjectURL(url);
   }
@@ -107,16 +86,27 @@ export function buildFileName(baseName, index, total) {
   return total === 1 ? `${name}.jpg` : `${name}_${String(index + 1).padStart(2, '0')}.jpg`;
 }
 
-export async function compressAndResizeBlob(blob, width = 800, height = 600, maxSizeKB = 100) {
-  const resized = await resizeBlob(blob, width, height);
-  const { default: imageCompression } = await import('browser-image-compression');
-  const compressed = await imageCompression(resized, {
-    maxSizeMB: maxSizeKB / 1024,
-    maxWidthOrHeight: Math.max(width, height),
-    useWebWorker: true,
-    initialQuality: 0.8,
-    alwaysKeepResolution: true,
+/**
+ * Final download names for a list of results: normalized, with "-2", "-3"…
+ * appended to case-insensitive duplicates. ZIP entries, single downloads and
+ * Haravan links all use this so they always agree.
+ * @param {Array<{ fileName: string }>} results
+ * @returns {string[]}
+ */
+export function getUniqueFileNames(results) {
+  const used = new Set();
+
+  return results.map((result) => {
+    const normalized = normalizeImageName(result.fileName);
+    let candidate = normalized;
+    let suffix = 2;
+
+    while (used.has(candidate.toLocaleLowerCase('vi'))) {
+      candidate = normalized.replace(/\.jpg$/i, `-${suffix}.jpg`);
+      suffix += 1;
+    }
+
+    used.add(candidate.toLocaleLowerCase('vi'));
+    return candidate;
   });
-  if (compressed.size > maxSizeKB * 1024) throw new Error('Không thể nén ảnh dưới 100 KB. Hãy chọn chế độ 800 × 600.');
-  return compressed;
 }

@@ -1,5 +1,4 @@
-import React, { useEffect, useState, useCallback, useMemo } from 'react';
-import { createPortal } from 'react-dom';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { toast } from 'react-toastify';
 import LogoUploader from '../components/watermark/LogoUploader';
@@ -9,23 +8,23 @@ import WatermarkGallery from '../components/watermark/WatermarkGallery';
 import WatermarkLivePreview from '../components/watermark/WatermarkLivePreview';
 import ImageLightbox from '../components/watermark/ImageLightbox';
 import SeasonalEffectLayer from '../components/watermark/SeasonalEffectLayer';
-import { processWatermark, resizeBlob, buildFileName, compressAndResizeBlob, loadWatermarkImage, normalizeImageName } from '../hooks/useWatermarkProcessor';
+import PersonalizationModal from '../components/watermark/PersonalizationModal.jsx';
+import WatermarkModal from '../components/watermark/WatermarkModal.jsx';
+import { buildFileName, getUniqueFileNames } from '../hooks/useWatermarkProcessor';
 import { useAuth } from '../hooks/useAuth.js';
 import { useTheme } from '../hooks/useTheme.js';
-import { useDialogFocus } from '../hooks/useDialogFocus.js';
 import { getUserDisplayName } from '../utils/userProfile.js';
-import {
-  loadWatermarkOptions,
-  saveWatermarkOptions,
-} from '../hooks/useIndexedDB.js';
+import { loadWatermarkOptions, saveWatermarkOptions } from '../hooks/useIndexedDB.js';
 import { buildThemeAccentVars } from '../utils/colorTools.js';
 import {
   createWatermarkImageCount,
+  getMyWatermarkImageTotal,
   getWatermarkImageCountTotal,
   subscribeToWatermarkImageCounts,
 } from '../services/watermarkImageCountService.js';
 import { getOrCreateWatermarkVisitorId } from '../utils/watermarkVisitor.js';
-import { createThumbnailUrl } from '../utils/imageThumbnail.js';
+import { createWatermarkEngine } from '../utils/watermarkEngine.js';
+import { DEFAULT_OPTIONS, mergeWatermarkOptions } from '../utils/watermarkOptions.js';
 import {
   MAX_COPY_SOURCE_IMAGES,
   captureAndDownloadSourceImages,
@@ -34,32 +33,6 @@ import {
 import '../styles/Watermark.css';
 
 const WATERMARK_COUNT_SOURCE_PAGE = 'watermark';
-
-const DEFAULT_OPTIONS = {
-  size: 60,
-  opacity: 60,
-  tiled: false,
-  productName: '',
-  logoPosition: 'center',
-  accentColor: '#2563EB',
-  seasonalEffect: {
-    enabled: false,
-    season: 'spring',
-    density: 30,
-    duration: 12,
-    opacity: 70,
-  },
-};
-
-function normalizeFileName(fileName, fallbackBase = 'image') {
-  return normalizeImageName(fileName, fallbackBase);
-}
-
-function getDownloadFileName(fileName, suffix = '') {
-  const normalized = normalizeFileName(fileName);
-  const baseName = normalized.replace(/\.jpg$/i, '');
-  return `${baseName}${suffix}.jpg`;
-}
 
 function formatCount(value) {
   return new Intl.NumberFormat('vi-VN').format(Number(value) || 0);
@@ -70,142 +43,65 @@ function releaseResult(result) {
   if (result.thumb) URL.revokeObjectURL(result.thumb);
 }
 
-function useReplayOnReveal(elementRef) {
-  const [replayKey, setReplayKey] = useState(0);
-  const wasVisibleRef = React.useRef(false);
-
-  useEffect(() => {
-    const node = elementRef.current;
-    if (!node || typeof IntersectionObserver === 'undefined') {
-      return undefined;
-    }
-
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting) {
-          if (!wasVisibleRef.current) {
-            wasVisibleRef.current = true;
-            setReplayKey((key) => key + 1);
-          }
-        } else {
-          wasVisibleRef.current = false;
-        }
-      },
-      { threshold: 0.35 },
-    );
-
-    observer.observe(node);
-    return () => observer.disconnect();
-  }, [elementRef]);
-
-  return replayKey;
+function triggerDownload(blob, fileName) {
+  const anchor = document.createElement('a');
+  const objectUrl = URL.createObjectURL(blob);
+  anchor.href = objectUrl;
+  anchor.download = fileName;
+  anchor.click();
+  window.setTimeout(() => URL.revokeObjectURL(objectUrl), 1500);
 }
 
-function useAnimatedCount(value, { duration = 700, replayKey } = {}) {
-  const numericValue = Number(value) || 0;
-  const [display, setDisplay] = useState(numericValue);
-  const displayRef = React.useRef(numericValue);
-  const lastReplayKeyRef = React.useRef(replayKey);
+function useAnimatedCount(value, duration = 700) {
+  const target = Number(value) || 0;
+  const [display, setDisplay] = useState(target);
+  const displayRef = useRef(target);
 
   useEffect(() => {
-    const isReplay = replayKey !== undefined && replayKey !== lastReplayKeyRef.current;
-    lastReplayKeyRef.current = replayKey;
+    const from = displayRef.current;
+    if (from === target) return undefined;
 
-    const from = isReplay ? 0 : displayRef.current;
-    const to = numericValue;
-
-    if (!isReplay && from === to) {
-      return undefined;
-    }
-
-    if (isReplay) {
-      displayRef.current = from;
-    }
-
-    let rafId;
+    const reducedMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
     const start = performance.now();
-    const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    let rafId;
 
     const tick = (now) => {
       const progress = reducedMotion ? 1 : Math.min((now - start) / duration, 1);
-      const eased = 1 - (1 - progress) ** 3;
-      const current = Math.round(from + (to - from) * eased);
+      const current = Math.round(from + (target - from) * (1 - (1 - progress) ** 3));
       displayRef.current = current;
       setDisplay(current);
-
-      if (progress < 1) {
-        rafId = requestAnimationFrame(tick);
-      }
+      if (progress < 1) rafId = requestAnimationFrame(tick);
     };
 
     rafId = requestAnimationFrame(tick);
-
     return () => cancelAnimationFrame(rafId);
-  }, [numericValue, duration, replayKey]);
+  }, [target, duration]);
 
   return display;
 }
 
-function WatermarkCountBoard({
-  totalCreated,
-  personalCreated,
-  lastCreated,
-  selectedCount,
-  isLoading,
-  error,
-  totalJustUpdated,
-}) {
-  const boardRef = React.useRef(null);
-  const replayKey = useReplayOnReveal(boardRef);
-
-  const animatedTotal = useAnimatedCount(totalCreated, { replayKey });
-  const animatedPersonal = useAnimatedCount(personalCreated, { replayKey });
-  const animatedLast = useAnimatedCount(lastCreated, { duration: 500, replayKey });
-
-  const rows = [
-    {
-      label: 'Tổng ảnh đã tạo',
-      value: isLoading ? '...' : formatCount(animatedTotal),
-      note: error ? 'Tạm thời chưa tải được thống kê' : 'Tính trên toàn bộ dự án',
-      tone: error ? 'warning' : 'primary',
-      pulse: totalJustUpdated,
-    },
-    {
-      label: 'Ảnh của bạn',
-      value: isLoading ? '...' : formatCount(animatedPersonal),
-      note: 'Tổng ảnh đã tạo trên trình duyệt này',
-      tone: 'success',
-    },
-    {
-      label: 'Lần tạo gần nhất',
-      value: formatCount(animatedLast),
-      note: selectedCount > 0 ? `${formatCount(selectedCount)} ảnh` : 'Chưa chọn ảnh',
-      tone: 'neutral',
-    },
-  ];
+/** One compact line of counters above the tool. */
+function WatermarkStatsStrip({ totalCreated, personalCreated, personalScope, lastCreated, isLoading, error, totalJustUpdated }) {
+  const total = useAnimatedCount(totalCreated);
+  const personal = useAnimatedCount(personalCreated);
 
   return (
-    <section className="wm-count-board" aria-label="Bảng đếm ảnh watermark" ref={boardRef}>
-      <div className="wm-count-board__header">
-        <div>
-          <span className="wm-count-board__kicker">Ảnh Đã Tạo</span>
-          <h2>Ảnh Đã Tạo</h2>
+    <dl className="wm-stats-strip" aria-label="Số ảnh đã tạo">
+      <div className={`wm-stat${totalJustUpdated ? ' is-pulsing' : ''}`} title={error || undefined}>
+        <dt>Toàn hệ thống</dt>
+        <dd>{isLoading ? '…' : error ? '—' : formatCount(total)}</dd>
+      </div>
+      <div className="wm-stat">
+        <dt>{personalScope === 'account' ? 'Tài khoản của bạn' : 'Trên trình duyệt này'}</dt>
+        <dd>{isLoading ? '…' : formatCount(personal)}</dd>
+      </div>
+      {lastCreated > 0 && (
+        <div className="wm-stat">
+          <dt>Lần tạo gần nhất</dt>
+          <dd>{formatCount(lastCreated)} ảnh</dd>
         </div>
-      </div>
-
-      <div className="wm-count-grid">
-        {rows.map((row) => (
-          <article
-            className={`wm-count-card wm-count-card--${row.tone}${row.pulse ? ' wm-count-card--pulse' : ''}`}
-            key={row.label}
-          >
-            <span className="wm-count-card__label">{row.label}</span>
-            <strong>{row.value}</strong>
-            <span className="wm-count-card__note">{row.note}</span>
-          </article>
-        ))}
-      </div>
-    </section>
+      )}
+    </dl>
   );
 }
 
@@ -224,17 +120,8 @@ function WatermarkImageZoom({ image, onClose }) {
 function SourceDetailModal({ image, onClose }) {
   const [isCapturing, setIsCapturing] = useState(false);
   const [isCopying, setIsCopying] = useState(false);
-  const dialogRef = useDialogFocus();
   const detailItems = image.items;
   const isCopyBlocked = detailItems.length > MAX_COPY_SOURCE_IMAGES;
-
-  useEffect(() => {
-    const handleEscape = (event) => {
-      if (event.key === 'Escape') onClose();
-    };
-    document.addEventListener('keydown', handleEscape);
-    return () => document.removeEventListener('keydown', handleEscape);
-  }, [onClose]);
 
   const handleCopy = async () => {
     if (isCopyBlocked || isCopying || isCapturing) return;
@@ -260,9 +147,7 @@ function SourceDetailModal({ image, onClose }) {
     setIsCapturing(true);
     try {
       const fileCount = await captureAndDownloadSourceImages(detailItems);
-      toast.success(fileCount > 1
-        ? `Đã tải ${fileCount} ảnh JPG toàn cảnh.`
-        : 'Đã chụp và tải toàn bộ ảnh nguồn.');
+      toast.success(fileCount > 1 ? `Đã tải ${fileCount} ảnh JPG toàn cảnh.` : 'Đã chụp và tải toàn bộ ảnh nguồn.');
     } catch (error) {
       toast.error(error?.message || 'Không thể chụp ảnh toàn cảnh.');
     } finally {
@@ -270,139 +155,153 @@ function SourceDetailModal({ image, onClose }) {
     }
   };
 
-  return createPortal(
-    <div
-      className="wm-preview-backdrop"
-      role="presentation"
-      onPointerDown={onClose}
+  return (
+    <WatermarkModal
+      onClose={onClose}
+      label={`Phóng to ${image.title}`}
+      describedBy="wm-source-detail-description"
+      backdropClassName="wm-preview-backdrop"
+      className="wm-preview-modal wm-preview-modal--zoom wm-preview-modal--source-detail"
     >
-      <div
-        className="wm-preview-modal wm-preview-modal--zoom wm-preview-modal--source-detail"
-        ref={dialogRef}
-        role="dialog"
-        aria-modal="true"
-        aria-label={`Phóng to ${image.title}`}
-        aria-describedby="wm-source-detail-description"
-        onPointerDown={(event) => event.stopPropagation()}
-      >
-        <div className="wm-preview-header wm-source-detail-header">
-          <div className="wm-preview-title-wrap">
-            <span className="wm-preview-kicker">{image.kicker || 'Xem ảnh'}</span>
-            <strong className="wm-preview-title" title={image.title}>
-              {image.title}
-            </strong>
-            <span className="wm-source-detail-description" id="wm-source-detail-description">
-              {isCopyBlocked
-                ? `Có ${detailItems.length} ảnh — chỉ sao chép được tối đa ${MAX_COPY_SOURCE_IMAGES} ảnh, hãy dùng "Xuất ảnh JPG"`
-                : 'Kiểm tra thứ tự ảnh trước khi xuất bản tổng hợp JPG'}
-            </span>
-          </div>
-          <div className="wm-preview-actions">
-            <button
-              className="wm-source-capture-button wm-source-copy-button"
-              type="button"
-              onClick={handleCopy}
-              disabled={isCopyBlocked || isCopying || isCapturing}
-              title={isCopyBlocked ? `Chỉ sao chép được tối đa ${MAX_COPY_SOURCE_IMAGES} ảnh` : undefined}
-            >
-              <span className="wm-source-capture-icon" aria-hidden="true">⧉</span>
-              {isCopying ? 'Đang sao chép…' : 'Sao chép ảnh'}
-            </button>
-            <button
-              className="wm-source-capture-button"
-              type="button"
-              onClick={handleCapture}
-              disabled={isCapturing || isCopying}
-              data-dialog-initial
-            >
-              <span className="wm-source-capture-icon" aria-hidden="true">↓</span>
-              {isCapturing ? 'Đang tạo JPG…' : 'Xuất ảnh JPG'}
-            </button>
-            <button
-              className="wm-preview-close"
-              type="button"
-              onClick={onClose}
-              aria-label="Đóng (Esc)"
-              title="Đóng (Esc)"
-            >
-              <span aria-hidden="true">✕</span>
-            </button>
-          </div>
+      <div className="wm-preview-header wm-source-detail-header">
+        <div className="wm-preview-title-wrap">
+          <span className="wm-preview-kicker">{image.kicker || 'Xem ảnh'}</span>
+          <strong className="wm-preview-title" title={image.title}>{image.title}</strong>
+          <span className="wm-source-detail-description" id="wm-source-detail-description">
+            {isCopyBlocked
+              ? `Có ${detailItems.length} ảnh — chỉ sao chép được tối đa ${MAX_COPY_SOURCE_IMAGES} ảnh, hãy dùng "Xuất ảnh JPG"`
+              : 'Kiểm tra thứ tự ảnh trước khi xuất bản tổng hợp JPG'}
+          </span>
         </div>
-
-        <div className="wm-preview-image-frame wm-source-detail-frame">
-          <div className="wm-source-detail-grid">
-            {detailItems.map((item) => (
-              <figure className="wm-source-detail-item" key={`${item.url}-${item.index}`}>
-                <div className="wm-source-detail-image-wrap">
-                  <img src={item.url} alt={item.title} loading="lazy" decoding="async" />
-                  <span className="wm-source-detail-index">{item.index}</span>
-                </div>
-              </figure>
-            ))}
-          </div>
+        <div className="wm-preview-actions">
+          <button
+            className="wm-source-capture-button wm-source-copy-button"
+            type="button"
+            onClick={handleCopy}
+            disabled={isCopyBlocked || isCopying || isCapturing}
+            title={isCopyBlocked ? `Chỉ sao chép được tối đa ${MAX_COPY_SOURCE_IMAGES} ảnh` : undefined}
+          >
+            <span className="wm-source-capture-icon" aria-hidden="true">⧉</span>
+            {isCopying ? 'Đang sao chép…' : 'Sao chép ảnh'}
+          </button>
+          <button
+            className="wm-source-capture-button"
+            type="button"
+            onClick={handleCapture}
+            disabled={isCapturing || isCopying}
+            data-dialog-initial
+          >
+            <span className="wm-source-capture-icon" aria-hidden="true">↓</span>
+            {isCapturing ? 'Đang tạo JPG…' : 'Xuất ảnh JPG'}
+          </button>
+          <button className="wm-preview-close" type="button" onClick={onClose} aria-label="Đóng (Esc)" title="Đóng (Esc)">
+            <span aria-hidden="true">✕</span>
+          </button>
         </div>
       </div>
-    </div>,
-    document.body
+
+      <div className="wm-preview-image-frame wm-source-detail-frame">
+        <div className="wm-source-detail-grid">
+          {detailItems.map((item) => (
+            <figure className="wm-source-detail-item" key={`${item.url}-${item.index}`}>
+              <div className="wm-source-detail-image-wrap">
+                <img src={item.url} alt={item.title} loading="lazy" decoding="async" />
+                <span className="wm-source-detail-index">{item.index}</span>
+              </div>
+            </figure>
+          ))}
+        </div>
+      </div>
+    </WatermarkModal>
   );
 }
 
 function DownloadMethodModal({ imageCount, onChoose, onClose }) {
-  const dialogRef = useDialogFocus();
-  return createPortal(
-    <div className="wm-download-choice-backdrop" role="presentation" onPointerDown={onClose}>
-      <div
-        className="wm-download-choice-modal"
-        ref={dialogRef}
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="wm-download-choice-title"
-        aria-describedby="wm-download-choice-description"
-        onPointerDown={(event) => event.stopPropagation()}
-      >
-        <button
-          className="wm-download-choice-close"
-          type="button"
-          onClick={onClose}
-          aria-label="Đóng"
-        >
-          ×
+  const canStream = typeof window !== 'undefined' && typeof window.showSaveFilePicker === 'function';
+
+  return (
+    <WatermarkModal
+      onClose={onClose}
+      labelledBy="wm-download-choice-title"
+      describedBy="wm-download-choice-description"
+      backdropClassName="wm-download-choice-backdrop"
+      className="wm-download-choice-modal"
+    >
+      <button className="wm-download-choice-close" type="button" onClick={onClose} aria-label="Đóng">×</button>
+      <span className="wm-download-choice-kicker">Tùy chọn tải xuống</span>
+      <h2 id="wm-download-choice-title">Tải {imageCount} ảnh theo cách nào?</h2>
+      <p id="wm-download-choice-description">
+        File ZIP tải đủ ảnh trong một lần{canStream ? ' và được ghi thẳng vào thư mục bạn chọn, không giữ cả file trong bộ nhớ' : ''}.
+        Nếu tải từng ảnh, trình duyệt có thể hỏi cho phép tải nhiều file.
+      </p>
+      <div className="wm-download-choice-actions">
+        <button type="button" className="wm-download-choice-primary" onClick={() => onChoose('zip')} data-dialog-initial>
+          Tải file ZIP
+          <small className="wm-download-choice-subtext">Khuyên dùng · Một lần tải, đủ tất cả ảnh</small>
         </button>
-        <span className="wm-download-choice-kicker">Tùy chọn tải xuống</span>
-        <h2 id="wm-download-choice-title">Tải {imageCount} ảnh theo cách nào?</h2>
-        <p id="wm-download-choice-description">
-          File ZIP giúp tải đủ ảnh trong một lần. Nếu tải từng ảnh, trình duyệt có thể yêu cầu cho phép tải nhiều file.
-        </p>
-        <div className="wm-download-choice-actions">
-          <button type="button" className="wm-download-choice-primary" onClick={() => onChoose('zip')} data-dialog-initial>
-            Tải file ZIP
-            <small className="wm-download-choice-subtext">Khuyên dùng · Một lần tải, đủ tất cả ảnh</small>
-          </button>
-          <button type="button" className="wm-download-choice-secondary" onClick={() => onChoose('direct')}>
-            Tải từng ảnh
-          </button>
-        </div>
+        <button type="button" className="wm-download-choice-secondary" onClick={() => onChoose('direct')}>
+          Tải từng ảnh
+        </button>
       </div>
-    </div>,
-    document.body
+    </WatermarkModal>
   );
+}
+
+/**
+ * Writes the ZIP straight to a file the user picked (File System Access API),
+ * so the whole archive is never held in memory. Resolves false if cancelled.
+ */
+async function streamZipToFile(zip, fileHandle, isCancelled) {
+  const writable = await fileHandle.createWritable();
+  const stream = zip.generateInternalStream({ type: 'uint8array', compression: 'STORE', streamFiles: true });
+
+  try {
+    const completed = await new Promise((resolve, reject) => {
+      stream
+        .on('data', (chunk) => {
+          if (isCancelled()) {
+            stream.pause();
+            resolve(false);
+            return;
+          }
+          stream.pause();
+          writable.write(chunk).then(() => stream.resume(), reject);
+        })
+        .on('error', reject)
+        .on('end', () => resolve(true))
+        .resume();
+    });
+
+    if (completed) await writable.close();
+    else await writable.abort();
+    return completed;
+  } catch (error) {
+    await writable.abort().catch(() => {});
+    throw error;
+  }
 }
 
 export default function Watermark() {
   const { user } = useAuth();
   const { isDark } = useTheme();
-  const resultsRef = React.useRef([]);
-  const taskRef = React.useRef(null);
-  const mountedRef = React.useRef(true);
-  const [isDownloading, setIsDownloading] = useState(false);
-  const createButtonRippleIdRef = React.useRef(0);
-  const [logoUrl, setLogoUrl]   = useState(null);
+  const resultsRef = useRef([]);
+  // Results dropped from the list; their object URLs are revoked after React has
+  // removed the <img> elements (lazy images that had not loaded yet would break).
+  const pendingReleaseRef = useRef([]);
+  const taskRef = useRef(null);
+  const mountedRef = useRef(true);
+  const createButtonRippleIdRef = useRef(0);
+  const totalPulseTimeoutRef = useRef(null);
+  const [engine, setEngine] = useState(null);
+  const [logoVersion, setLogoVersion] = useState(0);
+  const [logoUrl, setLogoUrl] = useState(null);
   const [logoName, setLogoName] = useState(null);
-  const [images, setImages]     = useState([]);
-  const [options, setOptions]   = useState(DEFAULT_OPTIONS);
-  const [results, setResults]   = useState([]);
+  const [images, setImages] = useState([]);
+  const [options, setOptions] = useState(DEFAULT_OPTIONS);
+  const [optionsHydrated, setOptionsHydrated] = useState(false);
+  const [results, setResults] = useState([]);
   const [processing, setProcessing] = useState(false);
+  const [isDownloading, setIsDownloading] = useState(false);
   const [processingProgress, setProcessingProgress] = useState({ current: 0, total: 0 });
   const [downloadProgress, setDownloadProgress] = useState(null);
   const [totalCreated, setTotalCreated] = useState(0);
@@ -411,56 +310,51 @@ export default function Watermark() {
   const [statsLoading, setStatsLoading] = useState(true);
   const [statsError, setStatsError] = useState(null);
   const [totalJustUpdated, setTotalJustUpdated] = useState(false);
-  const totalPulseTimeoutRef = React.useRef(null);
-  const [optionsHydrated, setOptionsHydrated] = useState(false);
   const [zoomImage, setZoomImage] = useState(null);
   const [downloadChoiceMode, setDownloadChoiceMode] = useState(null);
+  const [isPersonalizeOpen, setIsPersonalizeOpen] = useState(false);
   const [buttonRipples, setButtonRipples] = useState([]);
   const [visitorId] = useState(() => getOrCreateWatermarkVisitorId());
-  const pageThemeVars = useMemo(
-    () => buildThemeAccentVars(options.accentColor, isDark),
-    [options.accentColor, isDark],
-  );
+  const userId = user?.id ?? null;
+  const pageThemeVars = useMemo(() => buildThemeAccentVars(options.accentColor, isDark), [options.accentColor, isDark]);
+  const readableImages = useMemo(() => images.filter((image) => image.status !== 'error'), [images]);
+  const unreadableCount = images.length - readableImages.length;
+
+  // One rendering engine (Web Worker + fallback) for previews and exports.
+  useEffect(() => {
+    const nextEngine = createWatermarkEngine();
+    setEngine(nextEngine);
+    return () => nextEngine.dispose();
+  }, []);
+
+  useEffect(() => {
+    if (!engine) return;
+    let active = true;
+    engine.setLogo(logoUrl)
+      .then(() => { if (active) setLogoVersion((version) => version + 1); })
+      .catch(() => { if (active) toast.error('Không thể đọc logo. Hãy chọn một file ảnh hợp lệ.'); });
+    return () => { active = false; };
+  }, [engine, logoUrl]);
 
   const handleLogoChange = useCallback((url, name) => {
     setLogoUrl(url);
     setLogoName(name);
   }, []);
 
-  const openZoom = useCallback((image) => {
-    setZoomImage(image);
-  }, []);
-
-  const closeZoom = useCallback(() => {
-    setZoomImage(null);
-  }, []);
+  const openZoom = useCallback((image) => setZoomImage(image), []);
+  const closeZoom = useCallback(() => setZoomImage(null), []);
 
   const handleCreateButtonPointerDown = useCallback((event) => {
-    if (event.button !== 0) {
-      return;
-    }
-
+    if (event.button !== 0) return;
     const targetRect = event.currentTarget.getBoundingClientRect();
     const id = `${Date.now()}-${(createButtonRippleIdRef.current += 1)}`;
-    const ripple = {
-      id,
-      x: event.clientX - targetRect.left,
-      y: event.clientY - targetRect.top,
-    };
-
-    setButtonRipples((current) => [...current, ripple]);
-
-    window.setTimeout(() => {
-      setButtonRipples((current) => current.filter((item) => item.id !== id));
-    }, 720);
+    setButtonRipples((current) => [...current, { id, x: event.clientX - targetRect.left, y: event.clientY - targetRect.top }]);
+    window.setTimeout(() => setButtonRipples((current) => current.filter((item) => item.id !== id)), 720);
   }, []);
 
   useEffect(() => {
     document.body.classList.add('wm-watermark-theme');
-
-    return () => {
-      document.body.classList.remove('wm-watermark-theme');
-    };
+    return () => document.body.classList.remove('wm-watermark-theme');
   }, []);
 
   useEffect(() => {
@@ -468,33 +362,18 @@ export default function Watermark() {
 
     loadWatermarkOptions()
       .then((savedOptions) => {
-        if (!isActive) {
-          return;
-        }
-
-        if (savedOptions && typeof savedOptions === 'object') {
-          setOptions((current) => ({
-            ...current,
-            ...savedOptions,
-          }));
-        }
+        if (isActive && savedOptions) setOptions(mergeWatermarkOptions(savedOptions));
       })
       .catch(() => {})
       .finally(() => {
-        if (isActive) {
-          setOptionsHydrated(true);
-        }
+        if (isActive) setOptionsHydrated(true);
       });
 
-    return () => {
-      isActive = false;
-    };
+    return () => { isActive = false; };
   }, []);
 
   useEffect(() => {
-    if (!optionsHydrated) {
-      return undefined;
-    }
+    if (!optionsHydrated) return undefined;
 
     const timer = window.setTimeout(() => {
       saveWatermarkOptions(options).catch((error) => {
@@ -504,99 +383,52 @@ export default function Watermark() {
     return () => window.clearTimeout(timer);
   }, [options, optionsHydrated]);
 
+  // Signed in: count the account (same number as the dashboard). Otherwise: this browser.
   useEffect(() => {
-    if (!visitorId) {
-      return undefined;
-    }
-
+    if (!visitorId) return undefined;
     let isActive = true;
 
     Promise.all([
       getWatermarkImageCountTotal({}),
-      getWatermarkImageCountTotal({
-        sourcePage: WATERMARK_COUNT_SOURCE_PAGE,
-        visitorId,
-      }),
+      userId
+        ? getMyWatermarkImageTotal()
+        : getWatermarkImageCountTotal({ sourcePage: WATERMARK_COUNT_SOURCE_PAGE, visitorId }),
     ]).then(([totalResult, personalResult]) => {
-      if (!isActive) {
-        return;
-      }
-
-      if (totalResult.error || personalResult.error) {
-        setStatsError(totalResult.error || personalResult.error);
-      } else {
-        setStatsError(null);
-      }
-
+      if (!isActive) return;
+      setStatsError(totalResult.error || personalResult.error || null);
       setTotalCreated(totalResult.data || 0);
       setPersonalCreated(personalResult.data || 0);
       setStatsLoading(false);
     });
 
-    return () => {
-      isActive = false;
-    };
-  }, [visitorId]);
+    return () => { isActive = false; };
+  }, [visitorId, userId]);
 
-  // ── Live total via Supabase Realtime Broadcast (websocket) ─────────
+  // Live total via Supabase Realtime Broadcast.
   useEffect(() => {
-    if (!visitorId) {
-      return undefined;
-    }
+    if (!visitorId) return undefined;
 
     const unsubscribe = subscribeToWatermarkImageCounts((event) => {
       // Skip our own inserts — handleCreate already bumps the total locally.
-      if (event.visitorId === visitorId) {
-        return;
-      }
+      if (event.visitorId === visitorId) return;
 
       setTotalCreated((current) => current + event.imageCount);
       setTotalJustUpdated(true);
-
-      if (totalPulseTimeoutRef.current) {
-        window.clearTimeout(totalPulseTimeoutRef.current);
-      }
-      totalPulseTimeoutRef.current = window.setTimeout(() => {
-        setTotalJustUpdated(false);
-      }, 900);
+      window.clearTimeout(totalPulseTimeoutRef.current);
+      totalPulseTimeoutRef.current = window.setTimeout(() => setTotalJustUpdated(false), 900);
     });
 
     return () => {
-      if (totalPulseTimeoutRef.current) {
-        window.clearTimeout(totalPulseTimeoutRef.current);
-      }
+      window.clearTimeout(totalPulseTimeoutRef.current);
       unsubscribe();
     };
   }, [visitorId]);
 
   useEffect(() => {
     if (!zoomImage) return undefined;
-
     document.body.classList.add('wm-modal-open');
     return () => document.body.classList.remove('wm-modal-open');
   }, [zoomImage]);
-
-  useEffect(() => {
-    if (!downloadChoiceMode) return undefined;
-
-    const handleEscape = (event) => {
-      if (event.key === 'Escape') {
-        setDownloadChoiceMode(null);
-      }
-    };
-
-    document.addEventListener('keydown', handleEscape);
-    document.body.classList.add('wm-modal-open');
-
-    return () => {
-      document.removeEventListener('keydown', handleEscape);
-      document.body.classList.remove('wm-modal-open');
-    };
-  }, [downloadChoiceMode]);
-
-  useEffect(() => {
-    resultsRef.current = results;
-  }, [results]);
 
   useEffect(() => {
     mountedRef.current = true;
@@ -604,75 +436,107 @@ export default function Watermark() {
       mountedRef.current = false;
       if (taskRef.current) taskRef.current.cancelled = true;
       resultsRef.current.forEach(releaseResult);
+      pendingReleaseRef.current.forEach(releaseResult);
+      pendingReleaseRef.current = [];
     };
+  }, []);
+
+  useEffect(() => {
+    const pending = pendingReleaseRef.current;
+    pendingReleaseRef.current = [];
+    pending.forEach(releaseResult);
+  }, [results]);
+
+  /** Replace the result list; removed items are released after the next commit. */
+  const commitResults = useCallback((next) => {
+    const kept = new Set(next);
+    pendingReleaseRef.current.push(...resultsRef.current.filter((item) => !kept.has(item)));
+    resultsRef.current = next;
+    setResults(next);
+  }, []);
+
+  const handleCancelTask = useCallback(() => {
+    if (taskRef.current) taskRef.current.cancelled = true;
   }, []);
 
   // ── Create watermarked images ──────────────────────────────────────
   const handleCreate = async () => {
-    if (!images.length || taskRef.current || !optionsHydrated) return;
+    if (!readableImages.length || taskRef.current || !optionsHydrated || !engine) return;
+
     const task = { cancelled: false };
     taskRef.current = task;
-    setProcessing(true);
-    setProcessingProgress({ current: 0, total: images.length });
-    const newResults = [];
+    const sources = readableImages;
+    const total = sources.length;
+    const renderOptions = {
+      size: options.size,
+      opacity: options.opacity,
+      margin: options.margin,
+      tiled: options.tiled,
+      logoPosition: options.logoPosition,
+    };
+    const created = [];
     const failedNames = [];
+    setProcessing(true);
+    setProcessingProgress({ current: 0, total });
     const loadingToastId = toast.loading('Đang chuẩn bị ảnh watermark…');
+
     try {
-      const logo = logoUrl ? await loadWatermarkImage(logoUrl) : null;
-      for (let i = 0; i < images.length && !task.cancelled; i += 1) {
+      for (let index = 0; index < total && !task.cancelled; index += 1) {
         try {
-          const blob = await processWatermark(images[i].file, logo, options);
-          if (task.cancelled) break;
-          const thumb = await createThumbnailUrl(blob);
-          if (task.cancelled) {
-            URL.revokeObjectURL(thumb);
-            break;
-          }
-          newResults.push({
-            url: URL.createObjectURL(blob), blob, thumb,
-            fileName: buildFileName(options.productName, i, images.length),
-          });
+          const { blob, thumbBlob } = await engine.render(sources[index].file, renderOptions);
+          if (!mountedRef.current) return;
+
+          const item = {
+            url: URL.createObjectURL(blob),
+            thumb: URL.createObjectURL(thumbBlob),
+            blob,
+            fileName: buildFileName(options.productName, created.length, total),
+          };
+
+          // The previous batch is replaced only once the first new image exists,
+          // so a batch that fails entirely keeps the old results.
+          created.push(item);
+          commitResults(created.length === 1 ? [item] : [...resultsRef.current, item]);
         } catch {
-          failedNames.push(images[i].name);
+          failedNames.push(sources[index].name);
         }
-        if (task.cancelled) break;
-        setProcessingProgress({ current: i + 1, total: images.length });
-        toast.update(loadingToastId, { render: `Đang tạo ảnh (${i + 1}/${images.length})…` });
-        await new Promise((resolve) => setTimeout(resolve, 0));
+
+        setProcessingProgress({ current: index + 1, total });
+        toast.update(loadingToastId, { render: `Đang tạo ảnh (${index + 1}/${total})…` });
       }
-      if (task.cancelled) {
-        newResults.forEach(releaseResult);
-        toast.dismiss(loadingToastId);
-        return;
-      }
-      // Keep the previous batch when every source fails.
-      if (newResults.length) {
-        resultsRef.current.forEach(releaseResult);
-        resultsRef.current = newResults;
-        setResults(newResults);
-        setLastCreated(newResults.length);
+
+      if (created.length) {
+        setLastCreated(created.length);
         if (visitorId) {
           void createWatermarkImageCount({
-            userId: user?.id, visitorId,
+            userId, visitorId,
             displayName: user ? getUserDisplayName(user, null) : null,
-            userColor: options.accentColor, imageCount: newResults.length,
+            userColor: options.accentColor,
+            imageCount: created.length,
             sourcePage: WATERMARK_COUNT_SOURCE_PAGE,
           }).then((result) => {
             if (!mountedRef.current || result.error) return;
-            setTotalCreated((current) => current + newResults.length);
-            setPersonalCreated((current) => current + newResults.length);
+            setTotalCreated((current) => current + created.length);
+            setPersonalCreated((current) => current + created.length);
           }).catch((error) => console.warn('[Watermark] Could not save image count', error));
         }
       }
+
+      const notes = [
+        failedNames.length ? `Không xử lý được: ${failedNames.slice(0, 3).join(', ')}${failedNames.length > 3 ? '…' : ''}.` : '',
+        unreadableCount ? `Bỏ qua ${unreadableCount} ảnh không đọc được.` : '',
+      ].filter(Boolean).join(' ');
+
       toast.update(loadingToastId, {
-        render: failedNames.length
-          ? `Đã tạo ${newResults.length}/${images.length} ảnh. Không đọc được: ${failedNames.slice(0, 3).join(', ')}${failedNames.length > 3 ? '…' : ''}`
-          : `Đã tạo xong ${newResults.length} ảnh watermark.`,
-        type: newResults.length ? (failedNames.length ? 'warning' : 'success') : 'error',
-        isLoading: false, autoClose: 5000, closeButton: true,
+        render: task.cancelled
+          ? `Đã dừng. Giữ lại ${created.length} ảnh đã tạo xong.`
+          : `${created.length === total ? `Đã tạo xong ${created.length} ảnh watermark.` : `Đã tạo ${created.length}/${total} ảnh.`} ${notes}`.trim(),
+        type: created.length ? (failedNames.length || task.cancelled ? 'warning' : 'success') : 'error',
+        isLoading: false,
+        autoClose: 5000,
+        closeButton: true,
       });
     } catch (error) {
-      newResults.forEach(releaseResult);
       toast.update(loadingToastId, { render: error.message, type: 'error', isLoading: false, autoClose: 5000 });
     } finally {
       taskRef.current = null;
@@ -682,125 +546,95 @@ export default function Watermark() {
 
   // ── Download all ───────────────────────────────────────────────────
   const downloadAll = useCallback(async (mode, method) => {
-    if (!results.length || taskRef.current) return;
+    if (!results.length || taskRef.current || !engine) return;
+
+    // Ask for the ZIP destination first, while the click still counts as a user gesture.
+    let fileHandle = null;
+    if (method === 'zip' && typeof window.showSaveFilePicker === 'function') {
+      try {
+        fileHandle = await window.showSaveFilePicker({
+          suggestedName: `watermark-${Date.now()}.zip`,
+          types: [{ description: 'File ZIP', accept: { 'application/zip': ['.zip'] } }],
+        });
+      } catch (error) {
+        if (error?.name === 'AbortError') return;
+        fileHandle = null;
+      }
+    }
+
     const task = { cancelled: false };
     taskRef.current = task;
     setIsDownloading(true);
 
-    const total = results.length;
-    setDownloadProgress({
-      current: 0,
-      total,
-      percent: 0,
-      message: 'Đang chuẩn bị file tải xuống…',
-    });
+    const items = results;
+    const names = getUniqueFileNames(items);
+    const total = items.length;
+    setDownloadProgress({ current: 0, total, percent: 0, message: 'Đang chuẩn bị file tải xuống…' });
     const loadingToastId = toast.loading(`Đang chuẩn bị tải xuống (0/${total})…`);
-
-    const prepareResult = async (r) => {
-      let blob = r.blob;
-      const fileName = getDownloadFileName(r.fileName);
-
-      if (mode === '800x600') {
-        blob = await resizeBlob(blob, 800, 600);
-      } else if (mode === 'ImageCompress') {
-        blob = await compressAndResizeBlob(blob, 800, 600, 100);
-      }
-
-      return { blob, fileName };
+    const prepare = (item) => (mode === '800x600' ? engine.resize(item.blob, 800, 600) : Promise.resolve(item.blob));
+    const reportProgress = (done, message) => {
+      setDownloadProgress({ current: done, total, percent: Math.round((done / total) * 100), message });
+      toast.update(loadingToastId, { render: `${message}…`, progress: done / total });
     };
 
     try {
       if (method === 'zip') {
         const { default: JSZip } = await import('jszip');
         const zip = new JSZip();
-        const usedNames = new Set();
 
-        for (let index = 0; index < results.length; index += 1) {
-          if (task.cancelled) return;
-          const prepared = await prepareResult(results[index]);
-          if (task.cancelled) return;
-          let fileName = prepared.fileName;
-          let duplicateIndex = 2;
-          while (usedNames.has(fileName.toLocaleLowerCase('vi'))) {
-            fileName = prepared.fileName.replace(/\.jpg$/i, `-${duplicateIndex}.jpg`);
-            duplicateIndex += 1;
-          }
-          usedNames.add(fileName.toLocaleLowerCase('vi'));
-          zip.file(fileName, prepared.blob);
-
-          setDownloadProgress({
-            current: index + 1,
-            total,
-            percent: Math.round(((index + 1) / total) * 100),
-            message: `Đã thêm ${index + 1}/${total} ảnh vào file ZIP`,
-          });
-          toast.update(loadingToastId, {
-            render: `Đang tạo file ZIP (${index + 1}/${total})…`,
-            progress: (index + 1) / total,
-          });
+        for (let index = 0; index < total; index += 1) {
+          if (task.cancelled) break;
+          zip.file(names[index], await prepare(items[index]));
+          reportProgress(index + 1, `Đã thêm ${index + 1}/${total} ảnh vào file ZIP`);
         }
 
-        setDownloadProgress({ current: total, total, percent: 100, message: 'Đang đóng gói file ZIP…' });
-        const zipBlob = await zip.generateAsync({
-          type: 'blob',
-          compression: 'STORE',
-        });
-        if (task.cancelled) return;
-        const anchor = document.createElement('a');
-        const objectUrl = URL.createObjectURL(zipBlob);
-        anchor.href = objectUrl;
-        anchor.download = `watermark-${Date.now()}.zip`;
-        anchor.click();
-        window.setTimeout(() => URL.revokeObjectURL(objectUrl), 1500);
+        if (!task.cancelled) {
+          setDownloadProgress({ current: total, total, percent: 100, message: 'Đang đóng gói file ZIP…' });
+
+          if (fileHandle) {
+            const completed = await streamZipToFile(zip, fileHandle, () => task.cancelled);
+            if (!completed) task.cancelled = true;
+          } else {
+            const zipBlob = await zip.generateAsync({ type: 'blob', compression: 'STORE' });
+            if (!task.cancelled) triggerDownload(zipBlob, `watermark-${Date.now()}.zip`);
+          }
+        }
       } else {
-        for (let index = 0; index < results.length; index += 1) {
-          if (task.cancelled) return;
-          const prepared = await prepareResult(results[index]);
-          if (task.cancelled) return;
-          const a = document.createElement('a');
-          const objectUrl = URL.createObjectURL(prepared.blob);
-          a.href = objectUrl;
-          a.download = prepared.fileName;
-          a.click();
-          window.setTimeout(() => URL.revokeObjectURL(objectUrl), 1500);
-
-          setDownloadProgress({
-            current: index + 1,
-            total,
-            percent: Math.round(((index + 1) / total) * 100),
-            message: `Đã chuẩn bị ${index + 1}/${total} ảnh`,
-          });
-          toast.update(loadingToastId, {
-            render: `Đang chuẩn bị tải xuống (${index + 1}/${total})…`,
-            progress: (index + 1) / total,
-          });
-
+        for (let index = 0; index < total; index += 1) {
+          if (task.cancelled) break;
+          triggerDownload(await prepare(items[index]), names[index]);
+          reportProgress(index + 1, `Đã chuẩn bị ${index + 1}/${total} ảnh`);
           await new Promise((resolve) => setTimeout(resolve, 80));
         }
       }
 
-      toast.update(loadingToastId, {
-        render: method === 'zip' ? `Đã chuẩn bị file ZIP gồm ${total} ảnh. Kiểm tra mục tải xuống.` : `Đã gửi ${total} ảnh tới trình duyệt để tải xuống.`,
-        type: 'success',
-        isLoading: false,
-        progress: undefined,
-        autoClose: 3000,
-        closeButton: true,
-      });
+      if (task.cancelled) {
+        toast.update(loadingToastId, { render: 'Đã hủy tải xuống.', type: 'info', isLoading: false, progress: undefined, autoClose: 3000 });
+      } else {
+        toast.update(loadingToastId, {
+          render: method === 'zip'
+            ? (fileHandle ? `Đã lưu file ZIP gồm ${total} ảnh.` : `Đã chuẩn bị file ZIP gồm ${total} ảnh. Kiểm tra mục tải xuống.`)
+            : `Đã gửi ${total} ảnh tới trình duyệt để tải xuống.`,
+          type: 'success',
+          isLoading: false,
+          progress: undefined,
+          autoClose: 3000,
+          closeButton: true,
+        });
+      }
     } catch (error) {
       toast.update(loadingToastId, {
         render: error.message || 'Không thể chuẩn bị tải xuống. Vui lòng thử lại.',
-        type: 'error', isLoading: false, autoClose: 5000, closeButton: true,
+        type: 'error', isLoading: false, progress: undefined, autoClose: 5000, closeButton: true,
       });
     } finally {
       taskRef.current = null;
-      if (task.cancelled) toast.dismiss(loadingToastId);
       if (mountedRef.current) {
         setIsDownloading(false);
         setDownloadProgress(null);
       }
     }
-  }, [results]);
+  }, [engine, results]);
 
   const handleDownloadAll = useCallback((mode) => {
     if (!results.length) return;
@@ -814,51 +648,38 @@ export default function Watermark() {
   const handleDownloadChoice = useCallback((method) => {
     const mode = downloadChoiceMode;
     setDownloadChoiceMode(null);
-    if (mode) {
-      downloadAll(mode, method);
-    }
+    if (mode) downloadAll(mode, method);
   }, [downloadAll, downloadChoiceMode]);
 
-  // ── Clear results ──────────────────────────────────────────────────
   const handleClear = useCallback(() => {
     if (taskRef.current) return;
-    resultsRef.current.forEach(releaseResult);
-    resultsRef.current = [];
-    setResults([]);
+    commitResults([]);
     setDownloadProgress(null);
     setProcessingProgress({ current: 0, total: 0 });
-  }, []);
+  }, [commitResults]);
 
   const handleRemoveResult = useCallback((index) => {
     if (taskRef.current) return;
-    setResults((current) => {
-      const removed = current[index];
-      if (removed?.url) {
-        releaseResult(removed);
-      }
+    commitResults(resultsRef.current.filter((_, itemIndex) => itemIndex !== index));
+  }, [commitResults]);
 
-      const next = current.filter((_, itemIndex) => itemIndex !== index);
-      resultsRef.current = next;
-      return next;
-    });
+  // Renaming keeps the same blobs/URLs, so nothing is released.
+  const renameResults = useCallback((rename) => {
+    if (taskRef.current) return;
+    resultsRef.current = resultsRef.current.map(rename);
+    setResults(resultsRef.current);
   }, []);
 
   const handleRenameResult = useCallback((index, nextName) => {
-    if (taskRef.current) return;
-    setResults((prev) => prev.map((result, i) => (
-      i === index ? { ...result, fileName: nextName } : result
-    )));
-  }, []);
+    renameResults((result, i) => (i === index ? { ...result, fileName: nextName } : result));
+  }, [renameResults]);
 
   const handleRenameFiles = useCallback((names) => {
-    if (taskRef.current) return;
-    setResults((current) => current.map((result, index) => (
-      names[index] ? { ...result, fileName: names[index] } : result
-    )));
-  }, []);
+    renameResults((result, index) => (names[index] ? { ...result, fileName: names[index] } : result));
+  }, [renameResults]);
 
   const busy = processing || isDownloading;
-  const canCreate = images.length > 0 && !busy && optionsHydrated;
+  const canCreate = readableImages.length > 0 && !busy && optionsHydrated && Boolean(engine);
 
   return (
     <>
@@ -868,137 +689,140 @@ export default function Watermark() {
       <div className="wm-page" style={pageThemeVars}>
         <SeasonalEffectLayer settings={options.seasonalEffect} />
         <div className="wm-container">
-
           <header className="wm-workspace-heading">
-            <h1>Thêm logo vào ảnh</h1>
-            <p>Chọn ảnh → chỉnh logo → tạo và tải xuống. Ảnh được xử lý ngay trên thiết bị của bạn.</p>
+            <div className="wm-heading-main">
+              <h1>Thêm logo vào ảnh</h1>
+              <p>Chọn ảnh → chỉnh logo → tạo và tải xuống. Ảnh được xử lý ngay trên thiết bị của bạn.</p>
+            </div>
+            <div className="wm-heading-side">
+              <WatermarkStatsStrip
+                totalCreated={totalCreated}
+                personalCreated={personalCreated}
+                personalScope={userId ? 'account' : 'browser'}
+                lastCreated={lastCreated}
+                isLoading={statsLoading}
+                error={statsError}
+                totalJustUpdated={totalJustUpdated}
+              />
+              <button
+                type="button"
+                className="wm-personalize-button"
+                onClick={() => setIsPersonalizeOpen(true)}
+                aria-haspopup="dialog"
+                aria-label="Cá nhân hóa giao diện"
+                title="Cá nhân hóa giao diện (màu, hiệu ứng theo mùa)"
+                disabled={!optionsHydrated}
+              >
+                <span className="wm-personalize-button__swatch" style={{ '--wm-swatch': options.accentColor }} aria-hidden="true" />
+                <span aria-hidden="true">🎨</span>
+              </button>
+            </div>
           </header>
 
-        <WatermarkCountBoard
-          totalCreated={totalCreated}
-          personalCreated={personalCreated}
-          lastCreated={lastCreated}
-          selectedCount={images.length}
-          isLoading={statsLoading}
-          error={statsError}
-          totalJustUpdated={totalJustUpdated}
-        />
-
-        {/* ── Main Layout ── */}
-        <div className="wm-layout">
-
-          {/* Left column: upload panels */}
-          <div className="wm-panel-column wm-panel-column--narrow" inert={processing || undefined}>
-            <div className="wm-card wm-card--spaced">
-              <LogoUploader
-                logoUrl={logoUrl}
-                logoName={logoName}
-                onLogoChange={handleLogoChange}
-                onImagePreview={openZoom}
-              />
+          <div className="wm-layout">
+            <div className="wm-panel-column wm-panel-column--narrow" inert={processing || undefined}>
+              <div className="wm-card wm-card--spaced">
+                <LogoUploader logoUrl={logoUrl} logoName={logoName} onLogoChange={handleLogoChange} onImagePreview={openZoom} />
+              </div>
+              <div className="wm-card">
+                <ImageUploader images={images} onImagesChange={setImages} onImagePreview={openZoom} />
+              </div>
             </div>
 
-            <div className="wm-card">
-              <ImageUploader
-                images={images}
-                onImagesChange={setImages}
-                onImagePreview={openZoom}
-              />
-            </div>
-          </div>
-
-          {/* Right column: controls */}
-          <div className="wm-panel-column wm-panel-column--wide">
-            <div className="wm-card wm-card--full">
-              <div inert={processing || !optionsHydrated || undefined}>
-              <WatermarkControls
-                options={options}
-                onChange={setOptions}
-                enableAccentOptions
-              />
-              </div>
-
-              <WatermarkLivePreview file={images[0]?.file} logoUrl={logoUrl} options={options} paused={processing} />
-              <hr className="wm-divider" />
-
-              {/* Action Bar */}
-              <div className="wm-action-bar">
-                <button
-                  className="wm-btn-primary wm-create-btn"
-                  type="button"
-                  onClick={handleCreate}
-                  onPointerDown={handleCreateButtonPointerDown}
-                  disabled={!canCreate}
-                >
-                  {buttonRipples.map((ripple) => (
-                    <span
-                      key={ripple.id}
-                      className="wm-btn-ripple"
-                      style={{ left: ripple.x, top: ripple.y }}
-                      aria-hidden="true"
-                    />
-                  ))}
-                  {processing ? (
-                    <>
-                      <span className="wm-spinner" role="status" aria-label="Đang xử lý" />
-                      Đang xử lý {processingProgress.current}/{processingProgress.total}…
-                    </>
-                  ) : (
-                    <>
-                      <span className="wm-inline-icon" aria-hidden="true">🦈</span>
-                      Tạo ảnh Watermark
-                    </>
-                  )}
-                </button>
-
-                {processing && <button type="button" className="wm-btn-outline" onClick={() => {
-                  if (taskRef.current) taskRef.current.cancelled = true;
-                }}>Hủy xử lý</button>}
-                <span className="wm-create-hint">
-                  {!logoUrl && 'Không dùng logo · '}
-                  {images.length === 0
-                    ? 'Chưa có ảnh nào'
-                    : `${images.length} ảnh đã chọn`}
-                </span>
-              </div>
-
-              {/* Tip cards */}
-              {!logoUrl && (
-                <div className="wm-tip-alert">
-                  <span className="wm-inline-icon" aria-hidden="true">💡</span>
-                  Bạn vẫn có thể tạo ảnh không logo. Logo sẽ được lưu tự động nếu được chọn.
+            <div className="wm-panel-column wm-panel-column--wide">
+              <div className="wm-card wm-card--full">
+                <div inert={processing || !optionsHydrated || undefined}>
+                  <WatermarkControls options={options} onChange={setOptions} />
                 </div>
-              )}
+
+                <WatermarkLivePreview
+                  images={readableImages}
+                  engine={engine}
+                  options={options}
+                  logoVersion={logoVersion}
+                  paused={processing}
+                />
+                <hr className="wm-divider" />
+
+                <div className="wm-action-bar">
+                  <button
+                    className="wm-btn-primary wm-create-btn"
+                    type="button"
+                    onClick={handleCreate}
+                    onPointerDown={handleCreateButtonPointerDown}
+                    disabled={!canCreate}
+                  >
+                    {buttonRipples.map((ripple) => (
+                      <span key={ripple.id} className="wm-btn-ripple" style={{ left: ripple.x, top: ripple.y }} aria-hidden="true" />
+                    ))}
+                    {processing ? (
+                      <>
+                        <span className="wm-spinner" aria-hidden="true" />
+                        Đang xử lý {processingProgress.current}/{processingProgress.total}…
+                      </>
+                    ) : (
+                      'Tạo ảnh watermark'
+                    )}
+                  </button>
+
+                  {processing && (
+                    <button type="button" className="wm-btn-outline" onClick={handleCancelTask}>Dừng lại</button>
+                  )}
+                  <span className="wm-create-hint" aria-live="polite">
+                    {!logoUrl && 'Không dùng logo · '}
+                    {readableImages.length === 0 ? 'Chưa có ảnh nào' : `${readableImages.length} ảnh sẽ được tạo`}
+                    {unreadableCount > 0 && ` · bỏ qua ${unreadableCount} ảnh không đọc được`}
+                  </span>
+                </div>
+
+                {!logoUrl && (
+                  <div className="wm-tip-alert">
+                    <span className="wm-inline-icon" aria-hidden="true">💡</span>
+                    Bạn vẫn có thể tạo ảnh không logo. Logo sẽ được lưu tự động nếu được chọn.
+                  </div>
+                )}
+              </div>
             </div>
           </div>
-        </div>
 
-        {/* ── Gallery ── */}
-        <div id="wm-gallery">
-          <WatermarkGallery
-            results={results}
-            onClear={handleClear}
-            onDownloadAll={handleDownloadAll}
-            onRenameFile={handleRenameResult}
-            onRenameFiles={handleRenameFiles}
-            onRemoveResult={handleRemoveResult}
-            isProcessing={processing}
-            processingProgress={processingProgress}
-            downloadProgress={downloadProgress}
-            isBusy={busy}
-          />
+          <div id="wm-gallery">
+            <WatermarkGallery
+              results={results}
+              onClear={handleClear}
+              onDownloadAll={handleDownloadAll}
+              onRenameFile={handleRenameResult}
+              onRenameFiles={handleRenameFiles}
+              onRemoveResult={handleRemoveResult}
+              isProcessing={processing}
+              processingProgress={processingProgress}
+              downloadProgress={downloadProgress}
+              isBusy={busy}
+              onCancel={handleCancelTask}
+            />
+          </div>
         </div>
-
       </div>
-    </div>
-    <WatermarkImageZoom image={zoomImage} onClose={closeZoom} />
-    {downloadChoiceMode && (
-      <DownloadMethodModal
-        imageCount={results.length}
-        onChoose={handleDownloadChoice}
-        onClose={() => setDownloadChoiceMode(null)}
-      />
-    )}
+
+      <WatermarkImageZoom image={zoomImage} onClose={closeZoom} />
+
+      {downloadChoiceMode && (
+        <DownloadMethodModal
+          imageCount={results.length}
+          onChoose={handleDownloadChoice}
+          onClose={() => setDownloadChoiceMode(null)}
+        />
+      )}
+
+      {isPersonalizeOpen && (
+        <PersonalizationModal
+          options={options}
+          onApply={(next) => {
+            setOptions((current) => ({ ...current, ...next }));
+            setIsPersonalizeOpen(false);
+          }}
+          onClose={() => setIsPersonalizeOpen(false)}
+        />
+      )}
     </>
   );
 }

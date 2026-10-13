@@ -1,7 +1,8 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { normalizeImageName } from '../../hooks/useWatermarkProcessor';
-import { useDialogFocus } from '../../hooks/useDialogFocus.js';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { getUniqueFileNames, normalizeImageName } from '../../hooks/useWatermarkProcessor';
+import ConfirmDialog from '../dialog/ConfirmDialog.jsx';
 import ImageLightbox from './ImageLightbox';
+import WatermarkModal from './WatermarkModal.jsx';
 import { HARAVAN_PRESETS, loadHaravanPreferences, normalizeHaravanPrefix, saveHaravanPreferences } from '../../utils/haravanPreferences.js';
 import '../../styles/WatermarkGallery.css';
 
@@ -20,12 +21,15 @@ function normalizeBulkName(fileName) {
   return normalizeImageName(trimmed);
 }
 
-function joinImageUrl(prefix, fileName) {
+/** @param {string} downloadName final (unique, normalized) file name, as saved in the ZIP */
+function joinImageUrl(prefix, downloadName) {
   const normalizedPrefix = prefix.trim().replace(/\/+$/, '');
-  const normalizedFileName = normalizeDownloadName(fileName);
   if (!/^https?:\/\//i.test(normalizedPrefix)) return '';
-  return normalizedPrefix ? `${normalizedPrefix}/${encodeURIComponent(normalizedFileName)}` : '';
+  return `${normalizedPrefix}/${encodeURIComponent(downloadName)}`;
 }
+
+const ROW_GAP = 20;
+const DEFAULT_ROW_HEIGHT = 392;
 
 export default function WatermarkGallery({
   results,
@@ -38,6 +42,7 @@ export default function WatermarkGallery({
   processingProgress,
   downloadProgress,
   isBusy = false,
+  onCancel,
 }) {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isBulkRenameOpen, setIsBulkRenameOpen] = useState(false);
@@ -55,9 +60,9 @@ export default function WatermarkGallery({
   const [isHaravanPrefixGuideOpen, setIsHaravanPrefixGuideOpen] = useState(false);
   const [previewIndex, setPreviewIndex] = useState(null);
   const [isPreviewClosing, setIsPreviewClosing] = useState(false);
-  const renameDialogRef = useDialogFocus(isBulkRenameOpen);
-  const linksDialogRef = useDialogFocus(isHaravanLinksOpen);
+  const [isConfirmClearOpen, setIsConfirmClearOpen] = useState(false);
   const [viewportSize, setViewportSize] = useState({ width: 0, height: 0, scrollTop: 0 });
+  const [rowHeight, setRowHeight] = useState(DEFAULT_ROW_HEIGHT);
   const menuRef = useRef(null);
   const viewportRef = useRef(null);
   const previewCloseTimerRef = useRef(null);
@@ -112,12 +117,17 @@ export default function WatermarkGallery({
     setPreviewIndex(index);
   }, []);
 
+  // One name per result, de-duplicated the same way as the ZIP, so downloads and
+  // Haravan links always point at the same file names.
+  const uniqueNames = useMemo(() => getUniqueFileNames(results), [results]);
+  const duplicateCount = uniqueNames.filter((name, index) => name !== normalizeDownloadName(results[index].fileName)).length;
+
   const previewItems = useMemo(() => results.map((result, index) => ({
     url: result.url,
     title: result.fileName,
     kicker: `Ảnh #${index + 1}`,
-    downloadName: normalizeDownloadName(result.fileName),
-  })), [results]);
+    downloadName: uniqueNames[index],
+  })), [results, uniqueNames]);
 
   useEffect(() => {
     if (!isMenuOpen) return;
@@ -142,20 +152,6 @@ export default function WatermarkGallery({
       document.removeEventListener('keydown', handleEscape);
     };
   }, [isMenuOpen]);
-
-  useEffect(() => {
-    if (!isBulkRenameOpen && !isHaravanLinksOpen) return;
-
-    const handleEscape = (event) => {
-      if (event.key === 'Escape') {
-        setIsBulkRenameOpen(false);
-        setIsHaravanLinksOpen(false);
-      }
-    };
-
-    document.addEventListener('keydown', handleEscape);
-    return () => document.removeEventListener('keydown', handleEscape);
-  }, [isBulkRenameOpen, isHaravanLinksOpen]);
 
   // ImageLightbox handles its own keyboard shortcuts; this only locks page scrolling.
   useEffect(() => {
@@ -185,6 +181,9 @@ export default function WatermarkGallery({
         height: viewport.clientHeight,
         scrollTop: viewport.scrollTop,
       });
+      // Measure a real card so the window math follows the CSS instead of a constant.
+      const cardHeight = viewport.querySelector('.wm-result-card')?.getBoundingClientRect().height;
+      if (cardHeight) setRowHeight(Math.round(cardHeight) + ROW_GAP);
     };
 
     updateViewport();
@@ -210,11 +209,10 @@ export default function WatermarkGallery({
       };
     }
 
-    const gap = 20;
+    const gap = ROW_GAP;
     const minCardWidth = 220;
     const overscanRows = 2;
     const columnCount = Math.max(1, Math.floor((viewportSize.width + gap) / (minCardWidth + gap)));
-    const rowHeight = 392;
     const totalRows = Math.ceil(results.length / columnCount);
     const visibleStartRow = Math.min(totalRows - 1, Math.max(0, Math.floor(viewportSize.scrollTop / rowHeight) - overscanRows));
     const visibleEndRow = Math.min(
@@ -231,7 +229,7 @@ export default function WatermarkGallery({
       bottomPadding: Math.max(0, (totalRows - visibleEndRow) * rowHeight - gap),
       columnCount,
     };
-  }, [isVirtualized, results.length, viewportSize.height, viewportSize.scrollTop, viewportSize.width]);
+  }, [isVirtualized, results.length, rowHeight, viewportSize.height, viewportSize.scrollTop, viewportSize.width]);
 
   const visibleResults = isVirtualized
     ? results.slice(virtualizedWindow.startIndex, virtualizedWindow.endIndex)
@@ -262,8 +260,8 @@ export default function WatermarkGallery({
   );
 
   const haravanLinks = useMemo(
-    () => results.map((result) => joinImageUrl(haravanPrefix, result.fileName)).filter(Boolean).join('\n'),
-    [haravanPrefix, results]
+    () => uniqueNames.map((name) => joinImageUrl(haravanPrefix, name)).filter(Boolean).join('\n'),
+    [haravanPrefix, uniqueNames]
   );
 
   const handleCopyHaravanLinks = async () => {
@@ -322,11 +320,12 @@ export default function WatermarkGallery({
 
         <div className="wm-gallery-actions">
           <div className="wm-download-menu" ref={menuRef}>
+            {/* Disclosure (not an ARIA menu): plain buttons, Tab to move, Escape to close. */}
             <button
               className="wm-download-menu-button"
               type="button"
-              aria-haspopup="menu"
               aria-expanded={isMenuOpen}
+              aria-controls="wm-download-options"
               onClick={() => setIsMenuOpen((open) => !open)}
               disabled={results.length === 0}
             >
@@ -334,46 +333,22 @@ export default function WatermarkGallery({
               <strong>Tải tất cả</strong>
             </button>
             {isMenuOpen && (
-            <ul className="wm-dropdown" role="menu">
+            <ul className="wm-dropdown" id="wm-download-options">
               <li>
-                <button
-                  className="wm-dropdown-item"
-                  onClick={() => handleDownload('full')}
-                  type="button"
-                  role="menuitem"
-                >
+                <button className="wm-dropdown-item" onClick={() => handleDownload('full')} type="button">
                   <span className="wm-inline-icon" aria-hidden="true">□</span>
                   <div>
-                    <div className="wm-dropdown-title">Đầy đủ kích thước</div>
-                    <small className="wm-muted-text">Giữ nguyên độ phân giải gốc</small>
+                    <div className="wm-dropdown-title">Kích thước đã tạo</div>
+                    <small className="wm-muted-text">Cạnh dài tối đa 4096px</small>
                   </div>
                 </button>
               </li>
               <li>
-                <button
-                  className="wm-dropdown-item"
-                  onClick={() => handleDownload('800x600')}
-                  type="button"
-                  role="menuitem"
-                >
+                <button className="wm-dropdown-item" onClick={() => handleDownload('800x600')} type="button">
                   <span className="wm-inline-icon" aria-hidden="true">▭</span>
                   <div>
                     <div className="wm-dropdown-title">800 × 600 px</div>
-                    <small className="wm-muted-text">Tối ưu cho web &amp; mạng xã hội</small>
-                  </div>
-                </button>
-              </li>
-              <li>
-                <button
-                  className="wm-dropdown-item"
-                  onClick={() => handleDownload('ImageCompress')}
-                  type="button"
-                  role="menuitem"
-                >
-                  <span className="wm-inline-icon" aria-hidden="true">⌁</span>
-                  <div>
-                    <div className="wm-dropdown-title">Nén 800 × 600 (&lt;100KB)</div>
-                    <small className="wm-muted-text">Nén tối ưu cho email &amp; tải nhanh</small>
+                    <small className="wm-muted-text">Thêm viền trắng cho vừa khung · web &amp; mạng xã hội</small>
                   </div>
                 </button>
               </li>
@@ -383,7 +358,8 @@ export default function WatermarkGallery({
 
           <button
             className="wm-btn-outline-danger"
-            onClick={onClear}
+            type="button"
+            onClick={() => setIsConfirmClearOpen(true)}
             disabled={results.length === 0}
           >
             <span className="wm-inline-icon" aria-hidden="true">×</span>
@@ -392,41 +368,49 @@ export default function WatermarkGallery({
         </div>
       </div>
 
+      {duplicateCount > 0 && !isBusy && (
+        <div className="wm-inline-banner wm-duplicate-banner" role="status">
+          <span className="wm-inline-icon" aria-hidden="true">!</span>
+          <span>
+            {duplicateCount} ảnh trùng tên với ảnh khác nên sẽ được lưu kèm hậu tố “-2”, “-3”… (ZIP, tải từng ảnh và link Haravan đều dùng cùng tên này).
+          </span>
+        </div>
+      )}
+
       {isProcessing && (
         <div className="wm-processing-bar" role="status" aria-live="polite">
           <div className="wm-processing-track" aria-hidden="true">
-            <div
-              className="wm-processing-inner"
-              style={{ width: `${progressPercent}%` }}
-            />
+            <div className="wm-processing-inner" style={{ width: `${progressPercent}%` }} />
           </div>
           <div className="wm-processing-copy">
-            <strong>
-              {progressCurrent}/{progressTotal || results.length || '?'} ảnh đã xong
-            </strong>
+            <strong>{progressCurrent}/{progressTotal || '?'} ảnh đã xong</strong>
             <span>
-              {progressTotal > 0
-                ? `Đang tạo ảnh watermark, khoảng ${progressPercent}%`
-                : 'Đang tạo ảnh watermark…'}
+              {progressTotal > 0 ? `Đang tạo ảnh watermark, khoảng ${progressPercent}%` : 'Đang tạo ảnh watermark…'}
+              {results.length > 0 && ' · ảnh đã xong hiện ngay bên dưới'}
             </span>
           </div>
+          {onCancel && (
+            <button type="button" className="wm-btn-outline wm-btn-small wm-progress-cancel" onClick={onCancel}>
+              Dừng lại
+            </button>
+          )}
         </div>
       )}
 
       {downloadProgress && (
         <div className="wm-processing-bar wm-download-progress" role="status" aria-live="polite">
           <div className="wm-processing-track" aria-hidden="true">
-            <div
-              className="wm-processing-inner"
-              style={{ width: `${downloadPercent}%` }}
-            />
+            <div className="wm-processing-inner" style={{ width: `${downloadPercent}%` }} />
           </div>
           <div className="wm-processing-copy">
-            <strong>
-              {downloadCurrent}/{downloadTotal || '?'} đã sẵn sàng
-            </strong>
+            <strong>{downloadCurrent}/{downloadTotal || '?'} đã sẵn sàng</strong>
             <span>{downloadProgress.message || 'Đang chuẩn bị file tải xuống…'}</span>
           </div>
+          {onCancel && (
+            <button type="button" className="wm-btn-outline wm-btn-small wm-progress-cancel" onClick={onCancel}>
+              Hủy tải xuống
+            </button>
+          )}
         </div>
       )}
 
@@ -459,9 +443,10 @@ export default function WatermarkGallery({
               const index = isVirtualized ? virtualizedWindow.startIndex + i : i;
               return (
                 <ResultCard
-                  key={`${index}-${r.url}`}
+                  key={r.url}
                   result={r}
                   index={index}
+                  downloadName={uniqueNames[index]}
                   onRenameFile={onRenameFile}
                   onRemoveResult={onRemoveResult}
                   onPreview={() => openPreview(index)}
@@ -490,20 +475,27 @@ export default function WatermarkGallery({
         />
       )}
 
+      {isConfirmClearOpen && (
+        <ConfirmDialog
+          title={`Xóa ${results.length} ảnh đã tạo?`}
+          message="Các ảnh chưa tải xuống sẽ mất và phải tạo lại. Ảnh nguồn và cài đặt vẫn được giữ."
+          confirmLabel="Xóa kết quả"
+          danger
+          onConfirm={() => {
+            setIsConfirmClearOpen(false);
+            onClear();
+          }}
+          onCancel={() => setIsConfirmClearOpen(false)}
+        />
+      )}
+
       {isBulkRenameOpen && (
-        <div
-          className="wm-bulk-rename-backdrop"
-          role="presentation"
-          onPointerDown={() => setIsBulkRenameOpen(false)}
+        <WatermarkModal
+          onClose={() => setIsBulkRenameOpen(false)}
+          labelledBy="wm-bulk-rename-title"
+          backdropClassName="wm-bulk-rename-backdrop"
+          className="wm-bulk-rename-modal"
         >
-          <div
-            className="wm-bulk-rename-modal"
-            ref={renameDialogRef}
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="wm-bulk-rename-title"
-            onPointerDown={(event) => event.stopPropagation()}
-          >
             <div className="wm-bulk-rename-header">
               <div className="wm-bulk-rename-heading">
                 <span className="wm-bulk-rename-hero-icon" aria-hidden="true">✦</span>
@@ -578,24 +570,16 @@ export default function WatermarkGallery({
               </button>
               </div>
             </div>
-          </div>
-        </div>
+        </WatermarkModal>
       )}
 
       {isHaravanLinksOpen && (
-        <div
-          className="wm-bulk-rename-backdrop"
-          role="presentation"
-          onPointerDown={() => setIsHaravanLinksOpen(false)}
+        <WatermarkModal
+          onClose={() => setIsHaravanLinksOpen(false)}
+          labelledBy="wm-haravan-link-title"
+          backdropClassName="wm-bulk-rename-backdrop"
+          className="wm-bulk-rename-modal wm-haravan-link-modal"
         >
-          <div
-            className="wm-bulk-rename-modal wm-haravan-link-modal"
-            ref={linksDialogRef}
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="wm-haravan-link-title"
-            onPointerDown={(event) => event.stopPropagation()}
-          >
             <div className="wm-bulk-rename-header">
               <div className="wm-bulk-rename-heading">
                 <span className="wm-bulk-rename-hero-icon" aria-hidden="true">↗</span>
@@ -732,19 +716,19 @@ export default function WatermarkGallery({
                 </button>
               </div>
             </div>
-          </div>
-        </div>
+        </WatermarkModal>
       )}
 
     </div>
   );
 }
 
-function ResultCard({ result, index, onPreview, onRenameFile, onRemoveResult, style }) {
+function ResultCard({ result, index, downloadName, onPreview, onRenameFile, onRemoveResult, style }) {
+  const isRenamedForDuplicate = downloadName !== normalizeDownloadName(result.fileName);
   const handleDownload = () => {
     const a = document.createElement('a');
     a.href = result.url;
-    a.download = normalizeDownloadName(result.fileName);
+    a.download = downloadName;
     a.click();
   };
 
@@ -793,8 +777,14 @@ function ResultCard({ result, index, onPreview, onRenameFile, onRemoveResult, st
             value={result.fileName}
             onChange={(event) => onRenameFile?.(index, event.target.value)}
             placeholder="Nhập tên file mới"
+            aria-describedby={isRenamedForDuplicate ? `wm-result-dup-${index}` : undefined}
           />
         </label>
+        {isRenamedForDuplicate && (
+          <small id={`wm-result-dup-${index}`} className="wm-result-duplicate">
+            Trùng tên · sẽ lưu là <b>{downloadName}</b>
+          </small>
+        )}
       </div>
     </div>
   );

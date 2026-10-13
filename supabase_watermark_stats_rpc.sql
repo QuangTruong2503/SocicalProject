@@ -28,6 +28,24 @@ $$;
 revoke execute on function public.watermark_image_count_total(text, uuid) from public;
 grant execute on function public.watermark_image_count_total(text, uuid) to anon, authenticated;
 
+-- ─── Signed-in user: images created by this account (any device, any source) ─
+-- Same number as /dashboard/overview, so "Ảnh của bạn" on /watermark agrees with it.
+create or replace function public.my_watermark_image_total()
+returns bigint
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select coalesce(sum(image_count), 0)::bigint
+  from public.watermark_image_counts
+  where auth.uid() is not null
+    and user_id = auth.uid();
+$$;
+
+revoke execute on function public.my_watermark_image_total() from public, anon;
+grant execute on function public.my_watermark_image_total() to authenticated;
+
 -- ─── Admin: summary tiles, time series and source list ───────────────────────
 -- p_from / p_to bound created_at as [p_from, p_to); null means unbounded.
 -- p_bucket is 'day' | 'week' | 'month'; buckets are cut in p_tz.
