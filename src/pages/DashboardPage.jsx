@@ -19,6 +19,7 @@ import {
 import { useAuth } from '../hooks/useAuth.js';
 import { uploadImage, fetchCurrentUserUploads, deleteUpload } from '../services/uploadService.js';
 import { getUserAvatarUrl, getUserDisplayName, getUserInitials } from '../utils/userProfile.js';
+import UserAvatar from '../components/UserAvatar.jsx';
 import '../styles/auth.css';
 
 const PLAN_CREDIT_LIMITS = {
@@ -94,6 +95,7 @@ export default function DashboardPage() {
     updateProfile,
     updatePassword,
     isProfileLoading,
+    isAvatarReady,
     profileError,
     uploadError: authUploadError,
   } = useAuth();
@@ -431,11 +433,7 @@ export default function DashboardPage() {
           <aside className="dashboard-sidebar">
             <div className="dashboard-sidebar-profile">
               <div className="dashboard-sidebar-avatar">
-                {avatarUrl ? (
-                  <img src={avatarUrl} alt={displayName} />
-                ) : (
-                  <span>{initials}</span>
-                )}
+                <UserAvatar src={avatarUrl} alt={displayName} initials={initials} isReady={isAvatarReady} />
               </div>
               <div className="dashboard-sidebar-identity">
                 <strong>{displayName}</strong>
@@ -767,10 +765,8 @@ export default function DashboardPage() {
                 <div className="dashboard-dropzone-preview">
                   {previewUrl ? (
                     <img src={previewUrl} alt="Preview upload" />
-                  ) : avatarUrl ? (
-                    <img src={avatarUrl} alt="Current avatar" />
                   ) : (
-                    <span>{initials}</span>
+                    <UserAvatar src={avatarUrl} alt="Current avatar" initials={initials} isReady={isAvatarReady} />
                   )}
                 </div>
 

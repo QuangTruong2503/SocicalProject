@@ -3,6 +3,7 @@ import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { useTheme } from '../hooks/useTheme';
 import { useAuth } from '../hooks/useAuth';
 import { getUserAvatarUrl, getUserDisplayName, getUserInitials } from '../utils/userProfile.js';
+import UserAvatar from './UserAvatar.jsx';
 import '../styles/Header.css';
 
 export default function Header() {
@@ -12,7 +13,7 @@ export default function Header() {
   const location = useLocation();
   const navigate = useNavigate();
   const { theme, toggleTheme } = useTheme();
-  const { user, profile, latestUpload, logout } = useAuth();
+  const { user, profile, latestUpload, isAvatarReady, logout } = useAuth();
   const userDisplayName = getUserDisplayName(user, profile);
   const userAvatarUrl = getUserAvatarUrl(user, profile, latestUpload);
   const userInitials = getUserInitials(user, profile);
@@ -161,11 +162,14 @@ export default function Header() {
                   aria-expanded={userMenuOpen}
                 >
                   <span className="user-avatar-ring" aria-hidden="true">
-                    {userAvatarUrl ? (
-                      <img src={userAvatarUrl} alt={userDisplayName} className="user-avatar-image" />
-                    ) : (
-                      <span className="user-avatar-fallback">{userInitials}</span>
-                    )}
+                    <UserAvatar
+                      src={userAvatarUrl}
+                      alt={userDisplayName}
+                      initials={userInitials}
+                      isReady={isAvatarReady}
+                      imageClassName="user-avatar-image"
+                      fallbackClassName="user-avatar-fallback"
+                    />
                   </span>
                   <span className="user-menu-meta">
                     <strong>{userDisplayName}</strong>

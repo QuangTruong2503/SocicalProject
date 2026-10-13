@@ -13,7 +13,6 @@ import { processWatermark, resizeBlob, buildFileName, compressAndResizeBlob, loa
 import { useAuth } from '../hooks/useAuth.js';
 import { useTheme } from '../hooks/useTheme.js';
 import { useDialogFocus } from '../hooks/useDialogFocus.js';
-import { supabase } from '../lib/supabase.js';
 import { getUserDisplayName } from '../utils/userProfile.js';
 import {
   loadWatermarkOptions,
@@ -23,6 +22,7 @@ import { buildThemeAccentVars } from '../utils/colorTools.js';
 import {
   createWatermarkImageCount,
   getWatermarkImageCountTotal,
+  subscribeToWatermarkImageCounts,
 } from '../services/watermarkImageCountService.js';
 import { getOrCreateWatermarkVisitorId } from '../utils/watermarkVisitor.js';
 import { createThumbnailUrl } from '../utils/imageThumbnail.js';
@@ -538,44 +538,34 @@ export default function Watermark() {
     };
   }, [visitorId]);
 
-  // ── Live total via Supabase Realtime (websocket) ───────────────────
+  // ── Live total via Supabase Realtime Broadcast (websocket) ─────────
   useEffect(() => {
     if (!visitorId) {
       return undefined;
     }
 
-    const channel = supabase
-      .channel('watermark-image-counts-total')
-      .on(
-        'postgres_changes',
-        { event: 'INSERT', schema: 'public', table: 'watermark_image_counts' },
-        (payload) => {
-          const row = payload.new;
-          const increment = Number(row?.image_count) || 0;
+    const unsubscribe = subscribeToWatermarkImageCounts((event) => {
+      // Skip our own inserts — handleCreate already bumps the total locally.
+      if (event.visitorId === visitorId) {
+        return;
+      }
 
-          // Skip our own inserts — handleCreate already bumps the total locally.
-          if (!row || row.visitor_id === visitorId || increment <= 0) {
-            return;
-          }
+      setTotalCreated((current) => current + event.imageCount);
+      setTotalJustUpdated(true);
 
-          setTotalCreated((current) => current + increment);
-          setTotalJustUpdated(true);
-
-          if (totalPulseTimeoutRef.current) {
-            window.clearTimeout(totalPulseTimeoutRef.current);
-          }
-          totalPulseTimeoutRef.current = window.setTimeout(() => {
-            setTotalJustUpdated(false);
-          }, 900);
-        },
-      )
-      .subscribe();
+      if (totalPulseTimeoutRef.current) {
+        window.clearTimeout(totalPulseTimeoutRef.current);
+      }
+      totalPulseTimeoutRef.current = window.setTimeout(() => {
+        setTotalJustUpdated(false);
+      }, 900);
+    });
 
     return () => {
       if (totalPulseTimeoutRef.current) {
         window.clearTimeout(totalPulseTimeoutRef.current);
       }
-      supabase.removeChannel(channel);
+      unsubscribe();
     };
   }, [visitorId]);
 

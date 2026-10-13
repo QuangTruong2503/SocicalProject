@@ -33,6 +33,9 @@ export function AuthProvider({ children }) {
   const [isInitializing, setIsInitializing] = useState(true);
   const [isProfileLoading, setIsProfileLoading] = useState(false);
   const [isAvatarLoading, setIsAvatarLoading] = useState(false);
+  // Id of the user whose profile + latest upload have both been fetched. Until then the
+  // avatar source is unknown, so the UI must not fall back to the OAuth provider picture.
+  const [avatarResolvedUserId, setAvatarResolvedUserId] = useState(null);
   const [lastAuthEvent, setLastAuthEvent] = useState('INITIALIZING');
   const profileRequestIdRef = useRef(0);
   const avatarRequestIdRef = useRef(0);
@@ -171,12 +174,16 @@ export function AuthProvider({ children }) {
       setUploadError(null);
       setIsProfileLoading(false);
       setIsAvatarLoading(false);
+      setAvatarResolvedUserId(null);
       setIsInitializing(false);
       return;
     }
 
-    await syncProfile(nextUser, source);
-    await syncLatestUpload(nextUser, source);
+    await Promise.all([
+      syncProfile(nextUser, source),
+      syncLatestUpload(nextUser, source),
+    ]);
+    setAvatarResolvedUserId(nextUser.id);
     setIsInitializing(false);
   }, [syncLatestUpload, syncProfile]);
 
@@ -385,6 +392,7 @@ export function AuthProvider({ children }) {
         isInitializing,
         isProfileLoading,
         isAvatarLoading,
+        isAvatarReady: Boolean(user?.id) && avatarResolvedUserId === user.id,
         isAuthenticated: Boolean(user),
         lastAuthEvent,
         login,

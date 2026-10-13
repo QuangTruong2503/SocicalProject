@@ -4,7 +4,6 @@ import { HelmetProvider, Helmet } from 'react-helmet-async';
 import { useTheme } from './hooks/useTheme';
 import './styles/auth.css';
 const Watermark = lazy(() => import('./pages/Watermark.jsx'));
-const WatermarkDashboardPage = lazy(() => import('./pages/WatermarkDashboardPage.jsx'));
 const Quotation = lazy(() => import('./pages/Quotation/Quotation.jsx'));
 const QuotationList = lazy(() => import('./pages/Quotation/QuotationList.jsx'));
 const QuotationKnm = lazy(() => import('./pages/QuotationKnm/QuotationKnm.jsx'));
@@ -24,6 +23,7 @@ const AdminLayout = lazy(() => import('./pages/Admin/AdminLayout.jsx'));
 const AdminDashboardPage = lazy(() => import('./pages/Admin/AdminDashboardPage.jsx'));
 const AdminUsersPage = lazy(() => import('./pages/Admin/AdminUsersPage.jsx'));
 const AdminQuotationsPage = lazy(() => import('./pages/Admin/AdminQuotationsPage.jsx'));
+const AdminWatermarkPage = lazy(() => import('./pages/Admin/AdminWatermarkPage.jsx'));
 const AdminMemoryCardsPage = lazy(() => import('./pages/Admin/AdminMemoryCardsPage.jsx'));
 const AdminProductLinksPage = lazy(() => import('./pages/Admin/AdminProductLinksPage.jsx'));
 
@@ -305,7 +305,7 @@ export default function App() {
           <Suspense fallback={<div role="status" style={{ padding: '48px 24px', textAlign: 'center' }}>Đang tải công cụ…</div>}>
           <Routes>
             <Route path="/" element={<HomePage />} />
-            <Route path="/watermark/dashboard" element={<ProtectedRoute title="Thống kê Watermark cần đăng nhập." description="Khu vực dành cho nhân viên và quản trị viên." details={['Xem thống kê lượt sử dụng Watermark']} loginLabel="Đăng nhập để xem thống kê"><WatermarkDashboardPage /></ProtectedRoute>} />
+            <Route path="/watermark/dashboard" element={<Navigate to="/admin/watermark" replace />} />
             <Route path="/quotation" element={<Navigate to="/bao-gia-minh-triet/tao-moi" replace />} />
             <Route path="/bao-gia-knm" element={<ProtectedRoute title="Báo giá KNM cần đăng nhập." description="Khu vực dành cho nhân viên và quản trị viên." details={['Tạo báo giá máy móc, thiết bị công nghiệp', 'Xem trước realtime, xuất PDF và in ngay']} loginLabel="Đăng nhập để tạo báo giá KNM"><QuotationKnm /></ProtectedRoute>} />
             <Route path="/bao-gia-knm/quan-ly" element={<ProtectedRoute title="Quản lý báo giá KNM cần đăng nhập." description="Khu vực dành cho nhân viên và quản trị viên." details={['Lưu và chỉnh sửa báo giá KNM']} loginLabel="Đăng nhập để quản lý báo giá KNM"><QuotationKnmList /></ProtectedRoute>} />
@@ -315,7 +315,7 @@ export default function App() {
               <Route index element={<AdminDashboardPage />} />
               <Route path="users" element={<AdminUsersPage />} />
               <Route path="quotations" element={<AdminQuotationsPage />} />
-              <Route path="watermark" element={<WatermarkDashboardPage />} />
+              <Route path="watermark" element={<AdminWatermarkPage />} />
               <Route path="memory-cards" element={<AdminMemoryCardsPage />} />
               <Route path="product-links" element={<AdminProductLinksPage />} />
             </Route>
