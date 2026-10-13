@@ -71,11 +71,7 @@ export default function Header() {
       path: '/bao-gia-minh-triet',
       icon: '📜',
     },
-    {
-      label: user ? 'Dashboard' : 'Đăng nhập',
-      path: user ? '/dashboard/overview' : '/auth',
-      icon: user ? '📊' : '🔐',
-    },
+    ...(user ? [{ label: 'Dashboard', path: '/dashboard/overview', icon: '📊' }] : []),
     ...(profile?.role === 'admin' ? [{ label: 'Quản trị', path: '/admin', icon: '🛠️' }] : []),
   ];
 

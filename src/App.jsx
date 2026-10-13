@@ -1,6 +1,7 @@
 import { lazy, Suspense } from 'react';
 import { Routes, Route, NavLink, useLocation, Navigate } from 'react-router-dom';
 import { HelmetProvider, Helmet } from 'react-helmet-async';
+import { FiArrowRight, FiFileText, FiImage, FiLink2, FiPlayCircle, FiUser } from 'react-icons/fi';
 import { useTheme } from './hooks/useTheme';
 import './styles/auth.css';
 const Watermark = lazy(() => import('./pages/Watermark.jsx'));
@@ -27,86 +28,42 @@ const AdminWatermarkPage = lazy(() => import('./pages/Admin/AdminWatermarkPage.j
 const AdminMemoryCardsPage = lazy(() => import('./pages/Admin/AdminMemoryCardsPage.jsx'));
 const AdminProductLinksPage = lazy(() => import('./pages/Admin/AdminProductLinksPage.jsx'));
 
-function FeatureCard({ icon, title, description, buttonText, link, badge, delay }) {
+function ToolCard({ icon, title, description, link }) {
   return (
-    <NavLink to={link} className="feature-card-link">
-      <div className="feature-card" style={{ animationDelay: `${delay}ms` }}>
-        <div className="feature-card-header">
-          <div className="feature-icon">{icon}</div>
-          {badge && <span className="badge-new">{badge}</span>}
-        </div>
-
-        <h3 className="feature-title">{title}</h3>
-        <p className="feature-description">{description}</p>
-
-        <div className="feature-footer">
-          <button className="feature-button">
-            {buttonText}
-            <span className="button-arrow">→</span>
-          </button>
-        </div>
-
-        <div className="feature-gradient-overlay"></div>
-      </div>
+    <NavLink to={link} className="home-tool-card">
+      <span className="home-tool-icon" aria-hidden="true">{icon}</span>
+      <h3>{title}</h3>
+      <p>{description}</p>
+      <span className="home-tool-action">Mở công cụ <FiArrowRight aria-hidden="true" /></span>
     </NavLink>
   );
 }
 
 function HomePage() {
-  const features = [
+  const tools = [
     {
-      icon: '🔐',
-      title: 'Authentication',
-      description: 'Đăng ký, đăng nhập và quản lý phiên người dùng với Supabase Authentication.',
-      buttonText: 'Mo Auth',
-      link: '/auth',
-      badge: 'New',
-      delay: 150,
-    },
-    {
-      icon: '🎮',
-      title: 'Memory Match Game',
-      description: 'Chơi trò chơi ghép hình thú vị, test trí nhớ của bạn với giao diện hiện đại.',
-      buttonText: 'Choi Ngay',
-      link: '/memory-game',
-      badge: 'New',
-      delay: 250,
-    },
-    {
-      icon: '🎨',
-      title: 'Watermark Tool',
-      description: 'Thêm watermark vào ảnh của bạn để bảo vệ quyền sở hữu trí tuệ.',
-      buttonText: 'Mo Tool',
-      link: '/watermark',
-      badge: null,
-      delay: 300,
-    },
-    {
-      icon: '🧾',
-      title: 'Quotation Builder',
-      description: 'Tạo phiếu báo giá / đơn hàng, tự tính VAT, lưu draft và in hóa đơn A4.',
-      buttonText: 'Mo Tool',
+      icon: <FiFileText />,
+      title: 'Báo giá Minh Triết',
+      description: 'Tạo, lưu và in báo giá A4.',
       link: '/bao-gia-minh-triet',
-      badge: 'New',
-      delay: 325,
     },
     {
-      icon: '📄',
+      icon: <FiFileText />,
       title: 'Báo giá KNM',
-      description: 'Tạo báo giá máy móc, thiết bị công nghiệp một trang, xem trước realtime, xuất PDF và in ngay.',
-      buttonText: 'Mo Tool',
+      description: 'Xem trước báo giá và xuất PDF.',
       link: '/bao-gia-knm',
-      badge: 'New',
-      delay: 350,
     },
     {
-      icon: '🖼️',
+      icon: <FiLink2 />,
       title: 'Link ảnh sản phẩm',
-      description: 'Copy nhanh link ảnh theo từng mã sản phẩm, đánh dấu sản phẩm đã làm, đồng bộ realtime với cả nhóm.',
-      buttonText: 'Mo Tool',
+      description: 'Tìm và sao chép link theo mã sản phẩm.',
       link: '/link-anh-san-pham',
-      badge: 'New',
-      delay: 375,
+    },
+    {
+      icon: <FiImage />,
+      title: 'Watermark',
+      description: 'Thêm dấu bản quyền vào ảnh.',
+      link: '/watermark',
     },
   ];
 
@@ -114,96 +71,40 @@ function HomePage() {
     <>
       <Helmet>
         <title>Trang Chủ - AISEO Tools Suite</title>
-        <meta name="description" content="Bộ công cụ toàn diện: Watermark Tool, Báo giá, Link ảnh sản phẩm, Memory Game" />
+        <meta name="description" content="Mở nhanh công cụ tạo báo giá, tìm link ảnh sản phẩm và thêm watermark tại AISEO Tools Suite." />
       </Helmet>
 
-      <div className="home-page-wrapper loaded">
-        <section className="hero-section">
-          <div className="hero-content">
-            <div className="hero-badge">✨ Welcome to AISEO Suite</div>
-
-            <h1 className="hero-title">
-              <span className="gradient-text">Công Cụ AI</span>
-              <br />
-              Toàn Diện Cho Bạn
-            </h1>
-
-            <p className="hero-subtitle">
-              Nâng cao hiệu suất làm việc với bộ công cụ AI được thiết kế thân thiện, mạnh mẽ và dễ sử dụng.
-            </p>
-
-            <div className="hero-stats">
-              <div className="stat-item">
-                <span className="stat-number">6+</span>
-                <span className="stat-label">Tools</span>
-              </div>
-              <div className="stat-item">
-                <span className="stat-number">100%</span>
-                <span className="stat-label">Free</span>
-              </div>
-              <div className="stat-item">
-                <span className="stat-number">24/7</span>
-                <span className="stat-label">Available</span>
-              </div>
-            </div>
+      <div className="home-page-wrapper">
+        <section className="home-intro" aria-labelledby="home-title">
+          <div>
+            <span className="home-eyebrow">Bộ công cụ làm việc</span>
+            <h1 id="home-title">Bạn muốn làm gì hôm nay?</h1>
+            <p>Chọn đúng công cụ và bắt đầu công việc trong vài giây.</p>
           </div>
-
-          <div className="hero-visual">
-            <div className="hero-blob-1"></div>
-            <div className="hero-blob-2"></div>
-            <div className="hero-blob-3"></div>
-            <div className="hero-emoji-grid">
-              <span>🤖</span>
-              <span>🔐</span>
-              <span>🎮</span>
-            </div>
-          </div>
+          <NavLink to="/bao-gia-minh-triet/tao-moi" className="home-primary-action">
+            Tạo báo giá mới <FiArrowRight aria-hidden="true" />
+          </NavLink>
         </section>
 
-        <section className="features-section">
-          <div className="section-header">
-            <h2 className="section-title">Các Công Cụ Của Chúng Tôi</h2>
-            <p className="section-subtitle">
-              Khám phá bộ sưu tập đầy đủ các công cụ được cung cấp bởi AI
-            </p>
+        <section className="home-tools-section" aria-labelledby="home-tools-title">
+          <div className="home-section-heading">
+            <h2 id="home-tools-title">Công cụ chính</h2>
+            <span>4 công cụ</span>
           </div>
-
-          <div className="features-grid">
-            {features.map((feature, index) => (
-              <FeatureCard
-                key={index}
-                icon={feature.icon}
-                title={feature.title}
-                description={feature.description}
-                buttonText={feature.buttonText}
-                link={feature.link}
-                badge={feature.badge}
-                delay={feature.delay}
-              />
+          <div className="home-tools-grid">
+            {tools.map((tool) => (
+              <ToolCard key={tool.link} {...tool} />
             ))}
           </div>
         </section>
 
-        <section className="cta-section">
-          <div className="cta-content">
-            <h2 className="cta-title">Sẵn Sàng Bắt Đầu?</h2>
-            <p className="cta-description">
-              Chọn công cụ bạn muốn sử dụng và bắt đầu ngay hôm nay - hoàn toàn miễn phí!
-            </p>
-
-            <div className="cta-buttons">
-              <NavLink to="/auth" className="btn-primary">
-                Vào Màn Hình Auth
-              </NavLink>
-              <NavLink to="/memory-game" className="btn-secondary">
-                Chơi Game
-              </NavLink>
-            </div>
+        <section className="home-more-section" aria-labelledby="home-more-title">
+          <div className="home-section-heading">
+            <h2 id="home-more-title">Khác</h2>
           </div>
-
-          <div className="cta-background">
-            <div className="gradient-ball-1"></div>
-            <div className="gradient-ball-2"></div>
+          <div className="home-more-links">
+            <NavLink to="/memory-game"><FiPlayCircle aria-hidden="true" /> Memory Game <FiArrowRight aria-hidden="true" /></NavLink>
+            <NavLink to="/dashboard/overview"><FiUser aria-hidden="true" /> Hồ sơ của tôi <FiArrowRight aria-hidden="true" /></NavLink>
           </div>
         </section>
       </div>

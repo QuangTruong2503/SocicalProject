@@ -1,0 +1,112 @@
+<style>
+#aiseo-home-directions { color-scheme: light dark; font-family: Inter, Arial, sans-serif; color: light-dark(#111827,#f5f5f5); }
+#aiseo-home-directions * { box-sizing: border-box; }
+#aiseo-home-directions .aiv-stage { min-height: 565px; width: 100%; overflow: hidden; background: light-dark(#f7f8fa,#101217); color: light-dark(#111827,#f5f5f5); border: 1px solid light-dark(#e5e7eb,#343943); border-radius: 18px; }
+#aiseo-home-directions .aiv-top { display:flex; align-items:center; justify-content:space-between; gap:14px; min-height:64px; padding:12px 28px; border-bottom:1px solid light-dark(#e7e9ee,#343943); background: light-dark(#fff,#1b1e25); }
+#aiseo-home-directions .aiv-brand { font-size:18px; font-weight:800; letter-spacing:-.04em; white-space:nowrap; }
+#aiseo-home-directions .aiv-brand span { color:var(--aiv-accent); }
+#aiseo-home-directions .aiv-nav { display:flex; align-items:center; gap:18px; color:light-dark(#565e6e,#bec5ce); font-size:13px; }
+#aiseo-home-directions .aiv-account { display:flex; align-items:center; gap:8px; white-space:nowrap; font-size:12px; color:light-dark(#5b6472,#c9ced6); }
+#aiseo-home-directions .aiv-avatar { display:grid; place-items:center; width:29px; height:29px; border-radius:50%; background:var(--aiv-accent); color:#fff; font-weight:700; }
+#aiseo-home-directions .aiv-body { padding:35px 38px 42px; }
+#aiseo-home-directions .aiv-eyebrow { color:var(--aiv-accent); font-size:11px; font-weight:800; letter-spacing:.13em; text-transform:uppercase; }
+#aiseo-home-directions h2 { margin:10px 0 10px; font-size:clamp(26px,3.8vw,42px); letter-spacing:-.055em; line-height:1.05; }
+#aiseo-home-directions p { margin:0; color:light-dark(#667080,#b5bdc7); line-height:1.5; }
+#aiseo-home-directions .aiv-lead { max-width:600px; font-size:14px; }
+#aiseo-home-directions .aiv-section { margin-top:30px; }
+#aiseo-home-directions .aiv-section-head { display:flex; flex-wrap:wrap; justify-content:space-between; align-items:end; gap:10px; margin-bottom:15px; }
+#aiseo-home-directions h3 { margin:0; font-size:18px; letter-spacing:-.025em; }
+#aiseo-home-directions .aiv-small { font-size:12px; }
+#aiseo-home-directions .aiv-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:12px; }
+#aiseo-home-directions .aiv-tile { display:flex; flex-direction:column; align-items:flex-start; gap:7px; min-height:130px; padding:18px; border:1px solid light-dark(#e3e7ec,#383d48); border-radius:var(--aiv-radius); background:light-dark(#fff,#1d212a); }
+#aiseo-home-directions .aiv-tile b { font-size:15px; }
+#aiseo-home-directions .aiv-tile small { color:light-dark(#667080,#b5bdc7); line-height:1.35; }
+#aiseo-home-directions .aiv-icon { display:grid; place-items:center; width:30px; height:30px; border-radius:8px; background:color-mix(in srgb,var(--aiv-accent) 12%,transparent); color:var(--aiv-accent); font-weight:800; }
+#aiseo-home-directions .aiv-quiet { display:flex; flex-wrap:wrap; gap:8px; }
+#aiseo-home-directions .aiv-chip { padding:8px 11px; border:1px solid light-dark(#e2e6ec,#39404c); border-radius:9px; background:light-dark(#fff,#1d212a); font-size:12px; }
+#aiseo-home-directions .aiv-portal { --aiv-accent:#246b52; --aiv-radius:14px; }
+#aiseo-home-directions .aiv-portal .aiv-intro { display:flex; align-items:end; justify-content:space-between; gap:18px; }
+#aiseo-home-directions .aiv-action { display:inline-flex; align-items:center; justify-content:center; min-height:37px; padding:8px 14px; border-radius:9px; background:var(--aiv-accent); color:#fff; font-size:12px; font-weight:700; white-space:nowrap; }
+#aiseo-home-directions .aiv-work { --aiv-accent:#4e5bd5; --aiv-radius:11px; display:grid; grid-template-columns:190px minmax(0,1fr); }
+#aiseo-home-directions .aiv-work .aiv-sidebar { padding:24px 14px; background:light-dark(#202736,#171c29); color:#fff; }
+#aiseo-home-directions .aiv-work .aiv-sidebar .aiv-brand { padding:0 11px 30px; }
+#aiseo-home-directions .aiv-work .aiv-sidebar .aiv-brand span { color:#a2abff; }
+#aiseo-home-directions .aiv-sideitem { display:block; padding:11px 12px; border-radius:9px; color:#c4cad6; font-size:12px; }
+#aiseo-home-directions .aiv-sideitem.aiv-current { background:#3c4760; color:#fff; font-weight:700; }
+#aiseo-home-directions .aiv-work .aiv-body { padding:27px 29px; }
+#aiseo-home-directions .aiv-work .aiv-top { padding:0 29px; min-height:50px; background:transparent; }
+#aiseo-home-directions .aiv-work h2 { font-size:32px; }
+#aiseo-home-directions .aiv-work .aiv-grid { grid-template-columns:repeat(2,minmax(0,1fr)); }
+#aiseo-home-directions .aiv-work .aiv-tile { min-height:112px; }
+#aiseo-home-directions .aiv-work .aiv-tile:first-child { grid-column:1 / -1; background:light-dark(#eef0ff,#24294b); }
+#aiseo-home-directions .aiv-row { display:flex; flex-wrap:wrap; gap:9px; margin-top:14px; }
+#aiseo-home-directions .aiv-mini { padding:9px 12px; border-radius:8px; background:light-dark(#fff,#1d212a); border:1px solid light-dark(#e2e6ec,#39404c); font-size:12px; }
+#aiseo-home-directions .aiv-story { --aiv-accent:#cb622e; --aiv-radius:15px; background:light-dark(#fffaf5,#1d1918); }
+#aiseo-home-directions .aiv-story .aiv-top { background:transparent; }
+#aiseo-home-directions .aiv-story .aiv-hero { display:grid; grid-template-columns:1.05fr .95fr; gap:26px; padding:42px 38px 35px; }
+#aiseo-home-directions .aiv-story h2 { font-size:clamp(30px,4vw,49px); }
+#aiseo-home-directions .aiv-story .aiv-hero p { max-width:430px; margin-bottom:22px; }
+#aiseo-home-directions .aiv-preview { padding:15px; border:1px solid light-dark(#ead7c7,#56453f); border-radius:18px; background:light-dark(#fff,#2c2726); box-shadow:0 16px 30px light-dark(#8a5b321c,#0003); }
+#aiseo-home-directions .aiv-preview-header { display:flex; justify-content:space-between; padding-bottom:12px; border-bottom:1px solid light-dark(#eee1d7,#574945); font-size:11px; color:light-dark(#8a6e5e,#dac7bc); }
+#aiseo-home-directions .aiv-document { margin-top:14px; padding:15px; background:light-dark(#faf8f6,#373230); border-radius:9px; }
+#aiseo-home-directions .aiv-document b { font-size:15px; }
+#aiseo-home-directions .aiv-line { height:6px; margin-top:12px; border-radius:9px; background:light-dark(#dddad7,#665b56); }
+#aiseo-home-directions .aiv-line.short { width:55%; }
+#aiseo-home-directions .aiv-line.mid { width:78%; }
+#aiseo-home-directions .aiv-story .aiv-body { padding-top:10px; }
+#aiseo-home-directions .aiv-story .aiv-grid { grid-template-columns:repeat(3,minmax(0,1fr)); }
+#aiseo-home-directions .aiv-story .aiv-tile { min-height:117px; }
+@media (max-width:680px) {
+  #aiseo-home-directions .aiv-stage { min-height:790px; }
+  #aiseo-home-directions .aiv-top { padding:12px 17px; }
+  #aiseo-home-directions .aiv-top .aiv-nav { display:none; }
+  #aiseo-home-directions .aiv-body { padding:26px 17px; }
+  #aiseo-home-directions .aiv-portal .aiv-intro { align-items:start; flex-direction:column; }
+  #aiseo-home-directions .aiv-grid { grid-template-columns:repeat(2,minmax(0,1fr)); }
+  #aiseo-home-directions .aiv-work { grid-template-columns:1fr; }
+  #aiseo-home-directions .aiv-work .aiv-sidebar { display:none; }
+  #aiseo-home-directions .aiv-work .aiv-body { padding:25px 17px; }
+  #aiseo-home-directions .aiv-story .aiv-hero { grid-template-columns:1fr; padding:30px 17px 12px; }
+  #aiseo-home-directions .aiv-story .aiv-grid { grid-template-columns:repeat(2,minmax(0,1fr)); }
+}
+@media (max-width:410px) {
+  #aiseo-home-directions .aiv-stage { min-height:950px; }
+  #aiseo-home-directions .aiv-grid, #aiseo-home-directions .aiv-work .aiv-grid, #aiseo-home-directions .aiv-story .aiv-grid { grid-template-columns:1fr; }
+  #aiseo-home-directions .aiv-work .aiv-tile:first-child { grid-column:auto; }
+  #aiseo-home-directions .aiv-tile { min-height:100px; }
+}
+</style>
+<div id="aiseo-home-directions" class="viz-carousel" aria-label="Ba hướng thiết kế trang chủ AISEO" data-previous-label="Hướng trước" data-next-label="Hướng tiếp">
+  <section data-variant="Cổng công cụ" aria-label="Cổng công cụ" class="aiv-stage aiv-portal">
+    <div class="aiv-top"><div class="aiv-brand">AISEO <span>Tools</span></div><div class="aiv-nav"><span>Trang chủ</span><span>Báo giá</span><span>Watermark</span><span>Ảnh sản phẩm</span></div><div class="aiv-account"><span class="aiv-avatar">Q</span><span>Tài khoản</span></div></div>
+    <div class="aiv-body"><div class="aiv-intro"><div><div class="aiv-eyebrow">BỘ CÔNG CỤ LÀM VIỆC</div><h2>Bạn muốn làm gì hôm nay?</h2><p class="aiv-lead">Chọn đúng công cụ và bắt đầu công việc trong vài giây.</p></div><span class="aiv-action">Tạo báo giá mới →</span></div>
+      <div class="aiv-section"><div class="aiv-section-head"><h3>Công cụ chính</h3><span class="aiv-small">4 công cụ</span></div><div class="aiv-grid"><div class="aiv-tile"><span class="aiv-icon">▤</span><b>Báo giá Minh Triết</b><small>Tạo, lưu và in báo giá A4</small></div><div class="aiv-tile"><span class="aiv-icon">▣</span><b>Báo giá KNM</b><small>Xem trước và xuất PDF</small></div><div class="aiv-tile"><span class="aiv-icon">◫</span><b>Link ảnh sản phẩm</b><small>Tìm và sao chép theo mã</small></div><div class="aiv-tile"><span class="aiv-icon">◈</span><b>Watermark</b><small>Đóng dấu ảnh nhanh</small></div></div></div>
+      <div class="aiv-section"><div class="aiv-section-head"><h3>Khác</h3></div><div class="aiv-quiet"><span class="aiv-chip">Memory Game</span><span class="aiv-chip">Hồ sơ của tôi</span><span class="aiv-chip">Hướng dẫn sử dụng</span></div></div>
+    </div>
+  </section>
+  <section data-variant="Không gian làm việc" aria-label="Không gian làm việc" class="aiv-stage aiv-work" hidden>
+    <aside class="aiv-sidebar"><div class="aiv-brand">AISEO <span>Tools</span></div><span class="aiv-sideitem aiv-current">Tổng quan</span><span class="aiv-sideitem">Báo giá</span><span class="aiv-sideitem">Link ảnh sản phẩm</span><span class="aiv-sideitem">Watermark</span><span class="aiv-sideitem">Tiện ích</span></aside>
+    <div><div class="aiv-top"><div class="aiv-small">Không gian làm việc / Tổng quan</div><div class="aiv-account"><span class="aiv-avatar">Q</span><span>Tài khoản</span></div></div><div class="aiv-body"><div class="aiv-eyebrow">HÔM NAY</div><h2>Bắt đầu công việc</h2><p class="aiv-lead">Các thao tác thường dùng được đặt ngay trên màn hình đầu.</p>
+      <div class="aiv-section"><div class="aiv-section-head"><h3>Thao tác nhanh</h3></div><div class="aiv-grid"><div class="aiv-tile"><span class="aiv-icon">＋</span><b>Tạo báo giá mới</b><small>Chọn mẫu Minh Triết hoặc KNM để bắt đầu</small></div><div class="aiv-tile"><span class="aiv-icon">◫</span><b>Tìm link ảnh</b><small>Tra cứu và sao chép theo mã sản phẩm</small></div><div class="aiv-tile"><span class="aiv-icon">◈</span><b>Đóng watermark</b><small>Tải ảnh lên để xử lý</small></div></div></div>
+      <div class="aiv-section"><div class="aiv-section-head"><h3>Chuyển đến</h3></div><div class="aiv-row"><span class="aiv-mini">Báo giá đã lưu →</span><span class="aiv-mini">Công cụ KNM →</span><span class="aiv-mini">Hồ sơ →</span></div></div>
+    </div></div>
+  </section>
+  <section data-variant="Giới thiệu sản phẩm" aria-label="Giới thiệu sản phẩm" class="aiv-stage aiv-story" hidden>
+    <div class="aiv-top"><div class="aiv-brand">AISEO <span>Tools</span></div><div class="aiv-nav"><span>Công cụ</span><span>Cách sử dụng</span><span>Liên hệ</span></div><div class="aiv-account"><span class="aiv-avatar">Q</span><span>Tài khoản</span></div></div>
+    <div class="aiv-hero"><div><div class="aiv-eyebrow">CÔNG CỤ CHO CÔNG VIỆC HẰNG NGÀY</div><h2>Tạo báo giá và xử lý ảnh nhanh hơn.</h2><p>Từ báo giá đến link ảnh sản phẩm, mọi công cụ nằm trong cùng một nơi, dễ tìm và dễ bắt đầu.</p><span class="aiv-action">Khám phá công cụ →</span></div><div class="aiv-preview"><div class="aiv-preview-header"><span>Xem trước báo giá</span><span>KNM</span></div><div class="aiv-document"><b>BÁO GIÁ</b><div class="aiv-line mid"></div><div class="aiv-line short"></div><div class="aiv-line"></div><div class="aiv-line mid"></div><div class="aiv-line short"></div></div></div></div>
+    <div class="aiv-body"><div class="aiv-section-head"><h3>Chọn công việc cần làm</h3></div><div class="aiv-grid"><div class="aiv-tile"><span class="aiv-icon">▤</span><b>Tạo báo giá</b><small>Minh Triết và KNM</small></div><div class="aiv-tile"><span class="aiv-icon">◫</span><b>Quản lý ảnh</b><small>Link sản phẩm và watermark</small></div><div class="aiv-tile"><span class="aiv-icon">▦</span><b>Tiện ích khác</b><small>Game và hồ sơ cá nhân</small></div></div></div>
+  </section>
+</div>
+<script>
+(() => {
+  if (!globalThis.Tweak) return;
+  document.querySelectorAll('#aiseo-home-directions > section').forEach((section) => {
+    const style = getComputedStyle(section);
+    const state = { accent: style.getPropertyValue('--aiv-accent').trim(), radius: parseInt(style.getPropertyValue('--aiv-radius'), 10) };
+    const render = () => { section.style.setProperty('--aiv-accent', state.accent); section.style.setProperty('--aiv-radius', `${state.radius}px`); };
+    const tweak = new Tweak({ container: section, onChange: render });
+    tweak.addColorPicker(state, 'accent', { label: 'Màu nhấn', reference: '--aiv-accent' });
+    tweak.addSlider(state, 'radius', { label: 'Độ bo góc', min: 4, max: 24, unit: 'px', reference: '--aiv-radius' });
+  });
+})();
+</script>
