@@ -7,7 +7,7 @@ import {
   adminListProductLinkAccess,
   adminSetProductLinkAccess,
 } from '../../services/productLinkService.js';
-import AdminConfirmDialog from './AdminConfirmDialog.jsx';
+import ConfirmDialog from '../../components/dialog/ConfirmDialog.jsx';
 import AdminUserAvatar from './AdminUserAvatar.jsx';
 import { Pagination, SortHeader } from './AdminTableParts.jsx';
 import { formatDateTime, formatNumber, formatRelative } from './adminUtils.js';
@@ -357,7 +357,7 @@ export default function ProductLinkAccessTab({ initialFilters, onChanged }) {
       <Pagination page={page} pageSize={PAGE_SIZE} totalCount={table.totalCount} disabled={table.loading} onPageChange={setPage} />
 
       {pending && (
-        <AdminConfirmDialog
+        <ConfirmDialog
           title={copy.title}
           message={copy.message}
           confirmLabel={copy.confirmLabel}

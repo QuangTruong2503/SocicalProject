@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { FaTriangleExclamation } from 'react-icons/fa6';
-import AdminDialog from './AdminDialog.jsx';
+import Dialog from '../../components/dialog/Dialog.jsx';
 import {
   MAX_CREDITS,
   PLAN_SUGGESTIONS,
@@ -97,7 +97,7 @@ export default function AdminUserEditModal({ profile, onSave, onCancel, saving }
     const isSuspension = pendingChanges.status === 'suspended';
 
     return (
-      <AdminDialog title="Xác nhận thay đổi quan trọng" onClose={() => setPendingChanges(null)} busy={saving}>
+      <Dialog title="Xác nhận thay đổi quan trọng" onClose={() => setPendingChanges(null)} busy={saving}>
         <div className={us.warningBox}>
           <FaTriangleExclamation aria-hidden="true" />
           <div>
@@ -119,12 +119,12 @@ export default function AdminUserEditModal({ profile, onSave, onCancel, saving }
             {saving ? 'Đang lưu...' : 'Xác nhận'}
           </button>
         </div>
-      </AdminDialog>
+      </Dialog>
     );
   }
 
   return (
-    <AdminDialog title={`Chỉnh sửa: ${name}`} onClose={onCancel} busy={saving}>
+    <Dialog title={`Chỉnh sửa: ${name}`} onClose={onCancel} busy={saving}>
       <form onSubmit={submit} noValidate>
         <div className={us.formGrid}>
           <label className={styles.modalField}>
@@ -193,7 +193,7 @@ export default function AdminUserEditModal({ profile, onSave, onCancel, saving }
           </button>
         </div>
       </form>
-    </AdminDialog>
+    </Dialog>
   );
 }
 

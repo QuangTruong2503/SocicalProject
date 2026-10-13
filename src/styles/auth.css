@@ -2218,7 +2218,8 @@ body.auth-modal-open {
 }
 
 .dashboard-upload-meta span,
-.dashboard-info-item span {
+.dashboard-info-item span,
+.dashboard-info-item dt {
   display: block;
   margin-bottom: 6px;
   color: #64748b;
@@ -2229,12 +2230,15 @@ body.auth-modal-open {
 }
 
 [data-theme="dark"] .dashboard-upload-meta span,
-[data-theme="dark"] .dashboard-info-item span {
+[data-theme="dark"] .dashboard-info-item span,
+[data-theme="dark"] .dashboard-info-item dt {
   color: rgba(226, 232, 240, 0.52);
 }
 
 .dashboard-upload-meta strong,
-.dashboard-info-item strong {
+.dashboard-info-item strong,
+.dashboard-info-item dd {
+  margin: 0;
   display: block;
   color: #0f172a;
   line-height: 1.6;
@@ -2242,11 +2246,13 @@ body.auth-modal-open {
 }
 
 [data-theme="dark"] .dashboard-upload-meta strong,
-[data-theme="dark"] .dashboard-info-item strong {
+[data-theme="dark"] .dashboard-info-item strong,
+[data-theme="dark"] .dashboard-info-item dd {
   color: #f8fbff;
 }
 
 .dashboard-info-list {
+  margin: 0;
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 12px;
@@ -2256,12 +2262,14 @@ body.auth-modal-open {
   padding: 14px;
 }
 
-.dashboard-info-item span {
+.dashboard-info-item span,
+.dashboard-info-item dt {
   font-weight: 700;
   color: #94a3b8;
 }
 
-.dashboard-info-item strong {
+.dashboard-info-item strong,
+.dashboard-info-item dd {
   margin-top: 2px;
   font-size: 0.94rem;
 }

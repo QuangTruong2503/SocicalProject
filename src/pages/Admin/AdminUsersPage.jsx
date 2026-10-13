@@ -10,7 +10,7 @@ import {
   adminUpdateProfile,
   getAdminProfileStats,
 } from '../../services/profileService.js';
-import AdminConfirmDialog from './AdminConfirmDialog.jsx';
+import ConfirmDialog from '../../components/dialog/ConfirmDialog.jsx';
 import AdminUserAvatar from './AdminUserAvatar.jsx';
 import AdminUserDrawer from './AdminUserDrawer.jsx';
 import AdminUserEditModal from './AdminUserEditModal.jsx';
@@ -592,7 +592,7 @@ export default function AdminUsersPage() {
       )}
 
       {confirm && (
-        <AdminConfirmDialog
+        <ConfirmDialog
           title={confirmCopy.title}
           message={confirmCopy.message}
           confirmLabel={confirmCopy.confirmLabel}

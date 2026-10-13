@@ -1,0 +1,98 @@
+/* Shared modal / drawer chrome. Uses the app theme tokens (src/styles/App.css). */
+
+.backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  overflow: auto;
+  padding: 30px 16px;
+  background: rgba(15, 23, 42, 0.8);
+}
+
+.panel {
+  width: 100%;
+  max-width: 460px;
+  margin: auto;
+  box-sizing: border-box;
+  padding: 22px 24px;
+  border-radius: 14px;
+  background: var(--color-surface);
+  color: var(--color-text);
+  box-shadow: var(--shadow-lg);
+}
+
+.panelWide { max-width: 920px; }
+
+.drawerBackdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  justify-content: flex-end;
+  background: rgba(15, 23, 42, 0.55);
+}
+
+.drawer {
+  width: min(500px, 100%);
+  height: 100%;
+  box-sizing: border-box;
+  overflow-y: auto;
+  padding: 22px 24px 28px;
+  background: var(--color-surface);
+  color: var(--color-text);
+  box-shadow: var(--shadow-lg);
+  animation: drawerIn 0.18s ease-out;
+}
+
+.head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.head h3 { margin: 0; font-size: 18px; line-height: 1.35; overflow-wrap: anywhere; }
+
+.close {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+}
+
+.close:hover:not(:disabled) { background: var(--color-nav-hover); color: var(--color-text); }
+.close:disabled { opacity: 0.4; cursor: not-allowed; }
+
+.message { margin: 0 0 18px; line-height: 1.55; color: var(--color-text-secondary); }
+
+.actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 10px; }
+
+.button {
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  padding: 9px 16px;
+  background: var(--color-surface);
+  color: var(--color-text);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.button:disabled { opacity: 0.6; cursor: not-allowed; }
+.primary { background: #166534; border-color: #166534; color: #fff; }
+.danger { background: #b91c1c; border-color: #b91c1c; color: #fff; }
+
+@keyframes drawerIn { from { transform: translateX(24px); opacity: 0; } to { transform: none; opacity: 1; } }
+
+@media (prefers-reduced-motion: reduce) {
+  .drawer { animation: none; }
+}

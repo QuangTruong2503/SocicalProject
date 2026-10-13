@@ -135,38 +135,34 @@ export async function uploadImage({ userId, file }) {
 }
 
 /**
+ * One page of the user's uploads, newest first, plus the total count.
  * @param {string} userId
- * @returns {Promise<import('./serviceHelpers.js').ServiceResult<UserUpload[]>>}
+ * @param {{ limit?: number, offset?: number }} [options]
+ * @returns {Promise<import('./serviceHelpers.js').ServiceResult<{ rows: UserUpload[], total: number }>>}
  */
-export async function fetchCurrentUserUploads(userId) {
+export async function fetchUserUploadsPage(userId, { limit = 24, offset = 0 } = {}) {
   try {
     if (!userId) {
-      return createServiceResult(null, 'A signed-in user is required to fetch uploads.');
+      return createServiceResult(null, 'Cần đăng nhập để xem ảnh đã tải lên.');
     }
 
-    console.debug('[uploadService] fetchCurrentUserUploads start', { userId });
-
-    const { data, error } = await supabase
+    const { data, error, count } = await supabase
       .from('user_uploads')
-      .select(uploadColumns)
+      .select(uploadColumns, { count: 'exact' })
       .eq('user_id', userId)
-      .order('created_at', { ascending: false });
+      .order('created_at', { ascending: false })
+      .order('id', { ascending: false })
+      .range(offset, offset + limit - 1);
 
     if (error) {
-      console.error('[uploadService] fetchCurrentUserUploads failed', error);
-      return createServiceResult(null, normalizeServiceError(error, 'Unable to fetch user uploads.'));
+      console.error('[uploadService] fetchUserUploadsPage failed', error);
+      return createServiceResult(null, normalizeServiceError(error, 'Không thể tải danh sách ảnh.'));
     }
 
-    console.debug('[uploadService] fetchCurrentUserUploads success', {
-      userId,
-      count: data?.length ?? 0,
-    });
-
-    return createServiceResult(data ?? []);
+    return createServiceResult({ rows: data ?? [], total: count ?? (data?.length ?? 0) });
   } catch (error) {
-    const message = normalizeServiceError(error, 'Unable to fetch user uploads.');
-    console.error('[uploadService] fetchCurrentUserUploads exception', error);
-    return createServiceResult(null, message);
+    console.error('[uploadService] fetchUserUploadsPage exception', error);
+    return createServiceResult(null, normalizeServiceError(error, 'Không thể tải danh sách ảnh.'));
   }
 }
 
@@ -209,51 +205,16 @@ export async function fetchLatestUserUpload(userId) {
 }
 
 /**
+ * Deletes the row first, then the storage object. If the file cannot be removed
+ * the result carries a warning; the reverse order would leave a row pointing to
+ * a missing file whenever the row delete failed.
  * @param {{ uploadId: number, userId: string, imageUrl?: string | null }} payload
  * @returns {Promise<import('./serviceHelpers.js').ServiceResult<UserUpload>>}
  */
 export async function deleteUpload({ uploadId, userId, imageUrl = null }) {
   try {
     if (!uploadId || !userId) {
-      return createServiceResult(null, 'Both uploadId and userId are required to delete an upload.');
-    }
-
-    console.debug('[uploadService] deleteUpload start', { uploadId, userId });
-
-    let targetImageUrl = imageUrl;
-
-    if (!targetImageUrl) {
-      const lookupResult = await supabase
-        .from('user_uploads')
-        .select(uploadColumns)
-        .eq('id', uploadId)
-        .eq('user_id', userId)
-        .maybeSingle();
-
-      if (lookupResult.error) {
-        console.error('[uploadService] deleteUpload lookup failed', lookupResult.error);
-        return createServiceResult(null, normalizeServiceError(lookupResult.error, 'Unable to find the upload to delete.'));
-      }
-
-      targetImageUrl = lookupResult.data?.image_url ?? null;
-    }
-
-    let warning = null;
-    const storagePath = targetImageUrl ? extractStoragePath(targetImageUrl) : null;
-
-    if (storagePath) {
-      const { error: storageError } = await supabase.storage
-        .from(supabaseConfig.uploadBucket)
-        .remove([storagePath]);
-
-      if (storageError) {
-        warning = normalizeServiceError(storageError, 'The database row was deleted, but the storage object could not be removed.');
-        console.warn('[uploadService] deleteUpload storage cleanup warning', {
-          uploadId,
-          storagePath,
-          warning,
-        });
-      }
+      return createServiceResult(null, 'Thiếu thông tin ảnh cần xóa.');
     }
 
     const { data, error } = await supabase
@@ -266,14 +227,27 @@ export async function deleteUpload({ uploadId, userId, imageUrl = null }) {
 
     if (error) {
       console.error('[uploadService] deleteUpload failed', error);
-      return createServiceResult(null, normalizeServiceError(error, 'Unable to delete the upload.'));
+      return createServiceResult(null, normalizeServiceError(error, 'Không thể xóa ảnh.'));
     }
 
-    console.debug('[uploadService] deleteUpload success', { uploadId, userId });
+    let warning = null;
+    const targetImageUrl = data?.image_url || imageUrl;
+    const storagePath = targetImageUrl ? extractStoragePath(targetImageUrl) : null;
+
+    if (storagePath) {
+      const { error: storageError } = await supabase.storage
+        .from(supabaseConfig.uploadBucket)
+        .remove([storagePath]);
+
+      if (storageError) {
+        warning = 'Ảnh đã được xóa khỏi danh sách nhưng file gốc chưa xóa được khỏi kho lưu trữ.';
+        console.warn('[uploadService] deleteUpload storage cleanup warning', { uploadId, storagePath, storageError });
+      }
+    }
+
     return createServiceResult(data, null, warning);
   } catch (error) {
-    const message = normalizeServiceError(error, 'Unable to delete the upload.');
     console.error('[uploadService] deleteUpload exception', error);
-    return createServiceResult(null, message);
+    return createServiceResult(null, normalizeServiceError(error, 'Không thể xóa ảnh.'));
   }
 }

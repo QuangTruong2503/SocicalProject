@@ -156,7 +156,6 @@
 [data-theme="dark"] .warningBox svg { color: #fbbf24; }
 .warningBox p { margin: 0; }
 
-.confirmMessage { margin: 0 0 18px; line-height: 1.55; color: var(--color-text-secondary); }
 
 /* ── Detail drawer ── */
 .drawerIdentity { display: flex; align-items: center; gap: 14px; margin-bottom: 14px; }

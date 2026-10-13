@@ -6,7 +6,7 @@ import {
   listAdminAuditLog,
 } from '../../services/profileService.js';
 import { ACCESS_LEVEL_OPTIONS } from '../../services/productLinkService.js';
-import AdminDialog from './AdminDialog.jsx';
+import Dialog from '../../components/dialog/Dialog.jsx';
 import UserAvatar from './AdminUserAvatar.jsx';
 import { CopyButton } from './AdminTableParts.jsx';
 import { formatDateTime, formatNumber, formatRelative } from './adminUtils.js';
@@ -76,7 +76,7 @@ export default function AdminUserDrawer({ summary, isSelf, onClose, onEdit, onTo
   const location = [profile.city, profile.country].filter(Boolean).join(', ');
 
   return (
-    <AdminDialog title="Chi tiết người dùng" onClose={onClose} variant="drawer">
+    <Dialog title="Chi tiết người dùng" onClose={onClose} variant="drawer">
       <div className={us.drawerIdentity}>
         <UserAvatar profile={profile} size="large" />
         <div>
@@ -194,6 +194,6 @@ export default function AdminUserDrawer({ summary, isSelf, onClose, onEdit, onTo
           </ol>
         )}
       </section>
-    </AdminDialog>
+    </Dialog>
   );
 }

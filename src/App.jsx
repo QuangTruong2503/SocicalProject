@@ -15,7 +15,7 @@ import ScrollToTopButton from './components/ScrollToTopButton.jsx';
 const MemoryGame = lazy(() => import('./pages/MemoryGame.jsx'));
 const AuthPage = lazy(() => import('./pages/AuthPage.jsx'));
 const AuthCallbackPage = lazy(() => import('./pages/AuthCallbackPage.jsx'));
-const DashboardPage = lazy(() => import('./pages/DashboardPage.jsx'));
+const DashboardPage = lazy(() => import('./pages/Dashboard/DashboardPage.jsx'));
 import ProtectedRoute from './components/ProtectedRoute.jsx';
 import AdminRoute from './components/AdminRoute.jsx';
 import PublicRoute from './components/PublicRoute.jsx';

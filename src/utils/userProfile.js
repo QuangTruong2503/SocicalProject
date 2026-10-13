@@ -29,6 +29,19 @@ export function getUserDisplayName(user, profile) {
   return 'User';
 }
 
+/**
+ * Where getUserAvatarUrl() takes the picture from, in the same priority order.
+ * @returns {'upload' | 'profile' | 'provider' | 'none'}
+ */
+export function getUserAvatarSource(user, profile, latestUpload = null) {
+  if (cleanString(latestUpload?.image_url)) return 'upload';
+  if (cleanString(profile?.avatar_url)) return 'profile';
+  if (cleanString(user?.user_metadata?.avatar_url)
+    || cleanString(user?.user_metadata?.picture)
+    || cleanString(user?.user_metadata?.avatar)) return 'provider';
+  return 'none';
+}
+
 export function getUserAvatarUrl(user, profile, latestUpload = null) {
   return cleanString(latestUpload?.image_url)
     || cleanString(profile?.avatar_url)

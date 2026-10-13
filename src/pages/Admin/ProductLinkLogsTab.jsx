@@ -9,7 +9,7 @@ import {
   subscribeProductLinkLogs,
 } from '../../services/productLinkService.js';
 import { LOG_ACTION_OPTIONS, LOG_ACTION_TONE, describeProductLinkLog } from '../../utils/productLinkLog.js';
-import AdminConfirmDialog from './AdminConfirmDialog.jsx';
+import ConfirmDialog from '../../components/dialog/ConfirmDialog.jsx';
 import { downloadCsv, formatDateTime, formatNumber, formatRelative } from './adminUtils.js';
 import styles from './Admin.module.css';
 import pl from './AdminProductLinks.module.css';
@@ -317,7 +317,7 @@ export default function ProductLinkLogsTab({ retentionDays, onChanged }) {
       )}
 
       {confirmPurge && (
-        <AdminConfirmDialog
+        <ConfirmDialog
           title="Dọn log copy cũ?"
           message={`Xóa vĩnh viễn các lượt copy link cũ hơn ${retentionDays} ngày. Các hoạt động khác (đánh dấu, sửa, nhập, phân quyền) được giữ nguyên.`}
           confirmLabel="Xóa log cũ"
