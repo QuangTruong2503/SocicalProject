@@ -15,28 +15,22 @@ const MEMORY_CARDS_STORAGE_PREFIX = 'memory-cards';
  * @param {Array<{ id?: number, image?: string, created_at?: string | null, name?: string | null, title?: string | null }>} cards
  * @returns {MemoryCard[]}
  */
-export function normalizeMemoryCards(cards) {
-  return (cards ?? [])
-    .filter((card) => card?.image)
-    .map((card, index) => ({
-      id: Number(card.id ?? index + 1),
-      image: card.image,
-      name: card.name ?? card.title ?? `memory-card-${card.id ?? index + 1}`,
-      created_at: card.created_at ?? null,
-    }));
-}
+export { normalizeMemoryCards } from '../utils/memoryCardSources.js';
+import { normalizeMemoryCards } from '../utils/memoryCardSources.js';
 
 /**
  * @returns {Promise<import('./serviceHelpers.js').ServiceResult<MemoryCard[]>>}
  */
-export async function fetchPublicMemoryCards() {
+export async function fetchPublicMemoryCards(signal) {
   try {
     console.debug('[memoryCardService] fetchPublicMemoryCards start');
 
     const { data, error } = await supabase
       .from('memory_cards')
       .select('id, image, created_at')
-      .order('created_at', { ascending: true });
+      .order('created_at', { ascending: true })
+      .limit(64)
+      .abortSignal(signal ?? new AbortController().signal);
 
     if (error) {
       console.error('[memoryCardService] fetchPublicMemoryCards failed', error);

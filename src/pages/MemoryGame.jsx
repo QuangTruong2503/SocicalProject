@@ -1,431 +1,421 @@
-import { memo, useCallback, useEffect, useRef, useState } from 'react';
-import '../styles/MemoryGame.css';
+import { memo, useCallback, useEffect, useReducer, useRef, useState } from 'react';
 import { Helmet } from 'react-helmet-async';
-import fallbackCards from '../data/cards.json';
+import { FiPause, FiPlay, FiRefreshCw, FiRotateCcw, FiVolume2, FiVolumeX } from 'react-icons/fi';
+import { useAuth } from '../hooks/useAuth.js';
+import { useMemoryAccount } from '../hooks/useMemoryAccount.js';
+import { useMemorySound } from '../hooks/useMemorySound.js';
+import { fetchPublicMemoryCards } from '../services/memoryCardService.js';
+import { loadMemoryLeaderboard, revealDailyMemory, startDailyMemory } from '../services/memoryGameService.js';
+import { prepareMemoryImages } from '../utils/memoryCardSources.js';
 import {
-  fetchPublicMemoryCards,
-  normalizeMemoryCards,
-} from '../services/memoryCardService.js';
+  CARD_THEMES, PAIR_COUNTS, createGame, dailyGameFromServer, formatDuration,
+  gameReducer, gameSnapshot, matchedPairs, modelReducer, scoreKey, vietnamDay,
+} from '../utils/memoryGame.js';
+import { readMemoryDocument, writeMemoryDocument } from '../utils/memoryGameStorage.js';
+import fallbackCards from '../data/cards.json';
+import '../styles/MemoryGame.css';
 
-const shuffleArray = (array) => {
-  const shuffled = [...array];
-  for (let i = shuffled.length - 1; i > 0; i -= 1) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
-  }
-  return shuffled;
+const LEVEL_NAMES = { 4: 'Dễ', 6: 'Vừa', 8: 'Khó' };
+const SYNC_LABELS = {
+  loading: 'Đang kết nối tài khoản…', saving: 'Đang đồng bộ…', synced: 'Đã đồng bộ với tài khoản',
+  offline: 'Đã giữ trên thiết bị · chờ kết nối', unavailable: 'Đang lưu trên thiết bị',
+  conflict: 'Có tiến trình khác trên tài khoản',
 };
-
-const createGameCards = (sourceCards) => {
-  const shuffled = shuffleArray(sourceCards);
-  const selected = shuffled.slice(0, Math.min(4, shuffled.length));
-
-  return shuffleArray(
-    [...selected, ...selected].map((card) => ({
-      ...card,
-      uniqueId: crypto.randomUUID(),
-      matched: false,
-    })),
-  );
-};
+const themeName = (theme) => CARD_THEMES[theme]?.name ?? 'Bộ ảnh';
+const displayDate = (value) => new Intl.DateTimeFormat('vi-VN', {
+  timeZone: 'Asia/Ho_Chi_Minh', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit',
+}).format(new Date(value));
 
 export default function MemoryGame() {
-  const [cards, setCards] = useState([]);
-  const [cardPool, setCardPool] = useState([]);
-  const [firstCard, setFirstCard] = useState(null);
-  const [secondCard, setSecondCard] = useState(null);
-  const [disabled, setDisabled] = useState(false);
-  const [turns, setTurns] = useState(0);
-  const [matches, setMatches] = useState(0);
-  const [won, setWon] = useState(false);
-  const [dataSource, setDataSource] = useState('supabase');
-  const [bestScore, setBestScore] = useState(() => {
-    const saved = localStorage.getItem('memoryGameBestScore');
-    return saved ? parseInt(saved, 10) : null;
-  });
-  const [loading, setLoading] = useState(true);
-  const [loadError, setLoadError] = useState('');
-  const audioContextRef = useRef(null);
-  const resetTimerRef = useRef(null);
+  const { user } = useAuth();
+  if (!user?.id) return null;
+  return <MemoryGamePlayer key={user.id} userId={user.id} />;
+}
+
+function MemoryGamePlayer({ userId }) {
+  const [model, dispatch] = useReducer(modelReducer, userId, (id) => ({
+    game: createGame(), document: readMemoryDocument(id), newRecord: false,
+  }));
+  const { game, document: saved, newRecord } = model;
+  const account = useMemoryAccount(userId, saved, dispatch);
+  const [photos, setPhotos] = useState([]);
+  const [photoStatus, setPhotoStatus] = useState('loading');
+  const [now, setNow] = useState(Date.now);
+  const [dialog, setDialog] = useState(null);
+  const [dismissedWin, setDismissedWin] = useState(null);
+  const [busy, setBusy] = useState(false);
+  const [dailyError, setDailyError] = useState('');
+  const [dailyNotice, setDailyNotice] = useState('');
+  const [ranking, setRanking] = useState([]);
+  const [rankingStatus, setRankingStatus] = useState('loading');
+  const [rankingRequest, refreshRanking] = useReducer((n) => n + 1, 0);
+  const networkBusy = useRef(false);
+  const requests = useRef(new Set());
+  const boardRef = useRef(null);
+  const mounted = useRef(false);
+  const day = vietnamDay(new Date(now));
+  useMemorySound(saved.sound, game.event, game.id);
 
   useEffect(() => {
-    let isMounted = true;
-
-    async function loadCards() {
-      setLoading(true);
-      setLoadError('');
-
-      const localCards = normalizeMemoryCards(fallbackCards);
-
-      if (localCards.length > 0) {
-        setCardPool(localCards);
-        setCards(createGameCards(localCards));
-        setDataSource('fallback');
-        setLoading(false);
-      }
-
-      const result = await fetchPublicMemoryCards();
-
-      if (!isMounted) {
-        return;
-      }
-
-      if (result.error) {
-        console.error('[MemoryGame] fetchPublicMemoryCards failed', result.error);
-
-        if (localCards.length === 0) {
-          setLoadError(result.error);
-          setCardPool([]);
-          setCards([]);
-          setLoading(false);
-        }
-
-        return;
-      }
-
-      const remoteCards = result.data ?? [];
-
-      if (remoteCards.length === 0) {
-        if (localCards.length === 0) {
-          setLoadError('Khong co anh nao de tai.');
-          setCardPool([]);
-          setCards([]);
-          setLoading(false);
-        }
-
-        return;
-      }
-
-      setCardPool(remoteCards);
-      setCards(createGameCards(remoteCards));
-      setDataSource('supabase');
-      setLoading(false);
-    }
-
-    loadCards();
-
+    mounted.current = true;
+    const activeRequests = requests.current;
     return () => {
-      isMounted = false;
+      mounted.current = false;
+      activeRequests.forEach((controller) => controller.abort());
+      activeRequests.clear();
     };
   }, []);
 
   useEffect(() => {
-    cards.forEach((card) => {
-      const image = new Image();
-      image.src = card.image;
-    });
-  }, [cards]);
-
-  useEffect(() => () => {
-    if (resetTimerRef.current) {
-      window.clearTimeout(resetTimerRef.current);
+    const controller = new AbortController();
+    const timeout = window.setTimeout(() => controller.abort(), 20000);
+    async function load() {
+      const remote = await fetchPublicMemoryCards(controller.signal);
+      if (controller.signal.aborted) return;
+      const checked = await prepareMemoryImages(remote.error ? fallbackCards : remote.data, { signal: controller.signal });
+      if (controller.signal.aborted) return;
+      // Update the next-game catalog only. A running board is never regenerated.
+      setPhotos(checked.length >= 4 ? checked : []);
+      setPhotoStatus(checked.length >= 4 ? 'ready' : 'unavailable');
+      window.clearTimeout(timeout);
     }
-
-    audioContextRef.current?.close?.();
+    controller.signal.addEventListener('abort', () => {
+      if (mounted.current) setPhotoStatus('unavailable');
+    }, { once: true });
+    load();
+    return () => { window.clearTimeout(timeout); controller.abort(); };
   }, []);
 
-  const playSound = useCallback((type) => {
-    const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+  useEffect(() => {
+    const interval = window.setInterval(() => {
+      const time = Date.now();
+      setNow(time);
+      dispatch({ type: 'tick', now: time });
+    }, 1000);
+    return () => window.clearInterval(interval);
+  }, []);
 
-    if (!AudioContextClass) return;
+  useEffect(() => {
+    if (!game.lockUntil) return;
+    const timer = window.setTimeout(() => dispatch({ type: 'clear', gameId: game.id, now: Date.now() }), Math.max(0, game.lockUntil - Date.now()) + 10);
+    return () => window.clearTimeout(timer);
+  }, [game.id, game.lockUntil]);
 
-    if (!audioContextRef.current) {
-      audioContextRef.current = new AudioContextClass();
+  useEffect(() => {
+    if (game.status === 'paused' && !dialog && !globalThis.document.hidden) {
+      boardRef.current?.querySelector('.mg-pause-panel button')?.focus();
     }
+  }, [game.status, dialog]);
 
-    const audioContext = audioContextRef.current;
+  useEffect(() => {
+    const pauseWhenHidden = () => {
+      if (game.verified) return;
+      if (globalThis.document.hidden) dispatch({ type: 'pause', now: Date.now() });
+      else if (game.status === 'paused') boardRef.current?.querySelector('.mg-pause-panel button')?.focus();
+    };
+    const saveOnExit = () => {
+      if (game.verified) return;
+      const paused = gameReducer(game, { type: 'pause', now: Date.now() });
+      writeMemoryDocument(userId, { ...saved, active: game.status === 'ready' ? saved.active : gameSnapshot(paused), updatedAt: Date.now() });
+    };
+    globalThis.document.addEventListener('visibilitychange', pauseWhenHidden);
+    window.addEventListener('pagehide', saveOnExit);
+    return () => {
+      globalThis.document.removeEventListener('visibilitychange', pauseWhenHidden);
+      window.removeEventListener('pagehide', saveOnExit);
+    };
+  }, [game, saved, userId]);
 
-    if (audioContext.state === 'suspended') {
-      audioContext.resume();
+  const rankedWin = game.verified && game.status === 'won' ? game.id : null;
+  useEffect(() => {
+    const controller = new AbortController();
+    async function load() {
+      const result = await loadMemoryLeaderboard(day, controller.signal);
+      if (controller.signal.aborted) return;
+      if (result.error) setRankingStatus(result.unavailable ? 'unavailable' : 'offline');
+      else { setRanking(result.data ?? []); setRankingStatus('ready'); }
     }
+    load();
+    return () => controller.abort();
+  }, [day, rankedWin, rankingRequest]);
 
-    const oscillator = audioContext.createOscillator();
-    const gainNode = audioContext.createGain();
-
-    oscillator.connect(gainNode);
-    gainNode.connect(audioContext.destination);
-
-    if (type === 'match') {
-      oscillator.frequency.value = 800;
-      gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
-      gainNode.gain.exponentialRampToValueAtTime(
-        0.01,
-        audioContext.currentTime + 0.2,
-      );
-      oscillator.start(audioContext.currentTime);
-      oscillator.stop(audioContext.currentTime + 0.2);
-    } else if (type === 'mismatch') {
-      oscillator.frequency.value = 300;
-      gainNode.gain.setValueAtTime(0.2, audioContext.currentTime);
-      gainNode.gain.exponentialRampToValueAtTime(
-        0.01,
-        audioContext.currentTime + 0.15,
-      );
-      oscillator.start(audioContext.currentTime);
-      oscillator.stop(audioContext.currentTime + 0.15);
-    } else if (type === 'win') {
-      const notes = [523.25, 659.25, 783.99];
-      notes.forEach((freq, idx) => {
-        const osc = audioContext.createOscillator();
-        const gain = audioContext.createGain();
-        osc.connect(gain);
-        gain.connect(audioContext.destination);
-        osc.frequency.value = freq;
-        gain.gain.setValueAtTime(0.2, audioContext.currentTime + idx * 0.15);
-        gain.gain.exponentialRampToValueAtTime(
-          0.01,
-          audioContext.currentTime + idx * 0.15 + 0.3,
-        );
-        osc.start(audioContext.currentTime + idx * 0.15);
-        osc.stop(audioContext.currentTime + idx * 0.15 + 0.3);
-      });
+  const runRequest = useCallback(async (operation) => {
+    if (networkBusy.current) return null;
+    networkBusy.current = true;
+    setBusy(true);
+    const controller = new AbortController();
+    requests.current.add(controller);
+    try { return await operation(controller.signal); }
+    finally {
+      requests.current.delete(controller);
+      networkBusy.current = false;
+      if (mounted.current) setBusy(false);
     }
   }, []);
 
-  const resetTurn = useCallback(() => {
-    setFirstCard(null);
-    setSecondCard(null);
-    setDisabled(false);
-  }, []);
-
-  const startGame = useCallback(() => {
-    if (resetTimerRef.current) {
-      window.clearTimeout(resetTimerRef.current);
-    }
-
-    if (cardPool.length === 0) {
-      setCards([]);
-      return;
-    }
-
-    const newCards = createGameCards(cardPool);
-    setCards(newCards);
-    setFirstCard(null);
-    setSecondCard(null);
-    setDisabled(false);
-    setTurns(0);
-    setMatches(0);
-    setWon(false);
-  }, [cardPool]);
-
-  const resolveSecondChoice = useCallback((card) => {
-    setDisabled(true);
-    const newTurns = turns + 1;
-    setTurns(newTurns);
-    setSecondCard(card);
-
-    if (firstCard.id === card.id) {
-      playSound('match');
-      const nextMatches = matches + 1;
-      const isWinningMove = nextMatches === cards.length / 2;
-
-      setCards((prev) => prev.map((item) => (
-        item.id === firstCard.id ? { ...item, matched: true } : item
-      )));
-      setMatches(nextMatches);
-
-      if (isWinningMove) {
-        setWon(true);
-        playSound('win');
-
-        if (bestScore === null || newTurns < bestScore) {
-          setBestScore(newTurns);
-          localStorage.setItem('memoryGameBestScore', String(newTurns));
-        }
+  const startDaily = useCallback(async () => {
+    setDailyError('');
+    const result = await runRequest((signal) => startDailyMemory(signal));
+    if (!mounted.current || !result) return;
+    if (result.error) {
+      if (game.verified) {
+        setDailyError('Chưa tải lại được thử thách. Ván xếp hạng vẫn được giữ trên tài khoản; hãy thử lại khi có mạng.');
+        return;
       }
-
-      resetTurn();
+      dispatch({ type: 'new', game: createGame({ mode: 'daily', pairCount: 6, day: vietnamDay() }), now: Date.now() });
+      setDailyNotice('Bạn đang chơi thử thách ở chế độ luyện tập. Kết quả được lưu riêng và không lên bảng xếp hạng.');
     } else {
-      playSound('mismatch');
-      resetTimerRef.current = window.setTimeout(resetTurn, 720);
+      dispatch({ type: 'server', game: dailyGameFromServer(result.data), now: Date.now() });
+      setDailyNotice('Mỗi tài khoản có một lượt thử thách xếp hạng mỗi ngày. Thời gian tính liên tục từ thẻ đầu tiên, kể cả khi rời trang.');
     }
-  }, [bestScore, cards.length, firstCard, matches, playSound, resetTurn, turns]);
+    setDismissedWin(null);
+  }, [runRequest, game.verified]);
 
-  const handleChoice = useCallback((card) => {
-    if (
-      disabled ||
-      card.matched ||
-      firstCard?.uniqueId === card.uniqueId ||
-      (firstCard && secondCard)
-    ) {
-      return;
-    }
+  const chooseCard = useCallback(async (index) => {
+    if (networkBusy.current || game.status === 'paused' || game.status === 'won' || game.second !== null
+      || game.cards[index]?.matched || index === game.first) return;
+    if (!game.verified) { dispatch({ type: 'choose', index, now: Date.now() }); return; }
+    setDailyError('');
+    const result = await runRequest(async (signal) => {
+      const revealed = await revealDailyMemory(game.id, index, signal);
+      if (!revealed.error) return revealed;
+      // A response may be lost after a committed flip. Reload server state.
+      const reconciled = await startDailyMemory(signal);
+      return reconciled.error ? revealed : reconciled;
+    });
+    if (!mounted.current || !result) return;
+    if (result.error) setDailyError('Chưa nhận được trạng thái mới. Hãy kiểm tra kết nối rồi tải lại ván thử thách.');
+    else dispatch({ type: 'server', game: dailyGameFromServer(result.data), now: Date.now() });
+  }, [game, runRequest]);
 
-    if (firstCard) {
-      resolveSecondChoice(card);
-      return;
-    }
+  const requestChange = (operation, title = 'Bắt đầu ván mới?') => {
+    if (busy) return;
+    if ((game.status !== 'won' && game.status !== 'ready') || (game.status === 'ready' && saved.active)) {
+      const wasPlaying = game.status === 'playing' && !game.verified;
+      if (wasPlaying) dispatch({ type: 'pause', now: Date.now() });
+      setDialog({ operation, title, wasPlaying });
+    } else operation();
+  };
 
-    setFirstCard(card);
-  }, [disabled, firstCard, resolveSecondChoice, secondCard]);
+  const newFreeGame = (theme = game.theme, pairCount = game.pairCount) => {
+    const nextTheme = theme === 'photos' && photos.length < pairCount ? 'animals' : theme;
+    dispatch({ type: 'new', game: createGame({ theme: nextTheme, pairCount, source: nextTheme === 'photos' ? photos : undefined }), now: Date.now() });
+    setDailyNotice('');
+    setDailyError('');
+    setDismissedWin(null);
+    queueMicrotask(() => boardRef.current?.querySelector('button')?.focus());
+  };
 
-  const totalCards = cards.length;
-  const progress = totalCards > 0 ? Math.round((matches / (totalCards / 2)) * 100) : 0;
-  const hasEnoughCards = cardPool.length >= 2;
+  const resumeSaved = () => {
+    const snapshot = saved.active;
+    if (!snapshot) return;
+    dispatch({ type: 'restore', game: snapshot, now: Date.now() });
+    setDailyError('');
+    setDailyNotice(snapshot.mode === 'daily' ? 'Đây là ván thử thách luyện tập được lưu trên thiết bị.' : '');
+    setDismissedWin(null);
+  };
+
+  const closeConfirmation = () => {
+    if (dialog.wasPlaying) dispatch({ type: 'resume', now: Date.now() });
+    setDialog(null);
+  };
+  const resumeGame = () => {
+    dispatch({ type: 'resume', now: Date.now() });
+    queueMicrotask(() => boardRef.current?.querySelector('button:not(:disabled)')?.focus());
+  };
+  const matches = matchedPairs(game);
+  const progress = Math.round(matches / game.pairCount * 100);
+  const elapsed = game.verified && game.status === 'playing'
+    ? game.elapsedMs + Math.max(0, now - game.lastTick) : game.elapsedMs;
+  const best = saved.records[scoreKey(game)];
+  const winOpen = game.status === 'won' && dismissedWin !== game.id && !dialog;
+  const canResume = saved.active && saved.active.id !== game.id;
+  const accuracy = game.turns ? Math.round(matches / game.turns * 100) : 0;
 
   return (
     <>
       <Helmet>
-        <title>Memory Match Game</title>
-        <meta
-          name="description"
-          content="Test your memory skills with this fun matching game!"
-        />
+        <title>Ghép thẻ trí nhớ · Memory Match</title>
+        <meta name="description" content="Ghép các cặp thẻ, chọn độ khó và tham gia thử thách trí nhớ hằng ngày." />
       </Helmet>
-      <div className="memory-game-container">
-        <div className="animated-background"></div>
+      <div className="mg-page">
+        <div className="mg-shell">
+          <header className="mg-header">
+            <div>
+              <span className="mg-eyebrow">Một chút thư giãn, một chút thử thách</span>
+              <h1><span aria-hidden="true">🧠</span> Ghép thẻ trí nhớ</h1>
+              <p id="mg-instructions">Lật hai thẻ để tìm cặp giống nhau. Hoàn thành với ít lượt nhất.</p>
+            </div>
+            <button type="button" className="mg-icon-button" aria-pressed={saved.sound}
+              aria-label={saved.sound ? 'Tắt âm thanh' : 'Bật âm thanh'}
+              onClick={() => dispatch({ type: 'sound', value: !saved.sound, now: Date.now() })}>
+              {saved.sound ? <FiVolume2 aria-hidden="true" /> : <FiVolumeX aria-hidden="true" />}
+            </button>
+          </header>
 
-        <header className="game-header">
-          <div className="header-content">
-            <h1 className="game-title">
-              <span className="emoji">🧠</span>
-              Memory Match
-            </h1>
-            <p className="game-subtitle">Test your memory skills</p>
+          <div className="mg-toolbar">
+            <fieldset className="mg-levels" disabled={busy || game.verified}>
+              <legend>Độ khó</legend>
+              {PAIR_COUNTS.map((count) => (
+                <button type="button" key={count} aria-pressed={game.pairCount === count}
+                  disabled={game.theme === 'photos' && photos.length < count}
+                  onClick={() => requestChange(() => newFreeGame(game.theme, count), 'Đổi độ khó và bắt đầu ván mới?')}>
+                  {LEVEL_NAMES[count]} <span>{count} cặp</span>
+                </button>
+              ))}
+            </fieldset>
+            <label className="mg-theme-label">Chủ đề
+              <select value={game.theme} disabled={busy || game.verified}
+                onChange={(event) => {
+                  const theme = event.target.value;
+                  requestChange(() => newFreeGame(theme, theme === 'photos' ? Math.min(game.pairCount, photos.length >= 8 ? 8 : photos.length >= 6 ? 6 : 4) : game.pairCount), 'Đổi chủ đề và bắt đầu ván mới?');
+                }}>
+                {Object.entries(CARD_THEMES).map(([key, theme]) => <option key={key} value={key}>{theme.icon} {theme.name}</option>)}
+                <option value="photos" disabled={photoStatus !== 'ready'}>{photoStatus === 'loading' ? 'Đang chuẩn bị bộ ảnh…' : photoStatus === 'ready' ? `🖼️ Bộ ảnh (${photos.length} ảnh)` : 'Bộ ảnh chưa sẵn sàng'}</option>
+              </select>
+            </label>
+            <button type="button" className="mg-primary-button" disabled={busy}
+              onClick={() => requestChange(() => newFreeGame())}>
+              <FiRotateCcw aria-hidden="true" /> Ván mới
+            </button>
           </div>
 
-          <div className="stats-container">
-            <div className="stat-card">
-              <span className="stat-label">Luot choi</span>
-              <span className="stat-value">{turns}</span>
+          {canResume && game.status === 'ready' && (
+            <div className="mg-notice mg-resume">
+              <p>Bạn có một ván đang chơi: {themeName(saved.active.theme)}, {saved.active.pairCount} cặp · {saved.active.turns} lượt.</p>
+              <button type="button" className="mg-secondary-button" onClick={resumeSaved}><FiPlay aria-hidden="true" /> Tiếp tục ván đã lưu</button>
             </div>
-            <div className="stat-card">
-              <span className="stat-label">Cap tim duoc</span>
-              <span className="stat-value">{matches}</span>
+          )}
+
+          <section className="mg-stats" aria-label="Thông tin ván chơi">
+            <div><span>Lượt lật</span><strong>{game.turns}</strong></div>
+            <div><span>Cặp đã ghép</span><strong>{matches}<small>/{game.pairCount}</small></strong></div>
+            <div><span>Thời gian</span><strong>{formatDuration(elapsed)}</strong></div>
+            <div><span>Kỷ lục cùng chế độ</span><strong>{best ? best.turns : '—'}<small>{best ? ' lượt' : ''}</small></strong></div>
+          </section>
+
+          <div className="mg-progress-row">
+            <div className="mg-progress" role="progressbar" aria-label="Tiến độ ghép thẻ"
+              aria-valuenow={matches} aria-valuemin={0} aria-valuemax={game.pairCount} aria-valuetext={`${matches}/${game.pairCount} cặp`}>
+              <span style={{ width: `${progress}%` }} />
             </div>
-            {bestScore !== null && (
-              <div className="stat-card best-score">
-                <span className="stat-label">🏆 Tot nhat</span>
-                <span className="stat-value">{bestScore}</span>
-              </div>
+            <span>{progress}%</span>
+            {!game.verified && game.status === 'playing' && (
+              <button type="button" className="mg-text-button" onClick={() => dispatch({ type: 'pause', now: Date.now() })}><FiPause aria-hidden="true" /> Tạm dừng</button>
             )}
           </div>
-        </header>
 
-        {!loading && !won && totalCards > 0 && (
-          <div className="progress-section">
-            <div className="progress-bar-container">
-              <div
-                className="progress-bar"
-                style={{ width: `${progress}%` }}
-              ></div>
+          {game.mode === 'daily' && <div className="mg-notice"><strong>{game.verified ? '🏅 Thử thách xếp hạng' : '🧩 Thử thách luyện tập'} · {game.day}</strong><p>{dailyNotice}</p></div>}
+          {dailyError && <div className="mg-notice mg-error" role="alert"><p>{dailyError}</p><button type="button" disabled={busy} className="mg-secondary-button" onClick={startDaily}>Tải lại ván thử thách</button></div>}
+
+          <section className="mg-board" aria-label="Bàn ghép thẻ" aria-describedby="mg-instructions" ref={boardRef}>
+            <div className={`mg-grid mg-grid-${game.pairCount}`} inert={game.status === 'paused'}>
+              {game.cards.map((card, index) => (
+                <MemoryCard key={card.key} card={card} index={index}
+                  flipped={card.matched || index === game.first || index === game.second}
+                  blocked={busy || game.status === 'paused' || game.status === 'won' || game.second !== null}
+                  onChoice={chooseCard}
+                  onImageError={() => dispatch({ type: 'image-error', pairId: card.pairId, now: Date.now() })} />
+              ))}
             </div>
-            <p className="progress-text">{progress}% hoan thanh</p>
+            {game.status === 'paused' && <div className="mg-pause-panel"><span aria-hidden="true">⏸</span><h2>Ván chơi đang tạm dừng</h2><p>Thời gian sẽ tiếp tục khi bạn chơi lại.</p><button type="button" className="mg-primary-button" onClick={resumeGame}><FiPlay aria-hidden="true" /> Chơi tiếp</button></div>}
+          </section>
+
+          <p className="mg-feedback" role="status" aria-live="polite" aria-atomic="true">{busy ? 'Đang nhận trạng thái ván chơi…' : game.event?.message ?? (game.status === 'ready' ? 'Sẵn sàng! Thời gian bắt đầu khi bạn lật thẻ đầu tiên.' : '\u00a0')}</p>
+          {game.status === 'won' && !winOpen && <button type="button" className="mg-secondary-button" onClick={() => setDismissedWin(null)}>Xem kết quả ván chơi</button>}
+
+          <section className="mg-account" aria-label="Lưu và đồng bộ tiến trình">
+            <div><span className={`mg-sync-dot ${account.status === 'synced' ? 'is-synced' : ''}`} aria-hidden="true" /><span>{!account.storageAvailable && ['offline', 'unavailable'].includes(account.status) ? 'Chưa đồng bộ với tài khoản' : SYNC_LABELS[account.status]}</span></div>
+            {!account.storageAvailable && <p role="alert">Trình duyệt không cho lưu trên thiết bị. Giữ trang mở cho đến khi dữ liệu được đồng bộ với tài khoản.</p>}
+            {account.status === 'conflict' ? (
+              <div className="mg-notice">
+                <p>Một thiết bị khác có tiến trình mới. Lịch sử và kỷ lục đã được gộp; hãy chọn ván muốn tiếp tục.</p>
+                <div className="mg-actions"><button type="button" className="mg-secondary-button" onClick={() => account.resolveConflict(false)}>Giữ ván trên thiết bị này</button>
+                  {account.remoteGame && <button type="button" className="mg-primary-button" onClick={() => requestChange(() => account.resolveConflict(true), 'Tiếp tục ván trên tài khoản?')}>Dùng ván trên tài khoản</button>}</div>
+              </div>
+            ) : ['offline', 'unavailable'].includes(account.status) && <button type="button" className="mg-text-button" onClick={account.synchronize}><FiRefreshCw aria-hidden="true" /> Thử đồng bộ lại</button>}
+          </section>
+
+          <div className="mg-extras">
+            <section className="mg-daily">
+              <span className="mg-eyebrow">Một bàn chơi chung mỗi ngày</span>
+              <h2>Thử thách hôm nay <span aria-hidden="true">🏅</span></h2>
+              <p>6 cặp thẻ. Xếp hạng theo số lượt, sau đó đến thời gian. Tên trên bảng là biệt danh tự động của tài khoản.</p>
+              <button type="button" className="mg-primary-button" disabled={busy} onClick={() => requestChange(startDaily, 'Mở thử thách hôm nay?')}>{game.mode === 'daily' && game.verified ? 'Tải lại / tiếp tục thử thách' : 'Chơi thử thách hôm nay'}</button>
+              <div className="mg-section-heading"><h3>Bảng xếp hạng hôm nay</h3><button type="button" className="mg-icon-button" aria-label="Tải lại bảng xếp hạng" onClick={refreshRanking}><FiRefreshCw aria-hidden="true" /></button></div>
+              {rankingStatus === 'loading' ? <p>Đang tải bảng xếp hạng…</p>
+                : rankingStatus !== 'ready' ? <p>Bảng xếp hạng chưa kết nối được. Bạn vẫn có thể chơi thử thách luyện tập.</p>
+                  : ranking.length === 0 ? <p>Chưa có kết quả hôm nay. Hãy là người đầu tiên hoàn thành!</p>
+                    : <ol className="mg-ranking">{ranking.map((entry) => <li key={entry.rank} className={entry.is_mine ? 'is-mine' : ''}><span className="mg-rank">{entry.rank}</span><span>{entry.display_name}{entry.is_mine && <small> Bạn</small>}</span><strong>{entry.turns} lượt<small>{formatDuration(entry.elapsed_ms)}</small></strong></li>)}</ol>}
+            </section>
+
+            <section className="mg-history">
+              <span className="mg-eyebrow">Mỗi ván là một bước tiến</span>
+              <h2>Lịch sử của bạn</h2>
+              <p>Kỷ lục tách theo chủ đề, độ khó và chế độ. Nếu bằng số lượt, thời gian nhanh hơn được ưu tiên.</p>
+              {saved.history.length === 0 ? <div className="mg-history-empty"><span aria-hidden="true">✨</span><p>Hoàn thành ván đầu tiên để xem kết quả tại đây.</p></div>
+                : <ol className="mg-history-list">{saved.history.slice(0, 10).map((result) => <li key={result.id}><div><strong>{themeName(result.theme)} · {result.pairCount} cặp</strong><span>{result.mode === 'daily' ? result.verified ? 'Thử thách xếp hạng' : 'Thử thách luyện tập' : 'Chơi tự do'} · {displayDate(result.completedAt)}</span></div><div><strong>{result.turns} lượt</strong><span>{formatDuration(result.elapsedMs)} · {Math.round(result.pairCount / result.turns * 100)}% đúng</span></div></li>)}</ol>}
+            </section>
           </div>
-        )}
-
-        <main className="game-board">
-          {loading ? (
-            <p className="progress-text">Dang tai the bai tu Supabase...</p>
-          ) : loadError ? (
-            <p className="progress-text">Khong the tai du lieu: {loadError}</p>
-          ) : !hasEnoughCards ? (
-            <p className="progress-text">
-              Can it nhat 2 anh trong bang <strong>memory_cards</strong> de choi game.
-            </p>
-          ) : (
-            <div className="cards-grid">
-              {cards.map((card) => {
-                const flipped = card === firstCard || card === secondCard || card.matched;
-
-                return (
-                  <MemoryCard
-                    key={card.uniqueId}
-                    card={card}
-                    flipped={flipped}
-                    disabled={disabled}
-                    onChoice={handleChoice}
-                  />
-                );
-              })}
-            </div>
-          )}
-
-          {!loading && !loadError && cardPool.length > 0 && dataSource === 'fallback' && (
-            <p className="progress-text">
-              Dang dung bo anh du phong de game van choi duoc ngay ca khi bang <strong>memory_cards</strong> chua truy cap duoc.
-            </p>
-          )}
-        </main>
-
-        {won && (
-          <div className="win-overlay">
-            <div className="win-card animate-pop-in">
-              <div className="confetti"></div>
-              <h2 className="win-title">🎉 Chuc mung! 🎉</h2>
-              <p className="win-message">
-                Ban thang sau <strong>{turns}</strong> luot choi
-              </p>
-              {bestScore === turns && (
-                <p className="win-record">🏆 Day la ky luc moi!</p>
-              )}
-              <button className="btn-play-again" onClick={startGame}>
-                Choi lai
-              </button>
-            </div>
-          </div>
-        )}
-
-        <footer className="game-footer">
-          <button
-            className="btn-new-game"
-            onClick={startGame}
-            disabled={loading || !hasEnoughCards}
-          >
-            ↻ Van choi moi
-          </button>
-        </footer>
+        </div>
       </div>
+
+      {dialog && <GameDialog title={dialog.title} onClose={closeConfirmation}>
+        <p>Ván hiện tại sẽ được thay thế. Ván thử thách xếp hạng vẫn được giữ trên tài khoản để tiếp tục trong hôm nay.</p>
+        <div className="mg-actions"><button type="button" className="mg-secondary-button" onClick={closeConfirmation}>Giữ ván hiện tại</button><button type="button" className="mg-primary-button" onClick={() => { const operation = dialog.operation; setDialog(null); operation(); }}>Tiếp tục</button></div>
+      </GameDialog>}
+
+      {winOpen && <GameDialog title="Bạn đã hoàn thành! 🎉" onClose={() => setDismissedWin(game.id)}>
+        <p>Đã tìm được {game.pairCount} cặp trong <strong>{game.turns} lượt</strong>.</p>
+        <div className="mg-result-stats"><div><span>Thời gian</span><strong>{formatDuration(game.elapsedMs)}</strong></div><div><span>Tỷ lệ ghép đúng</span><strong>{accuracy}%</strong></div></div>
+        {newRecord && <p className="mg-record">🏆 Kỷ lục mới cho chế độ này!</p>}
+        {game.verified && <p>Kết quả đã được ghi nhận trên bảng xếp hạng hôm nay.</p>}
+        <div className="mg-actions"><button type="button" className="mg-secondary-button" onClick={() => setDismissedWin(game.id)}>Xem lại bàn</button><button type="button" className="mg-primary-button" onClick={() => newFreeGame(game.theme, game.pairCount)}>{game.mode === 'daily' ? 'Chơi tự do' : 'Chơi lại'}</button></div>
+      </GameDialog>}
     </>
   );
 }
 
-const MemoryCard = memo(function MemoryCard({
-  card,
-  flipped,
-  disabled,
-  onChoice,
-}) {
-  const chooseCard = useCallback(() => {
-    onChoice(card);
-  }, [card, onChoice]);
-
-  const handleKeyDown = useCallback((event) => {
-    if (event.key === 'Enter' || event.key === ' ') {
-      event.preventDefault();
-      chooseCard();
-    }
-  }, [chooseCard]);
-
-  return (
-    <div className="card-wrapper">
-      <div
-        className={`flip-card ${flipped ? 'flipped' : ''} ${
-          card.matched ? 'matched' : ''
-        } ${disabled ? 'disabled' : ''}`}
-        onClick={chooseCard}
-        role="button"
-        tabIndex={card.matched ? -1 : 0}
-        aria-label={flipped ? 'The dang mo' : 'Mo the'}
-        aria-pressed={flipped}
-        onKeyDown={handleKeyDown}
-      >
-        <div className="flip-card-inner">
-          <div className="flip-card-front">
-            <span className="card-emoji">✨</span>
-          </div>
-
-          <div className="flip-card-back">
-            <img
-              src={card.image}
-              alt={card.name || 'memory card'}
-              className="card-image"
-              loading="eager"
-              decoding="async"
-            />
-          </div>
-        </div>
-      </div>
-    </div>
-  );
+const MemoryCard = memo(function MemoryCard({ card, index, flipped, blocked, onChoice, onImageError }) {
+  const name = flipped ? `${card.name ?? 'Thẻ'}, ${card.matched ? 'đã ghép' : 'đang mở'}` : 'chưa mở';
+  return <button type="button" className={`mg-card ${flipped ? 'is-flipped' : ''} ${card.matched ? 'is-matched' : ''}`}
+    aria-label={`Thẻ ${index + 1}: ${name}`} aria-pressed={flipped}
+    aria-disabled={blocked || card.matched} disabled={card.matched} onClick={() => { if (!blocked) onChoice(index); }}>
+    <span className="mg-card-inner" aria-hidden="true">
+      <span className="mg-card-front"><span className="mg-card-mark">✦</span><small>{index + 1}</small></span>
+      <span className="mg-card-back">
+        {card.image ? <img src={card.image} alt="" decoding="async" onError={onImageError} /> : <span className="mg-card-symbol">{card.symbol}</span>}
+        {card.matched && <span className="mg-match-check">✓</span>}
+      </span>
+    </span>
+  </button>;
 });
+
+function GameDialog({ title, children, onClose }) {
+  const ref = useRef(null);
+  useEffect(() => {
+    const dialog = ref.current;
+    const previousFocus = globalThis.document.activeElement;
+    const overflow = globalThis.document.body.style.overflow;
+    globalThis.document.body.style.overflow = 'hidden';
+    if (dialog.showModal) dialog.showModal();
+    else dialog.setAttribute('open', '');
+    dialog.querySelector('button')?.focus();
+    return () => {
+      if (dialog.open && dialog.close) dialog.close();
+      globalThis.document.body.style.overflow = overflow;
+      if (previousFocus?.isConnected && !previousFocus.disabled) previousFocus.focus();
+      else globalThis.document.querySelector('.mg-toolbar .mg-primary-button')?.focus();
+    };
+  }, []);
+  return <dialog ref={ref} className="mg-dialog" aria-labelledby="mg-dialog-title" onCancel={(event) => { event.preventDefault(); onClose(); }}
+    onKeyDown={(event) => {
+      if (event.key !== 'Tab') return;
+      const buttons = [...ref.current.querySelectorAll('button:not(:disabled)')];
+      const first = buttons[0]; const last = buttons.at(-1);
+      if (event.shiftKey && globalThis.document.activeElement === first) { event.preventDefault(); last?.focus(); }
+      else if (!event.shiftKey && globalThis.document.activeElement === last) { event.preventDefault(); first?.focus(); }
+    }}>
+    <h2 id="mg-dialog-title">{title}</h2>{children}
+  </dialog>;
+}

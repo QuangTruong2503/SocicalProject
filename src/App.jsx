@@ -180,12 +180,12 @@ const protectedRouteConfigs = [
   {
     path: '/memory-game',
     element: <MemoryGame />,
-    title: 'Memory Game cần đăng nhập để theo dõi tiến trình.',
-    description: 'Mình yêu cầu xác thực để giữ điểm số, trạng thái và lịch sử chơi của bạn đồng bộ giữa các phiên.',
+    title: 'Đăng nhập để chơi Ghép thẻ trí nhớ.',
+    description: 'Kỷ lục và ván đang chơi được lưu riêng cho tài khoản trên thiết bị. Khi kết nối được, tiến trình được đồng bộ và bạn có thể tham gia thử thách xếp hạng hằng ngày.',
     details: [
-      'Lưu điểm số tốt nhất',
-      'Theo dõi tiến trình chơi',
-      'Đồng bộ qua nhiều phiên',
+      'Chọn chủ đề và độ khó',
+      'Lưu kỷ lục, lịch sử và tiếp tục ván chơi',
+      'Thử thách hằng ngày và bảng xếp hạng',
     ],
     loginLabel: 'Đăng nhập để chơi tiếp',
   },

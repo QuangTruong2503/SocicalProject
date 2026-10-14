@@ -7,7 +7,9 @@
     "dev": "vite",
     "build": "vite build",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test:memory": "node --test src/utils/memoryGame.test.js tests/memoryGameDatabase.test.mjs",
+    "test:memory:ui": "node --import ./tests/memoryGameLoader.mjs --test tests/memoryGameUI.test.mjs"
   },
   "dependencies": {
     "@marsidev/react-turnstile": "^1.6.1",
@@ -30,6 +32,7 @@
     "xlsx": "^0.18.5"
   },
   "devDependencies": {
+    "@electric-sql/pglite": "^0.5.10",
     "@eslint/js": "^9.39.4",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
@@ -38,6 +41,7 @@
     "eslint-plugin-react-hooks": "^7.0.1",
     "eslint-plugin-react-refresh": "^0.5.2",
     "globals": "^17.4.0",
+    "jsdom": "^29.1.1",
     "sass": "^1.99.0",
     "vite": "^8.0.1"
   }
