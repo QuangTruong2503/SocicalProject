@@ -3,10 +3,11 @@ import { Helmet } from 'react-helmet-async';
 import { Link } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import { FaBan, FaPen, FaTrash } from 'react-icons/fa6';
-import { listQuotations, setQuotationStatus, softDeleteDraft } from '../../services/quotationService.js';
+import { deleteQuotationDraft, listQuotations, setQuotationStatus } from '../../services/quotationService.js';
 import { deleteKnmQuotation, listKnmQuotations } from '../../services/knmQuotationService.js';
 import { formatCurrency } from '../../utils/numberFormat.js';
-import ConfirmModal from '../Quotation/ConfirmModal.jsx';
+import ConfirmDialog from '../../components/dialog/ConfirmDialog.jsx';
+import { QUOTATION_STATUSES } from '../../utils/quotation.js';
 import styles from './Admin.module.css';
 
 const TABS = [
@@ -22,7 +23,9 @@ export default function AdminQuotationsPage() {
   const [confirmRow, setConfirmRow] = useState(null);
 
   const load = useCallback(() => {
-    const request = tab === 'standard' ? listQuotations({ search }) : listKnmQuotations({ search });
+    const request = tab === 'standard'
+      ? listQuotations({ search, limit: 200 }).then((result) => result.rows)
+      : listKnmQuotations({ search, limit: 200 }).then((result) => result.rows);
     return request
       .then(setRows)
       .catch((error) => { toast.error(error.message); setRows([]); })
@@ -37,7 +40,7 @@ export default function AdminQuotationsPage() {
     if (!row) return;
     try {
       if (tab === 'standard') {
-        row.status === 'draft' ? await softDeleteDraft(row.id) : await setQuotationStatus(row.id, 'cancelled');
+        row.status === 'draft' ? await deleteQuotationDraft(row.id) : await setQuotationStatus(row.id, 'cancelled');
       } else {
         await deleteKnmQuotation(row.id);
       }
@@ -106,16 +109,16 @@ export default function AdminQuotationsPage() {
                     <td>{row.customer_name}</td>
                     <td>{row.contact_name || row.customer_contact || row.phone || row.customer_phone || '—'}</td>
                     <td className={styles.money}>{formatCurrency(row.total)}</td>
-                    {tab === 'standard' && <td>{row.status}</td>}
+                    {tab === 'standard' && <td>{QUOTATION_STATUSES[row.status] || row.status}</td>}
                     <td>
                       <div className={styles.rowActions}>
                         <Link title="Chỉnh sửa" to={editHref}><FaPen /></Link>
                         <button
-                          title={tab === 'standard' && row.status === 'draft' ? 'Xóa' : 'Xóa / Hủy'}
+                          title={tab === 'knm' || row.status === 'draft' ? 'Xóa' : 'Hủy'}
                           className={styles.danger}
                           onClick={() => setConfirmRow(row)}
                         >
-                          {tab === 'standard' && row.status === 'draft' ? <FaTrash /> : <FaBan />}
+                          {tab === 'knm' || row.status === 'draft' ? <FaTrash /> : <FaBan />}
                         </button>
                       </div>
                     </td>
@@ -127,15 +130,16 @@ export default function AdminQuotationsPage() {
         </div>
       </section>
 
-      <ConfirmModal
-        open={!!confirmRow}
-        title={tab === 'standard' && confirmRow?.status === 'draft' ? 'Xóa bản nháp' : 'Xóa / hủy báo giá'}
-        message="Bạn có chắc muốn thực hiện thao tác này?"
-        confirmLabel="Xác nhận"
-        danger
-        onConfirm={confirmRemove}
-        onCancel={() => setConfirmRow(null)}
-      />
+      {confirmRow && (
+        <ConfirmDialog
+          title={tab === 'knm' ? `Xóa báo giá KNM ${confirmRow.quotation_no}?` : confirmRow.status === 'draft' ? 'Xóa bản nháp' : 'Hủy báo giá'}
+          message="Bạn có chắc muốn thực hiện thao tác này?"
+          confirmLabel="Xác nhận"
+          danger
+          onConfirm={confirmRemove}
+          onCancel={() => setConfirmRow(null)}
+        />
+      )}
     </>
   );
 }

@@ -55,11 +55,6 @@ async function getValue(key) {
   return record ? record.value : null;
 }
 
-async function putFile(key, file) {
-  const buffer = await file.arrayBuffer();
-  await putRecord({ key, data: buffer, type: file.type, name: file.name });
-}
-
 async function getFile(key) {
   const record = await getRecord(key);
   if (!record || !record.data) return null;
@@ -69,14 +64,15 @@ async function getFile(key) {
 
 const COMPANY_KEY = 'company';
 const TERMS_KEY = 'terms';
-const LOGO_KEY = 'logo';
-const STAMP_KEY = 'stamp';
-const BANK_QR_KEY = 'bankQr';
+// Before v2 the logo, stamp and bank QR lived only on the device that uploaded them.
+// They are now shared company assets on Supabase; these keys are read once to offer
+// moving an image that is still only on this device.
+const LOCAL_ASSET_KEYS = { logo: 'logo', stamp: 'stamp', bank_qr: 'bankQr' };
 
 export const KNM_COMPANY_INFO_FIELDS = [
   'name', 'taxCode', 'address', 'hotline', 'email', 'website',
   'bankName', 'bankAccountNumber', 'bankAccountHolder',
-  'preparerName', 'preparerTitle', 'showStamp',
+  'preparerName', 'preparerTitle', 'showStamp', 'showLogo',
 ];
 
 export function pickCompanyInfo(company) {
@@ -118,50 +114,11 @@ export async function saveTerms(terms) {
   }
 }
 
-export function loadCompanyLogoAsset() {
-  return getFile(LOGO_KEY).catch(() => null);
+/** @param {'logo' | 'stamp' | 'bank_qr'} kind */
+export function loadLocalKnmAsset(kind) {
+  return getFile(LOCAL_ASSET_KEYS[kind]).catch(() => null);
 }
 
-export function saveCompanyLogoAsset(file) {
-  return putFile(LOGO_KEY, file);
-}
-
-export function clearCompanyLogoAsset() {
-  return deleteRecord(LOGO_KEY);
-}
-
-export function loadCompanyStampAsset() {
-  return getFile(STAMP_KEY).catch(() => null);
-}
-
-export function saveCompanyStampAsset(file) {
-  return putFile(STAMP_KEY, file);
-}
-
-export function clearCompanyStampAsset() {
-  return deleteRecord(STAMP_KEY);
-}
-
-export function loadCompanyBankQrAsset() {
-  return getFile(BANK_QR_KEY).catch(() => null);
-}
-
-export function saveCompanyBankQrAsset(file) {
-  return putFile(BANK_QR_KEY, file);
-}
-
-export function clearCompanyBankQrAsset() {
-  return deleteRecord(BANK_QR_KEY);
-}
-
-export async function nextQuotationNumberAsync(date) {
-  const key = `seq:${date}`;
-  let seq = 1;
-  try {
-    seq = (Number(await getValue(key)) || 0) + 1;
-    await putValue(key, seq);
-  } catch {
-    /* IndexedDB unavailable, fall back to seq = 1 */
-  }
-  return `BG-${date}-${String(seq).padStart(3, '0')}`;
+export function clearLocalKnmAsset(kind) {
+  return deleteRecord(LOCAL_ASSET_KEYS[kind]).catch(() => {});
 }

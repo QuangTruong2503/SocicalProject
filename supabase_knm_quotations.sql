@@ -1,6 +1,6 @@
--- Standalone storage for the "Báo giá KNM" tool (/bao-gia-knm).
--- Deliberately isolated from the public.quotations system (different company,
--- no login required) — apply this in the Supabase SQL editor.
+-- Base table for the "Báo giá KNM" tool (/bao-gia-knm), kept separate from the
+-- Minh Triết public.quotations system. Run this once, then supabase_knm_quotations_v2.sql,
+-- which adds permissions, numbering, audit log and the RPCs the page uses.
 
 create table if not exists public.knm_quotations (
   id uuid primary key default gen_random_uuid(),
@@ -31,23 +31,8 @@ create index if not exists knm_quotations_created_idx on public.knm_quotations (
 
 alter table public.knm_quotations enable row level security;
 
-drop policy if exists knm_quotations_public_select on public.knm_quotations;
-drop policy if exists knm_quotations_public_insert on public.knm_quotations;
-drop policy if exists knm_quotations_public_update on public.knm_quotations;
-drop policy if exists knm_quotations_public_delete on public.knm_quotations;
-
--- This tool has no login (see src/pages/QuotationKnm) so access is open to the
--- anon key, matching the existing public.watermark_image_counts pattern.
-create policy knm_quotations_public_select on public.knm_quotations
-  for select to anon, authenticated using (true);
-create policy knm_quotations_public_insert on public.knm_quotations
-  for insert to anon, authenticated with check (true);
-create policy knm_quotations_public_update on public.knm_quotations
-  for update to anon, authenticated using (true) with check (true);
-create policy knm_quotations_public_delete on public.knm_quotations
-  for delete to anon, authenticated using (true);
-
-grant select, insert, update, delete on public.knm_quotations to anon, authenticated;
+-- Access rules (staff only, no anon) live in supabase_knm_quotations_v2.sql.
+-- The table used to be open to the anon key; v2 removes those policies.
 
 create or replace function public.set_knm_quotation_updated_at()
 returns trigger

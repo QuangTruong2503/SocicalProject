@@ -2,8 +2,8 @@ import { useEffect, useState } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { Link } from 'react-router-dom';
 import { getAdminProfileStats } from '../../services/profileService.js';
-import { listQuotations } from '../../services/quotationService.js';
-import { listKnmQuotations } from '../../services/knmQuotationService.js';
+import { getQuotationStats } from '../../services/quotationService.js';
+import { getKnmQuotationStats } from '../../services/knmQuotationService.js';
 import { getWatermarkImageCountTotal } from '../../services/watermarkImageCountService.js';
 import styles from './Admin.module.css';
 
@@ -22,8 +22,8 @@ export default function AdminDashboardPage() {
       setLoading(true);
       const [profileStatsResult, quotations, knmQuotations, watermarkResult] = await Promise.all([
         getAdminProfileStats(),
-        listQuotations({}).catch(() => []),
-        listKnmQuotations({}).catch(() => []),
+        getQuotationStats().catch(() => null),
+        getKnmQuotationStats().catch(() => null),
         getWatermarkImageCountTotal({}),
       ]);
 
@@ -31,8 +31,8 @@ export default function AdminDashboardPage() {
 
       setStats({
         users: Number(profileStatsResult.data?.total) || 0,
-        quotations: quotations?.length ?? 0,
-        knmQuotations: knmQuotations?.length ?? 0,
+        quotations: Number(quotations?.total) || 0,
+        knmQuotations: Number(knmQuotations?.total) || 0,
         watermarkImages: watermarkResult.data ?? 0,
       });
       setLoading(false);

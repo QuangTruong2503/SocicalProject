@@ -122,7 +122,7 @@ export function validateQuotation(data, draft = false) {
   if (!data.customer_name?.trim()) errors.customer_name = 'Tên khách hàng là bắt buộc.';
   if (data.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(data.email)) errors.email = 'Email không đúng định dạng.';
   if (data.phone && !/^[+()0-9.\s-]{7,20}$/.test(data.phone)) errors.phone = 'Số điện thoại không đúng định dạng.';
-  if (!/^BG-\d{8}-\d{4,}$/.test(data.quotation_no || '')) errors.quotation_no = 'Số báo giá phải theo dạng BG-YYYYMMDD-XXXX.';
+  if (!data.quotation_date) errors.quotation_date = 'Chọn ngày báo giá.';
   if (!draft && !(data.items || []).length) errors.items = 'Cần ít nhất một sản phẩm.';
   (data.items || []).forEach((item, index) => {
     if (!draft && !item.product_name?.trim()) errors[`item_${index}_product_name`] = 'Bắt buộc.';
@@ -140,6 +140,70 @@ export function quotationPayload(data, status) {
       product_name: (item.product_name || item.description || '').trim(),
       description: (item.description || '').trim(), brand: item.brand || '', quantity: Number(item.quantity),
       unit: item.unit || 'Cái', unit_price: Number(item.unit_price), vat_rate: itemVatRate(item), position: index + 1,
+    })),
+  };
+}
+
+/**
+ * The user-editable part of a quotation, normalized so two forms holding the
+ * same content compare equal. Used to detect unsaved changes.
+ */
+export function editableSnapshot(data) {
+  const text = (value) => (value ?? '').toString();
+  const number = (value) => Number(value) || 0;
+
+  return JSON.stringify({
+    quotation_date: text(data.quotation_date),
+    customer_id: text(data.customer_id),
+    customer_name: text(data.customer_name),
+    contact_name: text(data.contact_name),
+    phone: text(data.phone),
+    email: text(data.email),
+    address: text(data.address),
+    tax_code: text(data.tax_code),
+    note: text(data.note),
+    discount_type: text(data.discount_type || 'amount'),
+    discount_value: number(data.discount_value),
+    shipping_fee: number(data.shipping_fee),
+    vat_mode: text(data.vat_mode),
+    // status is saved on its own (set_quotation_status) for saved quotations.
+    terms: Object.keys(TERM_LABELS).map((key) => text(data.terms?.[key])),
+    prepared_by_name: text(data.prepared_by_name),
+    prepared_by_phone: text(data.prepared_by_phone),
+    prepared_by_email: text(data.prepared_by_email),
+    items: (data.items || [])
+      .filter((item) => text(item.product_name).trim() || text(item.description).trim())
+      .map((item) => [text(item.product_name), text(item.description), text(item.brand), number(item.quantity), text(item.unit), number(item.unit_price), itemVatRate(item)]),
+  });
+}
+
+/** A new, unsaved quotation with the same customer and products (number assigned on save). */
+export function copyQuotationForNew(source, profile, user) {
+  const base = emptyQuotation(profile, user);
+  return {
+    ...base,
+    customer_id: source.customer_id || '',
+    customer_name: source.customer_name || '',
+    contact_name: source.contact_name || '',
+    phone: source.phone || '',
+    email: source.email || '',
+    address: source.address || '',
+    tax_code: source.tax_code || '',
+    note: source.note || '',
+    discount_type: source.discount_type || 'amount',
+    discount_value: source.discount_value || 0,
+    shipping_fee: source.shipping_fee || 0,
+    vat_mode: source.vat_mode || 'included',
+    terms: { ...DEFAULT_TERMS, ...(source.terms || {}) },
+    items: (source.items?.length ? source.items : base.items).map((item) => ({
+      ...newItem(),
+      product_name: item.product_name || '',
+      description: item.description || '',
+      brand: item.brand || '',
+      quantity: item.quantity ?? 1,
+      unit: item.unit || 'Cái',
+      unit_price: item.unit_price ?? 0,
+      vat_rate: itemVatRate(item),
     })),
   };
 }

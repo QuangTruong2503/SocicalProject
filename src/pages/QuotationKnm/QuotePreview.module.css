@@ -56,7 +56,11 @@
   .sheet{box-shadow:0 6px 20px #0f172a1a}
 }
 
+/* Long quotations: repeat the table header on every page and never cut a row, the totals or the signatures in half. */
+.productTable thead{display:table-header-group}
+.productTable tr,.summaryRow,.bankInfo,.signatures,.customerBox{break-inside:avoid;page-break-inside:avoid}
+
 @media print{
-  @page{size:A4 portrait;margin:0}
-  .sheet{box-shadow:none!important;transform:none!important;margin:0!important;width:210mm!important;min-height:297mm!important}
+  @page{size:A4 portrait;margin:8mm 0}
+  .sheet{box-shadow:none!important;transform:none!important;margin:0!important;width:210mm!important;min-height:0!important;padding-top:0!important;padding-bottom:0!important}
 }

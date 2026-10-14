@@ -1,8 +1,12 @@
 import dayjs from 'dayjs';
 import { formatCurrency } from '../../utils/numberFormat.js';
 import { numberToVietnamese } from '../../utils/numberToVietnamese.js';
-import { knmItemVatRate, resolveKnmUnit, resolveValidUntil } from '../../utils/knmQuotation.js';
+import {
+  isBlankKnmItem, knmItemVatRate, knmLineAmount, knmUnitPrice, resolveKnmUnit, resolveValidUntil,
+} from '../../utils/knmQuotation.js';
 import styles from './QuotePreview.module.css';
+
+const quantityFormat = new Intl.NumberFormat('vi-VN', { maximumFractionDigits: 3 });
 
 export default function QuotePreview({ company, quotation }) {
   const { subtotal, vatLines, vatMode, total } = quotation.totals;
@@ -11,13 +15,13 @@ export default function QuotePreview({ company, quotation }) {
   const validUntil = resolveValidUntil(quotation.quotationDate, quotation.validityDays);
   const hasBankText = company.bankName && company.bankAccountNumber && company.bankAccountHolder;
   const hasBankQr = !!company.bankQr;
+  const showLogo = company.showLogo !== false;
+  const items = quotation.items.filter((item) => !isBlankKnmItem(item));
 
   return (
     <div className={styles.sheet}>
       <header className={styles.docHeader}>
-        {company.logo
-          ? <img className={styles.logo} src={company.logo} alt={`Logo ${company.name}`} />
-          : <div className={styles.logoFallback}>KNM</div>}
+        {showLogo && company.logo && <img className={styles.logo} src={company.logo} alt={`Logo ${company.name}`} />}
         <div className={styles.companyInfo}>
           <h2>{company.name}</h2>
           <p><strong>MST: {company.taxCode}</strong></p>
@@ -29,7 +33,7 @@ export default function QuotePreview({ company, quotation }) {
       <div className={styles.titleBlock}>
         <h1>BÁO GIÁ</h1>
         <p className={styles.meta}>
-          Số báo giá: <b>{quotation.quotationNo}</b> &nbsp;·&nbsp;
+          Số báo giá: <b>{quotation.quotationNo || 'Chưa cấp số'}</b> &nbsp;·&nbsp;
           Ngày báo giá: <b>{dayjs(quotation.quotationDate).format('DD/MM/YYYY')}</b> &nbsp;·&nbsp;
           Hiệu lực đến: <b>{dayjs(validUntil).format('DD/MM/YYYY')}</b>
         </p>
@@ -66,16 +70,16 @@ export default function QuotePreview({ company, quotation }) {
           </tr>
         </thead>
         <tbody>
-          {quotation.items.map((item, index) => (
+          {items.map((item, index) => (
             <tr key={item.id}>
               <td className={styles.center}>{index + 1}</td>
               <td className={styles.left}>{item.description}</td>
               <td className={styles.center}>{item.brand}</td>
-              <td className={styles.center}>{item.quantity}</td>
+              <td className={styles.center}>{quantityFormat.format(Number(item.quantity) || 0)}</td>
               <td className={styles.center}>{resolveKnmUnit(item)}</td>
-              <td className={styles.right}>{formatCurrency(item.unitPrice)} ₫</td>
+              <td className={styles.right}>{formatCurrency(knmUnitPrice(item, quotation))} ₫</td>
               {perItemVat && <td className={styles.center}>{knmItemVatRate(item)}%</td>}
-              <td className={styles.right}>{formatCurrency(Number(item.quantity) * Number(item.unitPrice))} ₫</td>
+              <td className={styles.right}>{formatCurrency(knmLineAmount(item, quotation))} ₫</td>
             </tr>
           ))}
         </tbody>
@@ -89,7 +93,7 @@ export default function QuotePreview({ company, quotation }) {
 
         <div className={styles.totalsBlock}>
           {vatSplit ? (<>
-            <div className={styles.totalsRow}><span>Tổng tiền</span><b>{formatCurrency(subtotal)} ₫</b></div>
+            <div className={styles.totalsRow}><span>Cộng tiền hàng (chưa VAT)</span><b>{formatCurrency(subtotal)} ₫</b></div>
             {vatLines.map((line) => (
               <div key={line.rate} className={styles.totalsRow}><span>VAT {line.rate}%</span><b>{formatCurrency(line.amount)} ₫</b></div>
             ))}

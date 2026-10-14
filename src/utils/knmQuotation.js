@@ -41,6 +41,7 @@ export const KNM_DEFAULT_COMPANY = {
   preparerName: '',
   preparerTitle: '',
   showStamp: true,
+  showLogo: true,
   logo: '',
   logoName: '',
   stamp: '',
@@ -58,6 +59,8 @@ export function newKnmItem() {
     unit: 'Cái',
     customUnit: '',
     unitPrice: 0,
+    // Set when the price was typed VAT-inclusive with "Tự động chia VAT": the net price is derived from it.
+    grossUnitPrice: null,
     vatRate: KNM_DEFAULT_ITEM_VAT_RATE,
   };
 }
@@ -74,6 +77,7 @@ export function createDraftKnmQuotation() {
     validityDays: KNM_DEFAULT_VALIDITY_DAYS,
     vatMode: 'included',
     vatRate: 8,
+    autoSplitVat: false,
     customer: emptyKnmCustomer(),
     items: [newKnmItem()],
     terms: KNM_DEFAULT_TERMS,
@@ -106,29 +110,142 @@ export function knmItemVatRate(item) {
   return item?.vatRate !== '' && item?.vatRate != null && isKnmVatRate(rate) ? rate : KNM_DEFAULT_ITEM_VAT_RATE;
 }
 
+/** VAT rate that applies to this item under the quotation's VAT mode (0 for "Gồm VAT"). */
+export function knmItemRate(item, quotation) {
+  const vatMode = quotation?.vatMode || 'included';
+  if (vatMode === 'per_item') return knmItemVatRate(item);
+  if (vatMode === 'common') return Math.max(0, Number(quotation?.vatRate) || 0);
+  return 0;
+}
+
+const hasGross = (item) => item?.grossUnitPrice !== null && item?.grossUnitPrice !== undefined && item.grossUnitPrice !== ''
+  && Number.isFinite(Number(item.grossUnitPrice));
+
+/**
+ * Price shown in the "Đơn giá" column: the net price in the split modes, the
+ * VAT-inclusive price in "Gồm VAT". Items typed VAT-inclusive keep that price as
+ * the source of truth, so changing the rate re-derives the net price — rounded to
+ * whole đồng, so đơn giá × số lượng = thành tiền on the quotation.
+ */
+export function knmUnitPrice(item, quotation) {
+  if (!hasGross(item)) return Math.max(0, Number(item?.unitPrice) || 0);
+  const gross = Math.max(0, Number(item.grossUnitPrice));
+  const rate = knmItemRate(item, quotation);
+  return rate ? Math.round(gross / (1 + rate / 100)) : gross;
+}
+
+/** VAT-inclusive unit price (what "Tự động chia VAT" lets the user type). */
+export function knmGrossUnitPrice(item, quotation) {
+  if (hasGross(item)) return Math.max(0, Number(item.grossUnitPrice));
+  const rate = knmItemRate(item, quotation);
+  return Math.max(0, Number(item?.unitPrice) || 0) * (1 + rate / 100);
+}
+
+export function knmLineAmount(item, quotation) {
+  const amount = Math.max(0, Number(item?.quantity) || 0) * knmUnitPrice(item, quotation);
+  return hasGross(item) ? Math.round(amount) : amount;
+}
+
 /**
  * @returns {{ vatMode: string, subtotal: number, vatLines: { rate: number, base: number, amount: number }[],
  *   vatAmount: number, total: number }} vatLines: một dòng "VAT x%" cho mỗi thuế suất, giảm dần.
  */
 export function calculateKnmTotals(quotation) {
   const vatMode = quotation?.vatMode || 'included';
-  const bases = new Map();
+  // Per rate: amounts typed without VAT, and items typed VAT-inclusive ("Tự động chia VAT"):
+  // their rounded net lines go into the subtotal and their VAT is what is left of the typed
+  // total, so the quotation ends on the very total the user entered.
+  const groups = new Map();
   (quotation?.items || []).forEach((item) => {
-    const amount = Math.max(0, Number(item.quantity) || 0) * Math.max(0, Number(item.unitPrice) || 0);
-    const rate = vatMode === 'per_item' ? knmItemVatRate(item)
-      : vatMode === 'common' ? Math.max(0, Number(quotation.vatRate) || 0) : 0;
-    bases.set(rate, (bases.get(rate) || 0) + amount);
+    const rate = knmItemRate(item, quotation);
+    const group = groups.get(rate) || { net: 0, grossLines: 0, grossTotal: 0 };
+    const quantity = Math.max(0, Number(item.quantity) || 0);
+    if (hasGross(item)) {
+      group.grossLines += knmLineAmount(item, quotation);
+      // Rounded per line like the net line, so VAT is never negative (e.g. VAT 0%, half quantities).
+      group.grossTotal += Math.round(quantity * Math.max(0, Number(item.grossUnitPrice)));
+    } else {
+      group.net += quantity * Math.max(0, Number(item.unitPrice) || 0);
+    }
+    groups.set(rate, group);
   });
-  // Làm tròn theo từng nhóm thuế suất: VAT = round(base × (1 + r)) − round(base).
-  const groups = [...bases.entries()].sort((a, b) => b[0] - a[0]).map(([rate, base]) => {
-    const roundedBase = Math.round(base);
-    return { rate, base: roundedBase, amount: Math.round(base * (1 + rate / 100)) - roundedBase };
+  // Làm tròn theo từng nhóm thuế suất: VAT = round(tổng gồm VAT) − round(tổng chưa VAT).
+  const lines = [...groups.entries()].sort((a, b) => b[0] - a[0]).map(([rate, { net, grossLines, grossTotal }]) => {
+    const netBase = Math.round(net);
+    const netVat = Math.round(net * (1 + rate / 100)) - netBase;
+    return { rate, base: netBase + grossLines, amount: netVat + grossTotal - grossLines };
   });
-  const subtotal = groups.reduce((sum, group) => sum + group.base, 0);
-  const vatLines = vatMode === 'included' ? [] : groups;
+  const subtotal = lines.reduce((sum, line) => sum + line.base, 0);
+  const vatLines = vatMode === 'included' ? [] : lines;
   const vatAmount = vatLines.reduce((sum, line) => sum + line.amount, 0);
   if (vatMode === 'common' && !vatLines.length) vatLines.push({ rate: Math.max(0, Number(quotation.vatRate) || 0), base: 0, amount: 0 });
   return { vatMode, subtotal, vatLines, vatAmount, total: subtotal + vatAmount };
+}
+
+/** A row nobody filled in (left over from "Thêm sản phẩm"): skipped on save, print and validation. */
+export function isBlankKnmItem(item) {
+  return !String(item?.description || '').trim() && !String(item?.brand || '').trim()
+    && !(Number(item?.unitPrice) > 0) && !(Number(item?.grossUnitPrice) > 0);
+}
+
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+/**
+ * @returns {{ customerName?: string, customerEmail?: string, items?: string, itemErrors?: Record<string, string> }}
+ */
+export function validateKnmQuotation(quotation) {
+  const errors = {};
+  const customer = quotation?.customer || {};
+  if (!String(customer.name || '').trim()) errors.customerName = 'Tên khách hàng là bắt buộc.';
+  if (String(customer.email || '').trim() && !EMAIL_PATTERN.test(String(customer.email).trim())) {
+    errors.customerEmail = 'Email chưa đúng định dạng.';
+  }
+  const items = (quotation?.items || []).filter((item) => !isBlankKnmItem(item));
+  if (!items.length) errors.items = 'Cần ít nhất một sản phẩm có tên.';
+  const itemErrors = {};
+  items.forEach((item) => {
+    if (!String(item.description || '').trim()) itemErrors[item.id] = 'Thiếu tên sản phẩm.';
+    else if (!(Number(item.quantity) > 0)) itemErrors[item.id] = 'Số lượng phải lớn hơn 0.';
+    else if (item.unit === 'Khác' && !String(item.customUnit || '').trim()) itemErrors[item.id] = 'Nhập đơn vị tính.';
+  });
+  if (Object.keys(itemErrors).length) errors.itemErrors = itemErrors;
+  return errors;
+}
+
+/** The quotation as it is stored and printed: blank rows dropped, net price kept in sync. */
+export function finalizeKnmQuotation(quotation) {
+  return {
+    ...quotation,
+    items: (quotation.items || []).filter((item) => !isBlankKnmItem(item)).map((item) => ({
+      ...item,
+      unitPrice: hasGross(item) ? knmUnitPrice(item, quotation) : item.unitPrice,
+    })),
+  };
+}
+
+const KNM_SNAPSHOT_COMPANY_FIELDS = [
+  'name', 'taxCode', 'address', 'hotline', 'email', 'website', 'bankName', 'bankAccountNumber', 'bankAccountHolder',
+  'preparerName', 'preparerTitle', 'showStamp', 'showLogo',
+];
+
+/** Comparable snapshot of what the user can change (for the "Chưa lưu" state and backups). */
+export function knmEditableSnapshot(company, quotation) {
+  const pickedCompany = {};
+  KNM_SNAPSHOT_COMPANY_FIELDS.forEach((field) => { pickedCompany[field] = company?.[field] ?? ''; });
+  // Blank rows and derived net prices don't count as changes.
+  const items = (quotation?.items || []).filter((item) => !isBlankKnmItem(item))
+    .map((item) => (hasGross(item) ? { ...item, unitPrice: undefined } : item));
+  return JSON.stringify({ company: pickedCompany, quotation: { ...quotation, quotationNo: undefined, items } });
+}
+
+/** "Sao chép": same content, new ids, today's date, no number. */
+export function copyKnmQuotationForNew(quotation) {
+  return {
+    ...quotation,
+    quotationNo: '',
+    quotationDate: dayjs().format('YYYY-MM-DD'),
+    items: (quotation.items || []).map((item) => ({ ...item, id: newKnmItem().id })),
+  };
 }
 
 const DIACRITIC_MARKS = new RegExp('[̀-ͯ]', 'g');
