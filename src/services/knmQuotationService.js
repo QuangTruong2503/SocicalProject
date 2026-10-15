@@ -94,7 +94,7 @@ export async function getKnmQuotation(id) {
  * @returns {Promise<{ rows: Array<Object>, totalCount: number }>}
  */
 export async function listKnmQuotations({
-  search = '', from = '', to = '', mine = false, sort = 'created_at', desc = true, limit = 50, offset = 0,
+  search = '', from = '', to = '', mine = false, sort = 'created_at', desc = true, limit = 50, offset = 0, signal,
 } = {}) {
   const rows = await call(supabase.rpc('list_knm_quotations', {
     p_search: search.trim() || null,
@@ -105,7 +105,7 @@ export async function listKnmQuotations({
     p_desc: desc,
     p_limit: limit,
     p_offset: offset,
-  }), 'Không thể tải danh sách báo giá.');
+  }).abortSignal(signal ?? new AbortController().signal), 'Không thể tải danh sách báo giá.');
   return { rows: rows ?? [], totalCount: Number(rows?.[0]?.total_count) || 0 };
 }
 

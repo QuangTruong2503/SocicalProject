@@ -15,7 +15,11 @@ const { default: NotificationsPage } = await import('../src/pages/NotificationsP
 const { default: AdminNotificationsPage } = await import('../src/pages/Admin/AdminNotificationsPage.jsx');
 const { useNotifications } = await import('../src/hooks/useNotifications.js');
 const USER_A = '22222222-2222-4222-8222-222222222222';
-let root; let records; let calls; let failAcknowledgement;
+let root; let records; let calls; let failAcknowledgement; let storageCalls;
+const originalCreateObjectURL = URL.createObjectURL;
+const originalRevokeObjectURL = URL.revokeObjectURL;
+URL.createObjectURL = () => `blob:test-${Math.random()}`;
+URL.revokeObjectURL = () => {};
 const notification = (id, priority = 'normal') => ({ id, title: `Thông báo ${id}`, body: 'Nội dung đầy đủ\nDòng thứ hai', priority, sent_at: '2026-10-15T02:00:00Z', read_at: null, acknowledged_at: null });
 const button = (text) => [...document.querySelectorAll('button')].find((item) => item.textContent.trim() === text);
 async function click(element) { assert.ok(element, 'control exists'); await act(async () => { element.click(); }); }
@@ -46,6 +50,12 @@ async function input(labelText, value) {
 }
 test.beforeEach(() => {
   records = []; calls = []; failAcknowledgement = false;
+  storageCalls = [];
+  globalThis.__notificationStorage = async (operation, payload) => {
+    storageCalls.push({ operation, ...payload });
+    return operation === 'sign' ? { data: { signedUrl: `https://images.example.com/${payload.path}?token=test` }, error: null }
+      : { data: operation === 'remove' ? payload.paths.map((name) => ({ name })) : { path: payload.path }, error: null };
+  };
   globalThis.__notificationRpc = async (name, payload) => {
     calls.push({ name, payload });
     if (name === 'notification_inbox') {
@@ -63,13 +73,13 @@ test.beforeEach(() => {
     }
     if (name === 'admin_notification_list') return { data: { items: [], total_count: 0 }, error: null };
     if (name === 'admin_list_profiles') return { data: [{ id: USER_A, full_name: 'Nguyễn An', email: 'an@example.com', total_count: 1 }], error: null };
-    if (name === 'admin_notification_save') return { data: 'draft-id', error: null };
+    if (name === 'admin_notification_save' || name === 'admin_notification_save_with_image') return { data: 'draft-id', error: null };
     if (name === 'admin_notification_publish') return { data: 1, error: null };
     throw new Error(`Unexpected RPC ${name}`);
   };
 });
 test.afterEach(async () => { if (root) { await act(async () => root.unmount()); root = null; } });
-test.after(() => dom.window.close());
+test.after(() => { dom.window.close(); URL.createObjectURL = originalCreateObjectURL; URL.revokeObjectURL = originalRevokeObjectURL; });
 
 test('normal notifications only appear in the bell; reading updates badge and detail preserves line breaks', async () => {
   records = [notification('one')];
@@ -120,14 +130,16 @@ test('admin can preview a targeted important notice and confirm sending without 
   await input('Người nhận', 'selected');
   await settle();
   await click(document.querySelector('input[type="checkbox"]'));
+  await selectFile(new dom.window.File(['png'], 'quan-trong.png', { type: 'image/png' }));
   await click(button('Xem trước'));
   assert.match(document.querySelector('[role="dialog"]').textContent, /Bảo trì hệ thống/);
   assert.equal(calls.filter((item) => item.name === 'admin_notification_publish').length, 0);
   await click(document.querySelector('button[aria-label="Đóng"]'));
   await act(async () => document.querySelector('form').dispatchEvent(new dom.window.Event('submit', { bubbles: true, cancelable: true })));
   await click(button('Gửi ngay'));
-  const saved = calls.find((item) => item.name === 'admin_notification_save').payload.p_document;
+  const saved = calls.find((item) => item.name.startsWith('admin_notification_save')).payload.p_document;
   assert.equal(saved.priority, 'important'); assert.deepEqual(saved.target_user_ids, [USER_A]);
+  assert.equal(saved.image_path, storageCalls.find((item) => item.operation === 'upload').path);
   assert.equal(calls.filter((item) => item.name === 'admin_notification_publish').length, 1);
   assert.equal(document.querySelector('[role="dialog"]'), null);
 });
@@ -173,4 +185,60 @@ test('notification action URLs reject scripts and redirects through network-path
   }
   assert.equal(safeNotificationUrl('/notifications'), '/notifications');
   assert.equal(safeNotificationUrl('https://example.com/path'), 'https://example.com/path');
+});
+
+async function selectFile(file) {
+  const field = document.querySelector('input[type="file"]');
+  Object.defineProperty(field, 'files', { value: [file], configurable: true });
+  await act(async () => field.dispatchEvent(new dom.window.Event('change', { bubbles: true })));
+}
+
+test('admin previews a local image, uploads on save, and persists a storage path instead of a temporary URL', async () => {
+  await render(AdminNotificationsPage);
+  await input('Tiêu đề', 'Thông báo có ảnh'); await input('Nội dung', 'Nội dung');
+  await selectFile(new dom.window.File(['png-image'], 'anh.png', { type: 'image/png' }));
+  assert.ok(document.querySelector('img[src^="blob:"]'));
+  assert.equal(storageCalls.length, 0);
+  await click(button('Xem trước'));
+  assert.ok(document.querySelector('[role="dialog"] img[src^="blob:"]'));
+  await click(document.querySelector('button[aria-label="Đóng"]'));
+  await click(button('Lưu nháp'));
+  const uploaded = storageCalls.find((item) => item.operation === 'upload');
+  assert.equal(uploaded.bucket, 'notification-images'); assert.equal(uploaded.options.upsert, false);
+  const saved = calls.find((item) => item.name === 'admin_notification_save_with_image').payload.p_document;
+  assert.equal(saved.image_path, uploaded.path); assert.equal(saved.image_url, '');
+  assert.ok(document.querySelector('img[src^="https://images.example.com/"]'));
+  await click(button('Bỏ ảnh')); await click(button('Lưu nháp'));
+  assert.ok(storageCalls.find((item) => item.operation === 'remove' && item.paths.includes(uploaded.path)));
+});
+
+test('invalid image files never upload; an upload error prevents saving and preserves the local preview for retry', async () => {
+  await render(AdminNotificationsPage);
+  await input('Tiêu đề', 'Thông báo'); await input('Nội dung', 'Nội dung');
+  await selectFile(new dom.window.File(['<svg />'], 'anh.svg', { type: 'image/svg+xml' }));
+  assert.match(document.querySelector('[role="alert"]').textContent, /JPG, PNG, WebP hoặc GIF/);
+  const oversized = new dom.window.File(['png'], 'big.png', { type: 'image/png' });
+  Object.defineProperty(oversized, 'size', { value: 6 * 1024 * 1024 });
+  await selectFile(oversized);
+  assert.match(document.querySelector('[role="alert"]').textContent, /5 MB/);
+  assert.equal(storageCalls.length, 0);
+  await selectFile(new dom.window.File(['png'], 'anh.png', { type: 'image/png' }));
+  globalThis.__notificationStorage = async () => ({ data: null, error: { message: 'offline' } });
+  await click(button('Lưu nháp'));
+  assert.match(document.querySelector('[role="alert"]').textContent, /Không thể tải ảnh/);
+  assert.equal(calls.filter((item) => item.name === 'admin_notification_save').length, 0);
+  assert.ok(document.querySelector('img[src^="blob:"]'));
+});
+
+test('a failed metadata save cleans up its newly uploaded image', async () => {
+  await render(AdminNotificationsPage);
+  await input('Tiêu đề', 'Thông báo'); await input('Nội dung', 'Nội dung');
+  await selectFile(new dom.window.File(['png'], 'anh.png', { type: 'image/png' }));
+  const original = globalThis.__notificationRpc;
+  globalThis.__notificationRpc = (name, payload) => name.startsWith('admin_notification_save')
+    ? Promise.resolve({ data: null, error: { code: '22023', message: 'Không lưu được bản nháp' } }) : original(name, payload);
+  await click(button('Lưu nháp'));
+  const path = storageCalls.find((item) => item.operation === 'upload').path;
+  assert.ok(storageCalls.find((item) => item.operation === 'remove' && item.paths.includes(path)));
+  assert.ok(document.querySelector('img[src^="blob:"]'));
 });

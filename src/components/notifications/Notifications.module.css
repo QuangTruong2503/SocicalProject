@@ -46,6 +46,8 @@
 .content h2 { font-size: 22px; line-height: 1.4; margin: 14px 0 8px; overflow-wrap: anywhere; }
 .body { white-space: pre-wrap; overflow-wrap: anywhere; font-size: 14px; line-height: 1.8; margin: 20px 0; }
 .image { display: block; width: 100%; max-height: 340px; object-fit: contain; margin-top: 18px; border-radius: 10px; }
+.imageUpload { display: grid; gap: 12px; padding: 16px; border: 1px dashed var(--color-border); border-radius: 10px; }
+.imageUpload .image { max-height: 240px; margin-top: 0; background: var(--color-bg); }
 .backdrop { position: fixed; inset: 0; z-index: 2000; display: flex; padding: 24px 16px; overflow-y: auto; background: rgb(10 15 30 / 75%); }
 .modal { width: 100%; max-width: 580px; margin: auto; padding: 28px; border-radius: 18px; background: var(--color-surface); color: var(--color-text); box-shadow: var(--shadow-lg); }
 .editor { background: var(--color-surface); padding: 24px; border: 1px solid var(--color-border); border-radius: 14px; margin-bottom: 30px; scroll-margin-top: 100px; }

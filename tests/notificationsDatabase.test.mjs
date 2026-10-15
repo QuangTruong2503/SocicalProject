@@ -4,6 +4,7 @@ import { readFile } from 'node:fs/promises';
 import { PGlite } from '@electric-sql/pglite';
 
 const sql = await readFile(new URL('../supabase/migrations/20261015025117_user_notifications.sql', import.meta.url), 'utf8');
+const storageSql = await readFile(new URL('../supabase/migrations/20261015040836_notification_image_storage.sql', import.meta.url), 'utf8');
 const ADMIN = '11111111-1111-4111-8111-111111111111';
 const A = '22222222-2222-4222-8222-222222222222';
 const B = '33333333-3333-4333-8333-333333333333';
@@ -15,6 +16,13 @@ test('notifications: SQL permissions, recipient snapshots, modal acknowledgement
   t.after(() => db.close());
   await db.exec(`
     create role anon; create role authenticated;
+    create schema storage;
+    create table storage.buckets (id text primary key, name text, public boolean, file_size_limit bigint, allowed_mime_types text[]);
+    create table storage.objects (bucket_id text references storage.buckets(id), name text, primary key(bucket_id, name));
+    alter table storage.objects enable row level security;
+    grant usage on schema storage to anon, authenticated;
+    grant select, insert, update, delete on storage.objects to authenticated;
+    grant select on storage.objects to anon;
     create schema auth; create table auth.users (id uuid primary key);
     create table public.profiles (id uuid primary key references auth.users(id), role text, status text);
     insert into auth.users values ('${ADMIN}'), ('${A}'), ('${B}'), ('${SUSPENDED}');
@@ -36,13 +44,15 @@ test('notifications: SQL permissions, recipient snapshots, modal acknowledgement
   `);
   await db.exec(sql);
   await db.exec(sql);
+  await db.exec(storageSql);
+  await db.exec(storageSql);
   const asUser = async (id, role = 'authenticated') => {
     await db.exec('reset role');
     await db.query("select set_config('request.jwt.claim.sub', $1, false)", [id]);
     await db.exec(`set role ${role}`);
   };
   const rpc = async (query, args = []) => (await db.query(`select ${query} as result`, args)).rows[0].result;
-  const save = (doc, id = null) => rpc('public.admin_notification_save($1::jsonb, $2::uuid)', [JSON.stringify(doc), id]);
+  const save = (doc, id = null) => rpc(`public.${doc.image_path ? 'admin_notification_save_with_image' : 'admin_notification_save'}($1::jsonb, $2::uuid)`, [JSON.stringify(doc), id]);
   const inbox = (limit = 20, offset = 0, unread = false) => rpc('public.notification_inbox($1, $2, $3)', [limit, offset, unread]);
   const denied = (fn) => assert.rejects(fn, (error) => error.code === '42501');
 
@@ -140,6 +150,42 @@ test('notifications: SQL permissions, recipient snapshots, modal acknowledgement
     const messages = (await db.query('select * from realtime.messages')).rows;
     assert.ok(messages.length > 0);
     assert.ok(messages.every((item) => item.private && Object.keys(item.payload).length === 0));
+  });
+  await t.test('private images enforce admin uploads, recipient reads, immutable sent files and safe cleanup', async () => {
+    const path = `${ADMIN}/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa.png`;
+    const replacement = `${ADMIN}/bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb.jpg`;
+    const upload = (name) => db.query("insert into storage.objects values ('notification-images', $1)", [name]);
+    const read = () => db.query("select name from storage.objects where bucket_id = 'notification-images'");
+    const remove = (name) => db.query("delete from storage.objects where bucket_id = 'notification-images' and name = $1 returning name", [name]);
+    await asUser(A);
+    await denied(() => upload(path));
+    await denied(() => save(draft({ image_path: path })));
+    await asUser(ADMIN); await upload(path); await upload(replacement);
+    await denied(() => upload(`${A}/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa.png`));
+    await assert.rejects(() => save(draft({ image_path: `${ADMIN}/cccccccc-cccc-4ccc-8ccc-cccccccccccc.png` })), (error) => error.code === '22023');
+    const doc = draft({ image_path: path, priority: 'important', audience: 'selected', target_user_ids: [A] });
+    const id = await save(doc);
+    assert.equal((await remove(path)).rows.length, 0); // Still attached to a draft.
+    await asUser(A); assert.equal((await read()).rows.length, 0);
+    await asUser(ADMIN); await rpc('public.admin_notification_publish($1)', [id]);
+    assert.equal((await db.query("update storage.objects set name = 'changed' where name = $1 returning name", [path])).rows.length, 0);
+    await asUser(A);
+    assert.deepEqual((await read()).rows.map((row) => row.name), [path]);
+    assert.equal((await inbox()).pending.image_path, path);
+    assert.equal((await rpc('public.notification_detail($1)', [id])).image_path, path);
+    await asUser(B); assert.equal((await read()).rows.length, 0);
+    await asUser('', 'anon'); assert.equal((await read()).rows.length, 0);
+    await asUser(ADMIN); await rpc('public.admin_notification_revoke($1)', [id]);
+    await asUser(A); assert.equal((await read()).rows.length, 0);
+    await asUser(ADMIN);
+    const draftId = await save(draft({ image_path: replacement }));
+    await save(draft(), draftId);
+    assert.equal((await remove(replacement)).rows.length, 1);
+    assert.equal((await remove(path)).rows.length, 0); // Retained for admin history even after revoke.
+    await db.exec('reset role');
+    const bucket = (await db.query("select * from storage.buckets where id = 'notification-images'")).rows[0];
+    assert.equal(bucket.public, false); assert.equal(Number(bucket.file_size_limit), 5242880);
+    assert.deepEqual(bucket.allowed_mime_types, ['image/jpeg', 'image/png', 'image/webp', 'image/gif']);
   });
   await t.test('a realtime delivery failure never prevents publishing or acknowledging', async () => {
     await db.exec('reset role');

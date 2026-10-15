@@ -18,7 +18,7 @@ export const loadNotificationInbox = ({ limit = 20, offset = 0, unreadOnly = fal
 export const markNotificationRead = (id = null, acknowledge = false) =>
   call('notification_mark_read', { p_id: id, p_acknowledge: acknowledge });
 export const loadNotificationDetail = (id) => call('notification_detail', { p_id: id });
-export const saveNotificationDraft = (document, id = null) => call('admin_notification_save', { p_document: document, p_id: id });
+export const saveNotificationDraft = (document, id = null) => call(document.image_path ? 'admin_notification_save_with_image' : 'admin_notification_save', { p_document: document, p_id: id });
 export const publishNotification = (id) => call('admin_notification_publish', { p_id: id });
 export const revokeNotification = (id) => call('admin_notification_revoke', { p_id: id });
 export const listAdminNotifications = (offset = 0) => call('admin_notification_list', { p_limit: 20, p_offset: offset });

@@ -26,6 +26,7 @@ import {
   clearKnmCompanyAsset, getKnmQuotation, KNM_ASSET_KINDS, loadKnmCompanyAssets, saveKnmQuotation, uploadKnmCompanyAsset,
 } from '../../services/knmQuotationService.js';
 import { formatDateTime, formatRelative } from '../../utils/formatters.js';
+import { adminQuotationReturnPath } from '../../utils/adminQuotations.js';
 import styles from './QuotationKnm.module.css';
 
 const LIST_PATH = '/bao-gia-knm/quan-ly';
@@ -77,6 +78,7 @@ function mergeCompany(...sources) {
 export default function QuotationKnm() {
   const { id } = useParams();
   const location = useLocation();
+  const listPath = adminQuotationReturnPath(location.state?.adminReturnTo, LIST_PATH);
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const { user, profile } = useAuth();
@@ -301,7 +303,7 @@ export default function QuotationKnm() {
 
       if (!id) {
         toast.success(`Đã lưu và cấp số ${result.quotation_no}.`);
-        navigate(`/bao-gia-knm/${result.id}/chinh-sua${after ? `?${after}=1` : ''}`, { replace: true });
+        navigate(`/bao-gia-knm/${result.id}/chinh-sua${after ? `?${after}=1` : ''}`, { replace: true, state: { adminReturnTo: listPath } });
         return result;
       }
 
@@ -397,7 +399,7 @@ export default function QuotationKnm() {
   };
 
   const handleDuplicate = () => {
-    navigate(NEW_PATH, { state: { copyOf: { company, quotation } } });
+    navigate(NEW_PATH, { state: { copyOf: { company, quotation }, adminReturnTo: listPath } });
     toast.info('Đã tạo bản sao chưa lưu. Số báo giá sẽ được cấp khi lưu.');
   };
 
@@ -455,7 +457,7 @@ export default function QuotationKnm() {
             <p><b>Không mở được báo giá.</b> {loadError}</p>
             <div className={styles.bannerActions}>
               <button type="button" onClick={() => setReloadToken((token) => token + 1)}>Thử lại</button>
-              <button type="button" onClick={() => navigate(LIST_PATH)}>Về danh sách</button>
+              <button type="button" onClick={() => navigate(listPath)}>Về danh sách</button>
             </div>
           </div>
         </div>
@@ -491,7 +493,7 @@ export default function QuotationKnm() {
             </div>
           </div>
           <div className={styles.headerActions}>
-            <button type="button" className={styles.iconOnlyMobile} onClick={() => goTo(LIST_PATH)} aria-label="Danh sách báo giá">
+            <button type="button" className={styles.iconOnlyMobile} onClick={() => goTo(listPath)} aria-label="Danh sách báo giá">
               <FaList /> <span className={styles.btnLabel}>Danh sách</span>
             </button>
             <button type="button" className={styles.iconOnlyMobile} onClick={() => setPreviewOpen(true)} disabled={!ready} aria-label="Xem trước">

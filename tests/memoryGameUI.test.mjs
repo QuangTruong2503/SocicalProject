@@ -74,6 +74,20 @@ test('late image catalog never replaces a board or counters, including StrictMod
   assert.match(document.querySelector('dialog').textContent, /hoàn thành/);
 });
 
+test('new photo games reload the admin catalog; failed refresh keeps the existing board', async () => {
+  let generation='old';let fail=false;let calls=0;
+  globalThis.__memoryRpc=(name)=>name==='memory_cards_catalog'?(calls++,Promise.resolve(fail?{data:null,error:{code:'NETWORK'}}:{data:Array.from({length:4},(_,index)=>({id:index+1,image:`https://example.com/${generation}-${index}.webp`})),error:null})):noBackend();
+  await render();
+  await act(async()=>{const select=document.querySelector('.mg-theme-label select');select.value='photos';select.dispatchEvent(new dom.window.Event('change',{bubbles:true}));});
+  assert.ok(cards().every((card)=>card.querySelector('img')?.src.includes('old-')));
+  generation='new';await click(button('Ván mới'));
+  assert.ok(cards().every((card)=>card.querySelector('img')?.src.includes('new-')));assert.equal(calls,3);
+  const previous=cards().map((card)=>card.querySelector('img').src);
+  fail=true;await click(button('Ván mới'));
+  assert.deepEqual(cards().map((card)=>card.querySelector('img').src),previous);
+  assert.match(document.body.textContent,/Ván hiện tại được giữ nguyên/);
+});
+
 test('dialogs focus controls, wrap Tab and restore focus; cancel preserves the current board', async () => {
   await render();
   await click(cards()[0]);

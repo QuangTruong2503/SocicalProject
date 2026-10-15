@@ -24,6 +24,7 @@ import {
   getQuotation, listQuotationHistory, normalizeQuotation, saveQuotation, setQuotationStatus,
 } from '../../services/quotationService.js';
 import { formatCurrency } from '../../utils/numberFormat.js';
+import { adminQuotationReturnPath } from '../../utils/adminQuotations.js';
 import { formatDateTime, formatRelative } from '../../utils/formatters.js';
 import { isLikelyTaxCode, lookupBusinessByTaxCode } from '../../utils/taxLookup.js';
 import {
@@ -39,12 +40,12 @@ const VAT_MODE_HINTS = {
   per_item: 'Đơn giá chưa VAT, chọn mức VAT ở từng sản phẩm.',
 };
 
-const HISTORY_ACTIONS = { create: 'Tạo báo giá', update: 'Sửa nội dung', status: 'Đổi trạng thái', delete: 'Xóa bản nháp' };
+const HISTORY_ACTIONS = { create: 'Tạo báo giá', update: 'Sửa nội dung', status: 'Đổi trạng thái', delete: 'Xóa bản nháp', restore: 'Khôi phục' };
 const HISTORY_FIELDS = {
   status: 'Trạng thái', quotation_date: 'Ngày báo giá', customer_name: 'Khách hàng', contact_name: 'Người liên hệ',
   phone: 'Điện thoại', email: 'Email', address: 'Địa chỉ', tax_code: 'MST', note: 'Ghi chú', vat_mode: 'Cách tính VAT',
   discount_type: 'Loại chiết khấu', discount_value: 'Chiết khấu', shipping_fee: 'Phí vận chuyển', total: 'Tổng tiền',
-  item_count: 'Số dòng sản phẩm', quotation_no: 'Số báo giá',
+  item_count: 'Số dòng sản phẩm', quotation_no: 'Số báo giá', deleted_at: 'Ngày xóa',
 };
 
 const EXPORT_PARAMS = ['pdf', 'excel', 'print'];
@@ -82,6 +83,7 @@ export default function Quotation() {
   const { id } = useParams();
   const [searchParams, setSearchParams] = useSearchParams();
   const location = useLocation();
+  const listPath = adminQuotationReturnPath(location.state?.adminReturnTo, '/bao-gia-minh-triet');
   const navigate = useNavigate();
   const { user, profile } = useAuth();
   const isAdmin = profile?.role === 'admin';
@@ -272,7 +274,7 @@ export default function Quotation() {
 
       if (!id) {
         toast.success(`Đã lưu và cấp số ${result.quotation_no}.`);
-        navigate(`/bao-gia-minh-triet/${result.id}/chinh-sua${afterSave ? `?${afterSave}=1` : ''}`, { replace: true });
+        navigate(`/bao-gia-minh-triet/${result.id}/chinh-sua${afterSave ? `?${afterSave}=1` : ''}`, { replace: true, state: { adminReturnTo: listPath } });
         return saved;
       }
 
@@ -354,7 +356,7 @@ export default function Quotation() {
   }, [autoExport, data.quotation_no, ready, runExport, setSearchParams]);
 
   const handleDuplicate = () => {
-    navigate('/bao-gia-minh-triet/tao-moi', { state: { copyOf: data } });
+    navigate('/bao-gia-minh-triet/tao-moi', { state: { copyOf: data, adminReturnTo: listPath } });
     toast.info('Đã tạo bản sao chưa lưu. Số báo giá sẽ được cấp khi lưu.');
   };
 
@@ -363,7 +365,7 @@ export default function Quotation() {
       setLeaveOpen(true);
       return;
     }
-    navigate('/bao-gia-minh-triet');
+    navigate(listPath);
   };
 
   // Blur fills only empty fields; the button overwrites on purpose.
@@ -496,7 +498,7 @@ export default function Quotation() {
           <p>{loadError}</p>
           <div className={styles.bannerActions}>
             <button type="button" onClick={() => setReloadToken((token) => token + 1)}>Thử lại</button>
-            <button type="button" onClick={() => navigate('/bao-gia-minh-triet')}>Về danh sách</button>
+            <button type="button" onClick={() => navigate(listPath)}>Về danh sách</button>
           </div>
         </section>
       </div>
@@ -909,14 +911,14 @@ export default function Quotation() {
           <p className={styles.dialogText}>Thay đổi chưa lưu vẫn được giữ trên máy này và sẽ được đề nghị khôi phục khi bạn mở lại.</p>
           <div className={styles.dialogActions}>
             <button type="button" onClick={() => setLeaveOpen(false)} data-dialog-initial>Ở lại</button>
-            <button type="button" onClick={() => { removeBackup(backupKey); navigate('/bao-gia-minh-triet'); }}>Bỏ thay đổi</button>
+            <button type="button" onClick={() => { removeBackup(backupKey); navigate(listPath); }}>Bỏ thay đổi</button>
             <button
               type="button"
               className={styles.primary}
               onClick={() => {
                 // The backup is debounced; write the latest edits before leaving.
                 writeBackup(backupKey, { data, baseUpdatedAt: meta.updatedAt, savedAt: new Date().toISOString() });
-                navigate('/bao-gia-minh-triet');
+                navigate(listPath);
               }}
             >
               Rời trang, giữ bản nháp

@@ -1,0 +1,80 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {readFile} from 'node:fs/promises';
+import {PGlite} from '@electric-sql/pglite';
+const ADMIN='11111111-1111-4111-8111-111111111111',STAFF='22222222-2222-4222-8222-222222222222';
+const sql=await readFile(new URL('../supabase/migrations/20261015050622_memory_cards_management.sql',import.meta.url),'utf8');
+test('memory card migration upgrades legacy data and enforces permissions and versions',async(t)=>{
+  const db=new PGlite();t.after(()=>db.close());
+  await db.exec(`create role anon;create role authenticated;create schema auth;
+    create function auth.uid() returns uuid language sql stable as $$select nullif(current_setting('request.jwt.claim.sub',true),'')::uuid$$;
+    grant usage on schema auth to authenticated;
+    create table public.profiles(id uuid primary key,role text,status text);
+    insert into public.profiles values('${ADMIN}','admin','active'),('${STAFF}','user','active');
+    create function public.is_admin() returns boolean language sql stable security definer set search_path='' as $$select exists(select 1 from public.profiles where id=auth.uid() and role='admin' and status='active')$$;
+    create function public.is_active_user() returns boolean language sql stable security definer set search_path='' as $$select exists(select 1 from public.profiles where id=auth.uid() and status='active')$$;
+    create schema storage;create table storage.buckets(id text primary key,name text,public boolean,file_size_limit bigint,allowed_mime_types text[]);
+    create table storage.objects(id bigint generated always as identity primary key,bucket_id text,name text);
+    alter table storage.objects enable row level security;
+    grant select,insert,delete on storage.objects to authenticated;grant usage on sequence storage.objects_id_seq to authenticated;
+    grant usage on schema storage to authenticated;
+    create table public.memory_cards(id serial primary key,image text not null,created_at timestamptz not null default now());
+    insert into public.memory_cards(image,created_at) select 'https://images.test/'||i,now()+i*interval '1 second' from generate_series(1,80) i;
+    alter table public.memory_cards enable row level security;
+    create policy legacy_public_all on public.memory_cards for all to anon,authenticated using(true) with check(true);
+    grant all on public.memory_cards to anon,authenticated;`);
+  await db.exec(sql);await db.exec(sql);
+  const login=async(uid,role='authenticated')=>{await db.exec('reset role');await db.query("select set_config('request.jwt.claim.sub',$1,false)",[uid]);await db.exec(`set role ${role}`);};
+  const rpc=async(query,args=[]) => (await db.query(query,args)).rows[0].result;
+  const list=(view='all',search=null,offset=0)=>rpc("select public.admin_list_memory_cards($1,null,$2,'newest',24,$3) result",[search,view,offset]);
+  const catalog=()=>rpc('select public.memory_cards_catalog() result');
+  const save=(row,doc)=>rpc('select public.admin_save_memory_card($1,$2,$3) result',[row?.id ?? null,row?.version ?? null,doc]);
+  const change=(row,action)=>rpc('select public.admin_change_memory_card($1,$2,$3) result',[row.id,row.version,action]);
+  const rejects=(fn,code)=>assert.rejects(fn,(error)=>error.code===code);
+  await t.test('anonymous and staff cannot manage cards or bypass legacy policies',async()=>{
+    await login('','anon');await rejects(list,'42501');await rejects(catalog,'42501');
+    await rejects(()=>db.query('select * from public.memory_cards'),'42501');
+    await login(STAFF);await rejects(list,'42501');await rejects(()=>db.query("delete from public.memory_cards where id=1"),'42501');
+    const cards=await catalog();assert.equal(cards.length,64);assert.equal(cards[0].id,80);assert.equal(cards.at(-1).id,17);
+  });
+  await login(ADMIN);
+  let row=(await list()).rows[0];
+  await t.test('exact paging and registered counts survive an empty page',async()=>{
+    assert.equal((await list()).total_count,80);assert.equal((await list('all',null,1000)).total_count,80);
+    assert.equal((await list()).summary.catalog,64);assert.equal((await list('all','Ảnh số 80')).total_count,1);
+  });
+  await t.test('editing cannot change the image URL; stale versions are rejected',async()=>{
+    const old=row;
+    row=await save(row,{name:'Động vật',category:'Thú',is_active:false,image:'https://evil.test/x'});
+    assert.equal(row.image,old.image);assert.equal(row.version,2);
+    await rejects(()=>save(old,{name:'Stale',category:'',is_active:true}),'40001');
+    await rejects(()=>save(row,{name:'',is_active:true}),'22023');
+    await login(STAFF);assert.equal((await db.query('select id from public.memory_cards where id=$1',[row.id])).rows.length,0);
+    assert.equal((await catalog()).some((c)=>c.id===row.id),false);await login(ADMIN);
+  });
+  await t.test('trash/restore preserve image and disabled state and reject stale or invalid actions',async()=>{
+    const old=row;row=await change(row,'delete');assert.ok(row.deleted_at);assert.equal((await list('trash')).total_count,1);
+    await rejects(()=>change(old,'restore'),'40001');await rejects(()=>change(row,'purge'),'22023');
+    await login(STAFF);assert.equal((await db.query('select id from public.memory_cards where id=$1',[row.id])).rows.length,0);await login(ADMIN);
+    row=await change(row,'restore');assert.equal(row.image,old.image);assert.equal(row.is_active,false);assert.equal(row.deleted_at,null);
+    await rejects(()=>change(row,'restore'),'40001');
+  });
+  await t.test('registered uploads cannot be removed, including in trash; orphan cleanup stays admin-only',async()=>{
+    await db.exec('reset role');
+    const path='memory-cards/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa.webp';
+    await db.query("insert into storage.objects(bucket_id,name) values('memory-card-images',$1)",[path]);await login(ADMIN);
+    let uploaded=await save(null,{name:'Upload',category:'Test',is_active:true,storage_path:path,image:'https://project.test/storage/v1/object/public/memory-card-images/'+path});
+    assert.equal(await rpc('select memory_cards_private.can_remove_upload($1) result',[path]),false);
+    uploaded=await change(uploaded,'delete');
+    assert.equal(await rpc('select memory_cards_private.can_remove_upload($1) result',[path]),false);
+    assert.equal((await db.query("delete from storage.objects where name=$1 returning id",[path])).rows.length,0);
+    assert.equal(await rpc("select memory_cards_private.can_remove_upload('memory-cards/orphan.webp') result"),true);
+    await login(STAFF);assert.equal(await rpc("select memory_cards_private.can_remove_upload('memory-cards/orphan.webp') result"),false);await login(ADMIN);
+  });
+  await t.test('catalog deduplicates photos and excludes trash; suspended admin is denied',async()=>{
+    await db.exec('reset role');await db.exec("insert into public.memory_cards(image) values('https://images.test/79')");await login(ADMIN);
+    const cards=await catalog();assert.equal(new Set(cards.map((c)=>c.image)).size,cards.length);
+    await db.exec('reset role');await db.query("update public.profiles set status='suspended' where id=$1",[ADMIN]);await login(ADMIN);
+    await rejects(list,'42501');await rejects(catalog,'42501');await rejects(()=>change(row,'delete'),'42501');
+  });
+});

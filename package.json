@@ -10,7 +10,9 @@
     "preview": "vite preview",
     "test:memory": "node --test src/utils/memoryGame.test.js tests/memoryGameDatabase.test.mjs",
     "test:memory:ui": "node --import ./tests/memoryGameLoader.mjs --test tests/memoryGameUI.test.mjs",
-    "test:notifications": "node --test tests/notificationsDatabase.test.mjs && node --import ./tests/notificationsLoader.mjs --test tests/notificationsUI.test.mjs"
+    "test:notifications": "node --test tests/notificationsDatabase.test.mjs && node --import ./tests/notificationsLoader.mjs --test tests/notificationsUI.test.mjs",
+    "test:admin-quotations": "node --test src/utils/adminQuotations.test.js tests/adminQuotationsDatabase.test.mjs && node --import ./tests/adminQuotationsLoader.mjs --test tests/adminQuotationsUI.test.mjs",
+    "test:admin-memory": "node --test src/utils/memoryCardAdmin.test.js tests/adminMemoryCardsDatabase.test.mjs && node --import ./tests/adminMemoryCardsLoader.mjs --test tests/adminMemoryCardsUI.test.mjs"
   },
   "dependencies": {
     "@marsidev/react-turnstile": "^1.6.1",

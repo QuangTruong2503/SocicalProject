@@ -197,10 +197,35 @@ function MemoryGamePlayer({ userId }) {
     } else operation();
   };
 
-  const newFreeGame = (theme = game.theme, pairCount = game.pairCount) => {
-    const nextTheme = theme === 'photos' && photos.length < pairCount ? 'animals' : theme;
-    dispatch({ type: 'new', game: createGame({ theme: nextTheme, pairCount, source: nextTheme === 'photos' ? photos : undefined }), now: Date.now() });
-    setDailyNotice('');
+  const newFreeGame = async (theme = game.theme, pairCount = game.pairCount) => {
+    if (networkBusy.current) return;
+    let source = photos;
+    if (theme === 'photos') {
+      const result = await runRequest(async (parentSignal) => {
+        const controller = new AbortController();
+        const abort = () => controller.abort();
+        parentSignal.addEventListener('abort', abort, { once: true });
+        const timeout = window.setTimeout(abort, 20000);
+        try {
+          const catalog = await fetchPublicMemoryCards(controller.signal);
+          if (catalog.error || controller.signal.aborted) return { error: true };
+          const cards = await prepareMemoryImages(catalog.data, { signal: controller.signal });
+          return controller.signal.aborted ? { error: true } : { cards };
+        } finally {
+          window.clearTimeout(timeout);
+          parentSignal.removeEventListener('abort', abort);
+        }
+      });
+      if (!mounted.current || !result) return;
+      if (result.error) { setDailyNotice('Chưa cập nhật được bộ ảnh. Ván hiện tại được giữ nguyên; hãy thử lại khi có mạng.'); return; }
+      source = result.cards;
+      setPhotos(source.length >= 4 ? source : []);
+      setPhotoStatus(source.length >= 4 ? 'ready' : 'unavailable');
+    }
+    const nextTheme = theme === 'photos' && source.length < 4 ? 'animals' : theme;
+    const nextCount = nextTheme === 'photos' ? Math.min(pairCount, source.length >= 8 ? 8 : source.length >= 6 ? 6 : 4) : pairCount;
+    dispatch({ type: 'new', game: createGame({ theme: nextTheme, pairCount: nextCount, source: nextTheme === 'photos' ? source : undefined }), now: Date.now() });
+    setDailyNotice(nextTheme !== theme ? 'Bộ ảnh chưa đủ 4 ảnh tải được. Ván mới sử dụng chủ đề Động vật.' : nextCount !== pairCount ? 'Bộ ảnh đã thay đổi. Độ khó được điều chỉnh theo số ảnh hiện có.' : '');
     setDailyError('');
     setDismissedWin(null);
     queueMicrotask(() => boardRef.current?.querySelector('button')?.focus());
@@ -306,6 +331,7 @@ function MemoryGamePlayer({ userId }) {
           </div>
 
           {game.mode === 'daily' && <div className="mg-notice"><strong>{game.verified ? '🏅 Thử thách xếp hạng' : '🧩 Thử thách luyện tập'} · {game.day}</strong><p>{dailyNotice}</p></div>}
+          {game.mode !== 'daily' && dailyNotice && <p className="mg-notice" role="status">{dailyNotice}</p>}
           {dailyError && <div className="mg-notice mg-error" role="alert"><p>{dailyError}</p><button type="button" disabled={busy} className="mg-secondary-button" onClick={startDaily}>Tải lại ván thử thách</button></div>}
 
           <section className="mg-board" aria-label="Bàn ghép thẻ" aria-describedby="mg-instructions" ref={boardRef}>
@@ -370,7 +396,7 @@ function MemoryGamePlayer({ userId }) {
         <div className="mg-result-stats"><div><span>Thời gian</span><strong>{formatDuration(game.elapsedMs)}</strong></div><div><span>Tỷ lệ ghép đúng</span><strong>{accuracy}%</strong></div></div>
         {newRecord && <p className="mg-record">🏆 Kỷ lục mới cho chế độ này!</p>}
         {game.verified && <p>Kết quả đã được ghi nhận trên bảng xếp hạng hôm nay.</p>}
-        <div className="mg-actions"><button type="button" className="mg-secondary-button" onClick={() => setDismissedWin(game.id)}>Xem lại bàn</button><button type="button" className="mg-primary-button" onClick={() => newFreeGame(game.theme, game.pairCount)}>{game.mode === 'daily' ? 'Chơi tự do' : 'Chơi lại'}</button></div>
+        <div className="mg-actions"><button type="button" className="mg-secondary-button" onClick={() => setDismissedWin(game.id)}>Xem lại bàn</button><button type="button" className="mg-primary-button" disabled={busy} onClick={() => newFreeGame(game.theme, game.pairCount)}>{game.mode === 'daily' ? 'Chơi tự do' : 'Chơi lại'}</button></div>
       </GameDialog>}
     </>
   );
