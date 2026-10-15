@@ -3,6 +3,7 @@ import { Helmet } from 'react-helmet-async';
 import { Navigate, NavLink, useNavigate, useParams } from 'react-router-dom';
 import {
   FaArrowsRotate,
+  FaBell,
   FaCamera,
   FaCrown,
   FaGaugeHigh,
@@ -134,6 +135,7 @@ export default function DashboardPage() {
             </div>
 
             <nav className="dashboard-sidebar-nav" aria-label="Mục tài khoản">
+              <NavLink to="/notifications" className="dashboard-sidebar-link"><FaBell aria-hidden="true" />Thông báo</NavLink>
               {SECTIONS.map((item) => (
                 <NavLink
                   key={item.id}

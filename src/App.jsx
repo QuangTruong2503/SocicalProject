@@ -27,6 +27,8 @@ const AdminQuotationsPage = lazy(() => import('./pages/Admin/AdminQuotationsPage
 const AdminWatermarkPage = lazy(() => import('./pages/Admin/AdminWatermarkPage.jsx'));
 const AdminMemoryCardsPage = lazy(() => import('./pages/Admin/AdminMemoryCardsPage.jsx'));
 const AdminProductLinksPage = lazy(() => import('./pages/Admin/AdminProductLinksPage.jsx'));
+const AdminNotificationsPage = lazy(() => import('./pages/Admin/AdminNotificationsPage.jsx'));
+const NotificationsPage = lazy(() => import('./pages/NotificationsPage.jsx'));
 
 function ToolCard({ icon, title, description, link }) {
   return (
@@ -206,6 +208,7 @@ export default function App() {
           <Suspense fallback={<div role="status" style={{ padding: '48px 24px', textAlign: 'center' }}>Đang tải công cụ…</div>}>
           <Routes>
             <Route path="/" element={<HomePage />} />
+            <Route path="/notifications" element={<ProtectedRoute title="Đăng nhập để xem thông báo"><NotificationsPage /></ProtectedRoute>} />
             <Route path="/watermark/dashboard" element={<Navigate to="/admin/watermark" replace />} />
             <Route path="/quotation" element={<Navigate to="/bao-gia-minh-triet/tao-moi" replace />} />
             <Route path="/bao-gia-knm" element={<ProtectedRoute title="Báo giá KNM cần đăng nhập." description="Khu vực dành cho nhân viên và quản trị viên." details={['Tạo báo giá máy móc, thiết bị công nghiệp', 'Xem trước realtime, xuất PDF và in ngay']} loginLabel="Đăng nhập để tạo báo giá KNM"><QuotationKnm /></ProtectedRoute>} />
@@ -219,6 +222,7 @@ export default function App() {
               <Route path="watermark" element={<AdminWatermarkPage />} />
               <Route path="memory-cards" element={<AdminMemoryCardsPage />} />
               <Route path="product-links" element={<AdminProductLinksPage />} />
+              <Route path="notifications" element={<AdminNotificationsPage />} />
             </Route>
             <Route path="/bao-gia-minh-triet" element={<ProtectedRoute title="Quản lý báo giá cần đăng nhập." description="Khu vực dành cho nhân viên và quản trị viên." details={['Lưu và chỉnh sửa báo giá', 'Xuất Excel, PDF và in A4']} loginLabel="Đăng nhập để quản lý báo giá"><QuotationList /></ProtectedRoute>} />
             <Route path="/bao-gia-minh-triet/tao-moi" element={<ProtectedRoute title="Tạo báo giá cần đăng nhập." description="Khu vực dành cho nhân viên và quản trị viên." details={['Tạo báo giá theo mẫu công ty']} loginLabel="Đăng nhập để tạo báo giá"><Quotation /></ProtectedRoute>} />

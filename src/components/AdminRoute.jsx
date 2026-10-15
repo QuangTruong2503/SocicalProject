@@ -3,10 +3,13 @@ import { useAuth } from '../hooks/useAuth.js';
 import AccessGateModal from './auth/AccessGateModal.jsx';
 
 export default function AdminRoute({ children }) {
-  const { isAuthenticated, isInitializing, isProfileLoading, profile, logout } = useAuth();
+  const { isAuthenticated, isInitializing, isProfileLoading, user, profile, logout } = useAuth();
   const navigate = useNavigate();
+  const hasCurrentProfile = Boolean(user?.id) && profile?.id === user.id;
 
-  if (isInitializing || isProfileLoading) {
+  // Keep the admin page mounted during background revalidation so drafts survive
+  // tab focus/token refresh. A different user must wait for their own profile.
+  if (isInitializing || (isProfileLoading && !hasCurrentProfile)) {
     return (
       <div className="auth-loading-screen">
         <div className="auth-loading-ring"></div>
@@ -45,7 +48,7 @@ export default function AdminRoute({ children }) {
     );
   }
 
-  if (profile?.role !== 'admin') {
+  if (!hasCurrentProfile || profile?.role !== 'admin') {
     return (
       <AccessGateModal
         title="Bạn không có quyền truy cập trang này."

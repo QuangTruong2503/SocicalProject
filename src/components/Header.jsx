@@ -4,6 +4,7 @@ import { useTheme } from '../hooks/useTheme';
 import { useAuth } from '../hooks/useAuth';
 import { getUserAvatarUrl, getUserDisplayName, getUserInitials } from '../utils/userProfile.js';
 import UserAvatar from './UserAvatar.jsx';
+import NotificationBell from './notifications/NotificationBell.jsx';
 import '../styles/Header.css';
 
 export default function Header() {
@@ -147,6 +148,7 @@ export default function Header() {
           </nav>
 
           <div className="header-right">
+            {user && profile?.status !== 'suspended' && <NotificationBell key={`${user.id}:${location.pathname}`} />}
             {user ? (
               <div className="user-menu" ref={userMenuRef}>
                 <button
