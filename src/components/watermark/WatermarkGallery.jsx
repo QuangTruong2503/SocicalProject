@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { getUniqueFileNames, normalizeImageName } from '../../hooks/useWatermarkProcessor';
 import ConfirmDialog from '../dialog/ConfirmDialog.jsx';
+import AiNamingAccessDialog from './AiNamingAccessDialog.jsx';
+import AiRenameModal from './AiRenameModal.jsx';
 import ImageLightbox from './ImageLightbox';
 import WatermarkModal from './WatermarkModal.jsx';
 import { HARAVAN_PRESETS, loadHaravanPreferences, normalizeHaravanPrefix, saveHaravanPreferences } from '../../utils/haravanPreferences.js';
@@ -37,6 +39,10 @@ export default function WatermarkGallery({
   onDownloadAll,
   onRenameFile,
   onRenameFiles,
+  onRenameById,
+  productName = '',
+  aiAccess = null,
+  onRequestAiLogin,
   onRemoveResult,
   isProcessing,
   processingProgress,
@@ -47,6 +53,11 @@ export default function WatermarkGallery({
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isBulkRenameOpen, setIsBulkRenameOpen] = useState(false);
   const [bulkNames, setBulkNames] = useState('');
+  // null | 'modal' (AI dialog) | 'access' (why the account cannot use it)
+  const [aiDialogMode, setAiDialogMode] = useState(null);
+  const aiStatus = aiAccess?.status ?? 'loading';
+  // Suggestions kept when the AI dialog is closed without applying, so reopening costs no new API call.
+  const [aiRenameDraft, setAiRenameDraft] = useState(null);
   const [isHaravanLinksOpen, setIsHaravanLinksOpen] = useState(false);
   const [haravanPreferences, setHaravanPreferences] = useState(loadHaravanPreferences);
   const [isAddingHaravan, setIsAddingHaravan] = useState(false);
@@ -285,6 +296,19 @@ export default function WatermarkGallery({
   if (results.length === 0 && !isProcessing) return null;
 
   const showSkeletons = isProcessing && results.length === 0;
+  // A draft for a previous batch (no matching result IDs) is dropped.
+  const activeAiRenameDraft = aiRenameDraft && results.some((result) => aiRenameDraft.entries[result.id]) ? aiRenameDraft : null;
+  // Accounts without access get an explanation instead of the AI dialog, unless
+  // they already have suggestions to review (kept; generation is disabled).
+  // Once open, the AI dialog stays open if access is later refused, so edits survive.
+  const handleOpenAiRename = () => {
+    if (aiStatus === 'loading') return;
+    setAiDialogMode(aiStatus === 'allowed' || activeAiRenameDraft ? 'modal' : 'access');
+  };
+  const closeAiRename = () => setAiDialogMode(null);
+  if (aiDialogMode === 'access' && aiStatus === 'allowed') setAiDialogMode('modal'); // re-check succeeded
+  const showAiRenameModal = Boolean(onRenameById) && aiDialogMode === 'modal';
+  const showAiAccessDialog = Boolean(onRenameById) && aiDialogMode === 'access';
 
   return (
     <div className="wm-gallery-section">
@@ -304,6 +328,23 @@ export default function WatermarkGallery({
             <span className="wm-bulk-rename-button-icon" aria-hidden="true">✦</span>
             <span>Thêm tên ảnh hàng loạt</span>
           </button>
+          {onRenameById && (
+            <button
+              className="wm-bulk-rename-button wm-ai-rename-button"
+              type="button"
+              onClick={handleOpenAiRename}
+              disabled={results.length === 0 || aiStatus === 'loading'}
+              aria-haspopup="dialog"
+              aria-busy={aiStatus === 'loading' || undefined}
+              title={aiStatus === 'loading' ? 'Đang kiểm tra quyền…' : undefined}
+            >
+              <span className="wm-bulk-rename-button-icon" aria-hidden="true">
+                {aiStatus === 'loading' ? <span className="wm-ai-button-spinner" /> : 'AI'}
+              </span>
+              <span>Đặt tên bằng AI</span>
+              {(aiStatus === 'denied' || aiStatus === 'signed_out') && <span className="wm-ai-pro-chip">Pro</span>}
+            </button>
+          )}
           <button
             className="wm-bulk-rename-button wm-haravan-link-button"
             type="button"
@@ -571,6 +612,38 @@ export default function WatermarkGallery({
               </div>
             </div>
         </WatermarkModal>
+      )}
+
+      {showAiRenameModal && (
+        <AiRenameModal
+          results={results}
+          defaultProductName={productName}
+          draft={activeAiRenameDraft}
+          accessStatus={aiStatus}
+          accessError={aiAccess?.error}
+          onAccessRejected={aiAccess?.reportRejection}
+          onRetryAccess={aiAccess?.refresh}
+          onRequestLogin={onRequestAiLogin}
+          onApply={(namesById) => {
+            onRenameById(namesById);
+            setAiRenameDraft(null);
+            closeAiRename();
+          }}
+          onClose={(draft) => {
+            setAiRenameDraft(draft);
+            closeAiRename();
+          }}
+        />
+      )}
+
+      {showAiAccessDialog && (
+        <AiNamingAccessDialog
+          status={aiStatus}
+          error={aiAccess?.error}
+          onRequestLogin={onRequestAiLogin}
+          onRetry={aiAccess?.refresh}
+          onClose={closeAiRename}
+        />
       )}
 
       {isHaravanLinksOpen && (

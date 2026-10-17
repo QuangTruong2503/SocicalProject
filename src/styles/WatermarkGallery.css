@@ -838,6 +838,347 @@
   color: var(--primary-color);
 }
 
+/* ==================== AI RENAME ==================== */
+
+.wm-ai-rename-button {
+  border-color: color-mix(in srgb, #7c3aed 50%, transparent);
+  background: linear-gradient(135deg, color-mix(in srgb, #7c3aed 14%, var(--bg-card)), var(--bg-card));
+  color: #7c3aed;
+}
+
+.wm-ai-rename-button:hover:not(:disabled) {
+  background: linear-gradient(135deg, #7c3aed, color-mix(in srgb, #7c3aed 70%, var(--primary-color)));
+  box-shadow: 0 10px 26px color-mix(in srgb, #7c3aed 30%, transparent);
+}
+
+.wm-visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+.wm-ai-rename-modal {
+  width: min(760px, 100%);
+}
+
+.wm-ai-rename-modal .wm-bulk-rename-hero-icon {
+  font-size: 0.85rem;
+  font-weight: 900;
+}
+
+.wm-ai-rename-privacy {
+  display: flex;
+  gap: 0.5rem;
+  margin: 0 0 1rem;
+  padding: 0.65rem 0.8rem;
+  border: 1px solid color-mix(in srgb, var(--primary-color) 20%, var(--border-color));
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--primary-color) 6%, transparent);
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  line-height: 1.5;
+}
+
+.wm-ai-rename-form {
+  display: grid;
+  gap: 0.9rem;
+}
+
+.wm-ai-required {
+  color: var(--secondary-color);
+}
+
+.wm-ai-rename-input {
+  width: 100%;
+  min-height: 2.75rem;
+  padding: 0.6rem 0.85rem;
+  border: 1px solid color-mix(in srgb, var(--primary-color) 20%, var(--border-color));
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--bg-dark) 86%, var(--bg-card));
+  color: var(--text-light);
+  font: inherit;
+}
+
+.wm-ai-rename-input:focus {
+  border-color: var(--primary-color);
+  outline: 3px solid color-mix(in srgb, var(--primary-color) 18%, transparent);
+}
+
+.wm-ai-rename-input[aria-invalid='true'] {
+  border-color: var(--secondary-color);
+}
+
+.wm-ai-rename-input:disabled {
+  opacity: 0.65;
+}
+
+.wm-ai-prompt {
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  padding: 0.6rem 0.8rem;
+}
+
+.wm-ai-prompt > summary {
+  min-height: 1.75rem;
+  color: var(--primary-color);
+  font-size: 0.85rem;
+  font-weight: 750;
+  cursor: pointer;
+}
+
+.wm-ai-prompt[open] > summary {
+  margin-bottom: 0.6rem;
+}
+
+.wm-ai-prompt-textarea {
+  min-height: 160px;
+  font-size: 0.85rem;
+}
+
+.wm-ai-prompt-footer {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-top: 0.5rem;
+  color: var(--text-muted);
+  font-size: 0.75rem;
+}
+
+.wm-ai-reset-prompt {
+  flex: 0 0 auto;
+  min-height: 2.25rem;
+  padding: 0 0.75rem;
+  border: 1px solid color-mix(in srgb, var(--primary-color) 35%, var(--border-color));
+  border-radius: 999px;
+  background: transparent;
+  color: var(--primary-color);
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.wm-ai-reset-prompt:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--primary-color) 10%, transparent);
+}
+
+.wm-ai-reset-prompt:disabled {
+  cursor: default;
+  opacity: 0.45;
+}
+
+.wm-ai-rename-run {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.wm-ai-rename-count {
+  color: var(--text-muted);
+  font-size: 0.85rem;
+}
+
+.wm-ai-rename-run-buttons {
+  display: flex;
+  gap: 0.6rem;
+}
+
+.wm-ai-generate {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+}
+
+.wm-ai-rename-modal .wm-spinner {
+  width: 1rem;
+  height: 1rem;
+}
+
+.wm-ai-rename-error {
+  margin: 0.75rem 0 0;
+  padding: 0.6rem 0.8rem;
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--secondary-color) 10%, transparent);
+  color: var(--secondary-color);
+  font-size: 0.85rem;
+}
+
+.wm-ai-rename-status {
+  min-height: 1.2rem;
+  margin: 0.6rem 0 0.4rem;
+  color: var(--text-muted);
+  font-size: 0.8rem;
+}
+
+.wm-ai-rename-list {
+  display: grid;
+  gap: 0.6rem;
+  max-height: min(46vh, 420px);
+  margin: 0;
+  padding: 0 0.25rem 0 0;
+  overflow-y: auto;
+  list-style: none;
+}
+
+.wm-ai-rename-item {
+  display: grid;
+  grid-template-columns: 64px minmax(0, 1fr);
+  gap: 0.75rem;
+  align-items: start;
+  padding: 0.6rem;
+  border: 1px solid var(--border-color);
+  border-radius: 14px;
+  background: var(--bg-card);
+}
+
+.wm-ai-rename-item.is-error {
+  border-color: color-mix(in srgb, var(--secondary-color) 45%, var(--border-color));
+}
+
+.wm-ai-rename-thumb {
+  width: 64px;
+  height: 64px;
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--bg-dark) 80%, var(--bg-card));
+  object-fit: cover;
+}
+
+.wm-ai-rename-item-body {
+  display: grid;
+  gap: 0.35rem;
+  min-width: 0;
+}
+
+.wm-ai-rename-current {
+  display: flex;
+  gap: 0.4rem;
+  align-items: baseline;
+  min-width: 0;
+  color: var(--text-muted);
+  font-size: 0.75rem;
+}
+
+.wm-ai-rename-current .wm-result-num {
+  margin-left: 0;
+}
+
+.wm-ai-rename-current span:last-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.wm-ai-rename-name {
+  min-height: 2.4rem;
+  font-size: 0.85rem;
+}
+
+.wm-ai-rename-hint {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem 0.5rem;
+  align-items: center;
+  min-height: 1.1rem;
+  color: var(--text-muted);
+  font-size: 0.74rem;
+  overflow-wrap: anywhere;
+}
+
+.wm-ai-final {
+  color: var(--text-light);
+  font-weight: 650;
+}
+
+.wm-ai-chip {
+  padding: 0.1rem 0.5rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--primary-color) 12%, transparent);
+  color: var(--primary-color);
+  font-weight: 700;
+}
+
+.wm-ai-chip.is-error {
+  background: color-mix(in srgb, var(--secondary-color) 12%, transparent);
+  color: var(--secondary-color);
+}
+
+.wm-ai-chip.is-review {
+  background: color-mix(in srgb, #f59e0b 16%, transparent);
+  color: #b45309;
+}
+
+.wm-ai-access-notice {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-top: 0.75rem;
+  padding: 0.7rem 0.85rem;
+  border: 1px solid color-mix(in srgb, #f59e0b 40%, var(--border-color));
+  border-radius: 12px;
+  background: color-mix(in srgb, #f59e0b 10%, transparent);
+  font-size: 0.85rem;
+}
+
+.wm-ai-access-notice > div {
+  display: grid;
+  gap: 0.2rem;
+}
+
+.wm-ai-access-notice span {
+  color: var(--text-muted);
+  font-size: 0.78rem;
+}
+
+.wm-ai-access-message {
+  margin: 0 0 0.5rem;
+  font-weight: 700;
+}
+
+.wm-ai-access-note {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+}
+
+.wm-ai-access-modal {
+  width: min(480px, 100%);
+}
+
+.wm-ai-access-modal .wm-bulk-rename-action-buttons:has(> :only-child) {
+  grid-template-columns: 1fr;
+}
+
+.wm-ai-pro-chip {
+  padding: 0.05rem 0.4rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, #f59e0b 20%, transparent);
+  color: #b45309;
+  font-size: 0.68rem;
+  font-weight: 800;
+}
+
+.wm-ai-button-spinner {
+  width: 0.8rem;
+  height: 0.8rem;
+  border: 2px solid color-mix(in srgb, currentColor 30%, transparent);
+  border-top-color: currentColor;
+  border-radius: 50%;
+  animation: wmSpin 0.75s linear infinite;
+}
+
+.wm-ai-rename-summary {
+  color: var(--text-muted);
+  font-size: 0.8rem;
+}
+
 /* ==================== RESPONSIVE ==================== */
 
 @media (max-width: 768px) {
@@ -871,6 +1212,33 @@
   .wm-bulk-rename-cancel,
   .wm-bulk-rename-confirm {
     width: 100%;
+  }
+
+  .wm-ai-rename-modal {
+    padding: 1.1rem;
+  }
+
+  .wm-ai-rename-run,
+  .wm-ai-rename-run-buttons,
+  .wm-ai-prompt-footer,
+  .wm-ai-access-notice {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .wm-ai-rename-item {
+    grid-template-columns: 48px minmax(0, 1fr);
+    gap: 0.6rem;
+  }
+
+  .wm-ai-rename-thumb {
+    width: 48px;
+    height: 48px;
+  }
+
+  .wm-ai-rename-list {
+    max-height: none;
+    overflow: visible;
   }
 
   .wm-dropdown-btn {

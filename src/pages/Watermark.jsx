@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Helmet } from 'react-helmet-async';
+import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import LogoUploader from '../components/watermark/LogoUploader';
 import ImageUploader from '../components/watermark/ImageUploader';
@@ -12,6 +13,7 @@ import PersonalizationModal from '../components/watermark/PersonalizationModal.j
 import WatermarkModal from '../components/watermark/WatermarkModal.jsx';
 import { buildFileName, getUniqueFileNames } from '../hooks/useWatermarkProcessor';
 import { useAuth } from '../hooks/useAuth.js';
+import { useAiNamingAccess } from '../hooks/useAiNamingAccess.js';
 import { useTheme } from '../hooks/useTheme.js';
 import { getUserDisplayName } from '../utils/userProfile.js';
 import { loadWatermarkOptions, saveWatermarkOptions } from '../hooks/useIndexedDB.js';
@@ -284,11 +286,15 @@ async function streamZipToFile(zip, fileHandle, isCancelled) {
 export default function Watermark() {
   const { user } = useAuth();
   const { isDark } = useTheme();
+  const navigate = useNavigate();
+  const aiNamingAccess = useAiNamingAccess();
   const resultsRef = useRef([]);
   // Results dropped from the list; their object URLs are revoked after React has
   // removed the <img> elements (lazy images that had not loaded yet would break).
   const pendingReleaseRef = useRef([]);
   const taskRef = useRef(null);
+  // Stable result IDs: AI suggestions and renames are matched by ID, never by position.
+  const resultIdRef = useRef(0);
   const mountedRef = useRef(true);
   const createButtonRippleIdRef = useRef(0);
   const totalPulseTimeoutRef = useRef(null);
@@ -487,6 +493,9 @@ export default function Watermark() {
           if (!mountedRef.current) return;
 
           const item = {
+            id: `res-${(resultIdRef.current += 1)}`,
+            // Original (no logo) for AI naming; a File reference, not a copy.
+            sourceFile: sources[index].file,
             url: URL.createObjectURL(blob),
             thumb: URL.createObjectURL(thumbBlob),
             blob,
@@ -665,9 +674,10 @@ export default function Watermark() {
 
   // Renaming keeps the same blobs/URLs, so nothing is released.
   const renameResults = useCallback((rename) => {
-    if (taskRef.current) return;
+    if (taskRef.current) return false;
     resultsRef.current = resultsRef.current.map(rename);
     setResults(resultsRef.current);
+    return true;
   }, []);
 
   const handleRenameResult = useCallback((index, nextName) => {
@@ -676,6 +686,22 @@ export default function Watermark() {
 
   const handleRenameFiles = useCallback((names) => {
     renameResults((result, index) => (names[index] ? { ...result, fileName: names[index] } : result));
+  }, [renameResults]);
+
+  // Existing login flow; /auth sends the user back here afterwards.
+  const handleRequestAiLogin = useCallback(() => {
+    navigate('/auth', { state: { from: '/watermark' } });
+  }, [navigate]);
+
+  /** Only IDs still present are renamed; unknown IDs are ignored. */
+  const handleRenameById = useCallback((namesById) => {
+    const has = (id) => Object.prototype.hasOwnProperty.call(namesById, id) && typeof namesById[id] === 'string';
+    const count = resultsRef.current.filter((result) => has(result.id)).length;
+    if (!renameResults((result) => (has(result.id) ? { ...result, fileName: namesById[result.id] } : result))) {
+      toast.error('Đang xử lý ảnh, chưa thể đổi tên. Vui lòng thử lại sau.');
+      return;
+    }
+    if (count) toast.success(`Đã đổi tên ${count} ảnh.`);
   }, [renameResults]);
 
   const busy = processing || isDownloading;
@@ -792,6 +818,10 @@ export default function Watermark() {
               onDownloadAll={handleDownloadAll}
               onRenameFile={handleRenameResult}
               onRenameFiles={handleRenameFiles}
+              onRenameById={handleRenameById}
+              productName={options.productName}
+              aiAccess={aiNamingAccess}
+              onRequestAiLogin={handleRequestAiLogin}
               onRemoveResult={handleRemoveResult}
               isProcessing={processing}
               processingProgress={processingProgress}

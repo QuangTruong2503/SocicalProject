@@ -14,6 +14,7 @@
     "test:admin-quotations": "node --test src/utils/adminQuotations.test.js tests/adminQuotationsDatabase.test.mjs && node --import ./tests/adminQuotationsLoader.mjs --test tests/adminQuotationsUI.test.mjs",
     "test:admin-users": "node --test tests/adminUsersPlanDatabase.test.mjs",
     "test:file-convert": "node --test src/utils/fileConvert.test.js",
+    "test:ai-image-names": "node --test src/utils/aiImageNaming.test.js tests/suggestImageNamesFunction.test.mjs tests/aiNamingAccessDatabase.test.mjs && node --import ./tests/aiRenameLoader.mjs --test tests/aiRenameUI.test.mjs",
     "test:admin-memory": "node --test src/utils/memoryCardAdmin.test.js tests/adminMemoryCardsDatabase.test.mjs && node --import ./tests/adminMemoryCardsLoader.mjs --test tests/adminMemoryCardsUI.test.mjs"
   },
   "dependencies": {

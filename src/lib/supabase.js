@@ -31,6 +31,7 @@ export const supabase = createClient(supabaseUrl, supabasePublishableKey, {
 
 export const supabaseConfig = {
   url: supabaseUrl,
+  publishableKey: supabasePublishableKey,
   uploadBucket: supabaseUploadBucket,
 };
 
