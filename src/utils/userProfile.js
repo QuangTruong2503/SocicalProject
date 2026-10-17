@@ -65,3 +65,16 @@ export function getUserInitials(user, profile) {
 
   return `${parts[0][0]}${parts[1][0]}`.toUpperCase();
 }
+
+// Must match the profiles_plan_check constraint; a NULL plan is shown as 'free'.
+export const PLAN_OPTIONS = [
+  { value: 'free', label: 'Free' },
+  { value: 'pro', label: 'Pro' },
+  { value: 'enterprise', label: 'Enterprise' },
+];
+
+const PLAN_LABELS = Object.fromEntries(PLAN_OPTIONS.map((option) => [option.value, option.label]));
+
+export function getPlanLabel(plan) {
+  return PLAN_LABELS[plan || 'free'] || plan;
+}

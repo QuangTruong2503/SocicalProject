@@ -1,6 +1,6 @@
 import { useAuth } from '../../hooks/useAuth.js';
 import { formatDateTime, formatRelative } from '../../utils/formatters.js';
-import { getUserAvatarSource, getUserDisplayName } from '../../utils/userProfile.js';
+import { getPlanLabel, getUserAvatarSource, getUserDisplayName } from '../../utils/userProfile.js';
 import { getAuthProviderLabel } from './dashboardLabels.js';
 
 const AVATAR_SOURCE_LABELS = {
@@ -26,7 +26,7 @@ export default function AccountInfoPanel() {
     ['Điện thoại', profile?.phone || 'Chưa cập nhật'],
     ['Khu vực', location || 'Chưa cập nhật'],
     ['Trạng thái', `${STATUS_LABELS[profile?.status || 'active'] || profile?.status} · ${profile?.is_verified ? 'Đã xác minh' : 'Chưa xác minh'}`],
-    ['Gói sử dụng', profile?.plan || 'free'],
+    ['Gói sử dụng', getPlanLabel(profile?.plan)],
     ['Đăng nhập bằng', getAuthProviderLabel(user)],
     ['Nguồn avatar', AVATAR_SOURCE_LABELS[getUserAvatarSource(user, profile, latestUpload)]],
     ['Đăng nhập gần nhất', lastLogin ? `${formatRelative(lastLogin)} · ${formatDateTime(lastLogin)}` : 'Chưa ghi nhận'],

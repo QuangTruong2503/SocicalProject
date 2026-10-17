@@ -12,6 +12,7 @@
     "test:memory:ui": "node --import ./tests/memoryGameLoader.mjs --test tests/memoryGameUI.test.mjs",
     "test:notifications": "node --test tests/notificationsDatabase.test.mjs && node --import ./tests/notificationsLoader.mjs --test tests/notificationsUI.test.mjs",
     "test:admin-quotations": "node --test src/utils/adminQuotations.test.js tests/adminQuotationsDatabase.test.mjs && node --import ./tests/adminQuotationsLoader.mjs --test tests/adminQuotationsUI.test.mjs",
+    "test:admin-users": "node --test tests/adminUsersPlanDatabase.test.mjs",
     "test:file-convert": "node --test src/utils/fileConvert.test.js",
     "test:admin-memory": "node --test src/utils/memoryCardAdmin.test.js tests/adminMemoryCardsDatabase.test.mjs && node --import ./tests/adminMemoryCardsLoader.mjs --test tests/adminMemoryCardsUI.test.mjs"
   },

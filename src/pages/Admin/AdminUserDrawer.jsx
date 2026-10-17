@@ -13,6 +13,7 @@ import { formatDateTime, formatNumber, formatRelative } from './adminUtils.js';
 import {
   formatChangeValue,
   getChangeFieldLabel,
+  getPlanLabel,
   getProfileName,
   getRoleLabel,
   getStatusLabel,
@@ -112,7 +113,7 @@ export default function AdminUserDrawer({ summary, isSelf, onClose, onEdit, onTo
             <span className={us.inlineCode}><code>{profile.id}</code><CopyButton value={profile.id} label="ID" /></span>
           </InfoRow>
           <InfoRow label="Tên đăng nhập">{profile.username}</InfoRow>
-          <InfoRow label="Gói / credits">{`${profile.plan || 'free'} · ${formatNumber(profile.credits)} credits`}</InfoRow>
+          <InfoRow label="Gói / credits">{`${getPlanLabel(profile.plan)} ·${formatNumber(profile.credits)} credits`}</InfoRow>
           <InfoRow label="Tham gia">{formatDateTime(profile.created_at)}</InfoRow>
           <InfoRow label="Đăng nhập gần nhất">
             {profile.last_login_at ? `${formatRelative(profile.last_login_at)} · ${formatDateTime(profile.last_login_at)}` : 'Chưa ghi nhận'}

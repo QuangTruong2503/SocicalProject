@@ -122,7 +122,8 @@ begin
     raise exception 'Trạng thái không hợp lệ: %', p_status using errcode = '22023';
   end if;
 
-  if v_plan is not null and v_plan !~ '^[a-z0-9_-]{1,30}$' then
+  -- Same list as the profiles_plan_check constraint.
+  if v_plan is not null and v_plan not in ('free', 'pro', 'enterprise') then
     raise exception 'Gói không hợp lệ: %', p_plan using errcode = '22023';
   end if;
 
@@ -232,11 +233,15 @@ grant execute on function public.admin_bulk_update_status(uuid[], text) to authe
 
 -- Returns only the columns the admin table needs (no phone/address/dob…).
 -- total_count is the number of matches before limit/offset.
+-- Older signature without p_plan; dropped so PostgREST never sees two overloads.
+drop function if exists public.admin_list_profiles(text, text, text, boolean, text, boolean, integer, integer);
+
 create or replace function public.admin_list_profiles(
   p_search text default null,
   p_role text default null,
   p_status text default null,
   p_verified boolean default null,
+  p_plan text default null,
   p_sort text default 'created_at',
   p_desc boolean default true,
   p_limit integer default 50,
@@ -296,6 +301,7 @@ begin
     and (p_role is null or coalesce(p.role::text, 'user') = p_role)
     and (p_status is null or coalesce(p.status::text, 'active') = p_status)
     and (p_verified is null or coalesce(p.is_verified, false) = p_verified)
+    and (p_plan is null or coalesce(p.plan::text, 'free') = p_plan)
   order by
     case when v_sort = 'created_at' and v_desc then p.created_at end desc nulls last,
     case when v_sort = 'created_at' and not v_desc then p.created_at end asc nulls last,
@@ -312,8 +318,8 @@ begin
 end;
 $$;
 
-revoke execute on function public.admin_list_profiles(text, text, text, boolean, text, boolean, integer, integer) from public, anon;
-grant execute on function public.admin_list_profiles(text, text, text, boolean, text, boolean, integer, integer) to authenticated;
+revoke execute on function public.admin_list_profiles(text, text, text, boolean, text, text, boolean, integer, integer) from public, anon;
+grant execute on function public.admin_list_profiles(text, text, text, boolean, text, text, boolean, integer, integer) to authenticated;
 
 -- ─── Summary tiles ───────────────────────────────────────────────────────────
 

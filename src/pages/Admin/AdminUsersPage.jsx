@@ -16,7 +16,7 @@ import AdminUserDrawer from './AdminUserDrawer.jsx';
 import AdminUserEditModal from './AdminUserEditModal.jsx';
 import { Pagination, SortHeader } from './AdminTableParts.jsx';
 import { downloadCsv, formatDateTime, formatNumber, formatRelative } from './adminUtils.js';
-import { ROLE_OPTIONS, STATUS_OPTIONS, getProfileName, getRoleLabel, getStatusLabel } from './adminUserLabels.js';
+import { PLAN_OPTIONS, ROLE_OPTIONS, STATUS_OPTIONS, getPlanLabel, getProfileName, getRoleLabel, getStatusLabel } from './adminUserLabels.js';
 import styles from './Admin.module.css';
 import us from './AdminUsers.module.css';
 
@@ -44,7 +44,7 @@ function exportUsersCsv(rows) {
       getRoleLabel(row.role),
       getStatusLabel(row.status),
       row.is_verified ? 'Có' : 'Không',
-      row.plan,
+      getPlanLabel(row.plan),
       row.credits,
       row.last_login_at,
       row.created_at,
@@ -85,9 +85,10 @@ export default function AdminUsersPage() {
   const [role, setRole] = useState('');
   const [status, setStatus] = useState('');
   const [verified, setVerified] = useState('');
+  const [plan, setPlan] = useState('');
   const [sort, setSort] = useState({ key: 'created_at', desc: true });
   const search = useDebouncedValue(searchInput.trim(), 300);
-  const filtersKey = JSON.stringify([search, role, status, verified, sort]);
+  const filtersKey = JSON.stringify([search, role, status, verified, plan, sort]);
   // Page and selection belong to one set of filters: changing a filter resets both.
   const [pageState, setPageState] = useState({ key: filtersKey, page: 0 });
   const page = pageState.key === filtersKey ? pageState.page : 0;
@@ -113,6 +114,7 @@ export default function AdminUsersPage() {
     role,
     status,
     verified: verified === '' ? null : verified === 'true',
+    plan,
     sort: sort.key,
     desc: sort.desc,
   };
@@ -128,6 +130,7 @@ export default function AdminUsersPage() {
         role,
         status,
         verified: verified === '' ? null : verified === 'true',
+        plan,
         sort: sort.key,
         desc: sort.desc,
         limit: PAGE_SIZE,
@@ -148,7 +151,7 @@ export default function AdminUsersPage() {
     }
 
     load();
-  }, [search, role, status, verified, sort, page, reloadToken]);
+  }, [search, role, status, verified, plan, sort, page, reloadToken]);
 
   useEffect(() => {
     let isActive = true;
@@ -172,7 +175,7 @@ export default function AdminUsersPage() {
     }
   }, [someSelected]);
 
-  const hasFilters = Boolean(searchInput || role || status || verified);
+  const hasFilters = Boolean(searchInput || role || status || verified || plan);
   const isTablePending = table.loading && !table.loaded;
 
   function setPage(nextPage) {
@@ -202,6 +205,7 @@ export default function AdminUsersPage() {
     setRole('');
     setStatus('');
     setVerified('');
+    setPlan('');
   }
 
   function refreshAll() {
@@ -409,6 +413,10 @@ export default function AdminUsersPage() {
             <option value="">Xác minh: tất cả</option>
             {VERIFIED_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
           </select>
+          <select className={styles.control} value={plan} onChange={(event) => setPlan(event.target.value)} aria-label="Gói">
+            <option value="">Tất cả gói</option>
+            {PLAN_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+          </select>
           {hasFilters && (
             <button type="button" className={styles.actionButton} onClick={clearFilters}>
               <FaXmark aria-hidden="true" /> Xóa bộ lọc
@@ -523,7 +531,7 @@ export default function AdminUsersPage() {
                       </span>
                     </td>
                     <td className={us.planCell}>
-                      <strong>{row.plan || 'free'}</strong>
+                      <strong>{getPlanLabel(row.plan)}</strong>
                       <small>{formatNumber(row.credits)} credits</small>
                     </td>
                     <td className={styles.dateCell} title={formatDateTime(row.last_login_at)}>

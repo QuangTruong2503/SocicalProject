@@ -1,4 +1,5 @@
 // Labels shared by the admin user list, edit modal and detail panel.
+import { PLAN_OPTIONS, getPlanLabel } from '../../utils/userProfile.js';
 
 export const ROLE_OPTIONS = [
   { value: 'user', label: 'Người dùng' },
@@ -10,7 +11,7 @@ export const STATUS_OPTIONS = [
   { value: 'suspended', label: 'Đã khóa' },
 ];
 
-export const PLAN_SUGGESTIONS = ['free', 'pro', 'business'];
+export { PLAN_OPTIONS, getPlanLabel };
 
 export const MAX_CREDITS = 1000000;
 
@@ -58,6 +59,7 @@ export function formatChangeValue(field, value) {
 
   if (field === 'role') return getRoleLabel(value);
   if (field === 'status') return getStatusLabel(value);
+  if (field === 'plan') return getPlanLabel(value);
   if (field === 'is_verified') return value ? 'Đã xác minh' : 'Chưa xác minh';
 
   return String(value);

@@ -250,7 +250,7 @@ async function callAdminRpc(name, params, fallbackMessage) {
  * Admin-only: search, filter, sort and page profiles server-side.
  * Returns only the columns the admin table needs, plus the total match count.
  * @param {{
- *   search?: string, role?: string, status?: string, verified?: boolean | null,
+ *   search?: string, role?: string, status?: string, verified?: boolean | null, plan?: string,
  *   sort?: 'created_at' | 'last_login_at' | 'name' | 'email', desc?: boolean, limit?: number, offset?: number,
  * }} [options]
  * @returns {Promise<import('./serviceHelpers.js').ServiceResult<{ rows: Array<Object>, totalCount: number }>>}
@@ -260,6 +260,7 @@ export async function adminListProfiles({
   role = '',
   status = '',
   verified = null,
+  plan = '',
   sort = 'created_at',
   desc = true,
   limit = 50,
@@ -270,6 +271,8 @@ export async function adminListProfiles({
     p_role: role || null,
     p_status: status || null,
     p_verified: typeof verified === 'boolean' ? verified : null,
+    // Sent only when set, so the list keeps working against an RPC without p_plan.
+    ...(plan ? { p_plan: plan } : {}),
     p_sort: sort,
     p_desc: desc,
     p_limit: limit,

@@ -15,7 +15,7 @@ import {
 } from 'react-icons/fa6';
 import UserAvatar from '../../components/UserAvatar.jsx';
 import { useAuth } from '../../hooks/useAuth.js';
-import { getUserAvatarUrl, getUserDisplayName, getUserInitials } from '../../utils/userProfile.js';
+import { getPlanLabel, getUserAvatarUrl, getUserDisplayName, getUserInitials } from '../../utils/userProfile.js';
 import AvatarSection from './AvatarSection.jsx';
 import OverviewSection from './OverviewSection.jsx';
 import ProfileSection from './ProfileSection.jsx';
@@ -130,7 +130,7 @@ export default function DashboardPage() {
               </div>
               <span className="dashboard-plan-chip" title="Gói sử dụng">
                 <FaCrown aria-hidden="true" />
-                {profile?.plan || 'free'}
+                {getPlanLabel(profile?.plan)}
               </span>
             </div>
 

@@ -3,7 +3,7 @@ import { FaTriangleExclamation } from 'react-icons/fa6';
 import Dialog from '../../components/dialog/Dialog.jsx';
 import {
   MAX_CREDITS,
-  PLAN_SUGGESTIONS,
+  PLAN_OPTIONS,
   ROLE_OPTIONS,
   STATUS_OPTIONS,
   formatChangeValue,
@@ -14,14 +14,15 @@ import {
 import styles from './Admin.module.css';
 import us from './AdminUsers.module.css';
 
-const PLAN_PATTERN = /^[a-z0-9_-]{1,30}$/;
+// What a NULL column means, so "from" values in the change list read correctly.
+const FIELD_DEFAULTS = { role: 'user', status: 'active', plan: 'free' };
 
 function getInitialForm(profile) {
   return {
     role: profile.role || 'user',
     status: profile.status || 'active',
     is_verified: Boolean(profile.is_verified),
-    plan: profile.plan || '',
+    plan: profile.plan || 'free',
     credits: profile.credits ?? '',
   };
 }
@@ -34,9 +35,7 @@ function getChanges(profile, form) {
   if (form.role !== initial.role) changes.role = form.role;
   if (form.status !== initial.status) changes.status = form.status;
   if (form.is_verified !== initial.is_verified) changes.is_verified = form.is_verified;
-
-  const plan = form.plan.trim().toLowerCase();
-  if (plan && plan !== initial.plan) changes.plan = plan;
+  if (form.plan !== initial.plan) changes.plan = form.plan;
 
   if (String(form.credits).trim() !== '' && Number(form.credits) !== Number(initial.credits)) {
     changes.credits = Number(form.credits);
@@ -47,11 +46,6 @@ function getChanges(profile, form) {
 
 function validate(form) {
   const errors = {};
-  const plan = form.plan.trim().toLowerCase();
-
-  if (plan && !PLAN_PATTERN.test(plan)) {
-    errors.plan = 'Chỉ dùng chữ thường, số, "-" hoặc "_" (tối đa 30 ký tự).';
-  }
 
   if (String(form.credits).trim() !== '') {
     const credits = Number(form.credits);
@@ -143,19 +137,9 @@ export default function AdminUserEditModal({ profile, onSave, onCancel, saving }
 
           <label className={styles.modalField}>
             Gói
-            <input
-              type="text"
-              list="admin-plan-suggestions"
-              value={form.plan}
-              onChange={(event) => updateField('plan', event.target.value)}
-              aria-invalid={Boolean(errors.plan)}
-              aria-describedby={errors.plan ? 'admin-plan-error' : undefined}
-              placeholder="free"
-            />
-            <datalist id="admin-plan-suggestions">
-              {PLAN_SUGGESTIONS.map((plan) => <option key={plan} value={plan} />)}
-            </datalist>
-            {errors.plan && <span id="admin-plan-error" className={us.fieldError}>{errors.plan}</span>}
+            <select value={form.plan} onChange={(event) => updateField('plan', event.target.value)}>
+              {PLAN_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+            </select>
           </label>
 
           <label className={styles.modalField}>
@@ -204,7 +188,7 @@ function ChangeList({ profile, changes }) {
         <li key={field}>
           <span>{getChangeFieldLabel(field)}</span>
           <span>
-            {formatChangeValue(field, profile[field] ?? (field === 'role' ? 'user' : field === 'status' ? 'active' : null))}
+            {formatChangeValue(field, profile[field] ?? FIELD_DEFAULTS[field] ?? null)}
             {' → '}
             <strong>{formatChangeValue(field, value)}</strong>
           </span>
