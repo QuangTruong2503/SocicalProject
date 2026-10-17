@@ -49,8 +49,8 @@
 .signatures{display:grid;grid-template-columns:1fr 1fr;gap:20px;text-align:center;font-size:11.5px}
 .signatures b{display:block;margin-bottom:2px}
 .signatures span{display:block;color:#64748b;font-size:10.5px}
-.signatures em{display:block;margin-top:46px;font-style:normal;font-weight:700}
-.stamp{display:block;max-width:85%;max-height:85%;margin:8px auto 0;object-fit:contain}
+.signatures em{display:block;margin-top:8px;font-style:normal;font-weight:700}
+.stamp{display:block;width:38mm;height:30mm;max-width:100%;margin:8px auto 0;object-fit:contain}
 
 @media(max-width:1080px){
   .sheet{box-shadow:0 6px 20px #0f172a1a}

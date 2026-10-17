@@ -81,6 +81,11 @@ img.logoBadge{background:#fff;border:1px solid var(--knm-border)}
 .chipToggle{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--knm-input-border);background:var(--knm-card);color:var(--knm-label);border-radius:999px;padding:5px 11px;font-size:12.5px;font-weight:600;cursor:pointer;font-family:inherit}
 .chipToggle[aria-pressed="true"]{background:var(--knm-brand-soft);border-color:var(--knm-brand);color:var(--knm-brand-text)}
 .chipToggle:disabled{opacity:.55;cursor:not-allowed}
+.stampScaleControl{display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin-top:12px;font-size:12.5px;color:var(--knm-label)}
+.stampScaleControl label{display:grid;grid-template-columns:1fr auto;gap:6px 12px;width:240px;max-width:100%}
+.stampScaleControl output{font-weight:700;font-variant-numeric:tabular-nums}
+.stampScaleControl input{grid-column:1/-1;width:100%;margin:0;accent-color:var(--knm-brand);cursor:pointer}
+.stampScaleControl input:disabled{opacity:.55;cursor:not-allowed}
 .scopeHint{margin:12px 0 0;font-size:12px;color:var(--knm-muted)}
 
 .uploaderGrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px;margin-top:16px}

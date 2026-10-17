@@ -274,7 +274,7 @@ export default function QuotationKnmList() {
                               {row.can_edit ? <FaPen /> : <FaEye />}
                             </button>
                             <button type="button" aria-label={`Sao chép ${row.quotation_no}`} title="Sao chép thành báo giá mới" onClick={() => duplicate(row)} disabled={busy}><FaCopy /></button>
-                            <button type="button" aria-label={`In ${row.quotation_no}`} title="In / Xuất PDF" onClick={() => navigate(`${editHref}?in=1`)}><FaPrint /></button>
+                            <button type="button" aria-label={`Xuất PDF ${row.quotation_no}`} title="Xuất PDF" onClick={() => navigate(`${editHref}?in=1`)}><FaPrint /></button>
                             {row.can_edit && (
                               <button type="button" className={styles.danger} aria-label={`Xóa ${row.quotation_no}`} title="Xóa" onClick={() => setConfirmDelete(row)} disabled={busy}><FaTrash /></button>
                             )}

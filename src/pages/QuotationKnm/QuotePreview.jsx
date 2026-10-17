@@ -2,7 +2,7 @@ import dayjs from 'dayjs';
 import { formatCurrency } from '../../utils/numberFormat.js';
 import { numberToVietnamese } from '../../utils/numberToVietnamese.js';
 import {
-  isBlankKnmItem, knmItemVatRate, knmLineAmount, knmUnitPrice, resolveKnmUnit, resolveValidUntil,
+  isBlankKnmItem, knmItemVatRate, knmLineAmount, knmStampScale, knmUnitPrice, resolveKnmUnit, resolveValidUntil,
 } from '../../utils/knmQuotation.js';
 import styles from './QuotePreview.module.css';
 
@@ -129,7 +129,7 @@ export default function QuotePreview({ company, quotation }) {
           <b>ĐẠI DIỆN CÔNG TY</b>
           <span>(Ký, ghi rõ họ tên và đóng dấu)</span>
           {company.showStamp && company.stamp && (
-            <img className={styles.stamp} src={company.stamp} alt="Dấu mộc công ty" />
+            <img className={styles.stamp} style={{ width: `${38 * knmStampScale(company.stampScale)}mm`, height: `${30 * knmStampScale(company.stampScale)}mm` }} src={company.stamp} alt="Dấu mộc công ty" />
           )}
           {company.preparerName && (
             <em>{company.preparerName}{company.preparerTitle ? ` – ${company.preparerTitle}` : ''}</em>

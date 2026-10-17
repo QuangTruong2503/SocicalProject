@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { FaChevronDown, FaChevronUp } from 'react-icons/fa6';
 import AssetImageUploader from './AssetImageUploader.jsx';
+import { knmStampScale } from '../../utils/knmQuotation.js';
 
 const ASSETS = [
   { kind: 'logo', label: 'Logo công ty', hint: 'Hiển thị ở đầu bản báo giá.' },
@@ -19,6 +20,7 @@ export default function CompanyInfoForm({
   const [expanded, setExpanded] = useState(false);
   const patch = (name, value) => onChange({ ...company, [name]: value });
   const showLogo = company.showLogo !== false;
+  const stampPercent = Math.round(knmStampScale(company.stampScale) * 100);
 
   return (
     <section className={styles.card}>
@@ -54,6 +56,26 @@ export default function CompanyInfoForm({
           disabled={readOnly}
         >
           Dấu mộc {company.showStamp ? 'bật' : 'tắt'}
+        </button>
+      </div>
+
+      <div className={styles.stampScaleControl}>
+        <label>
+          Kích thước dấu mộc <output>{stampPercent}%</output>
+          <input
+            type="range"
+            min="50"
+            max="200"
+            step="5"
+            value={stampPercent}
+            onChange={(event) => patch('stampScale', Number(event.target.value) / 100)}
+            disabled={readOnly || !company.showStamp || !assets.stamp}
+            aria-label="Kích thước dấu mộc"
+            aria-valuetext={`${stampPercent}%`}
+          />
+        </label>
+        <button type="button" className={styles.chipToggle} onClick={() => patch('stampScale', 1)} disabled={readOnly || stampPercent === 100}>
+          Đặt lại 100%
         </button>
       </div>
 

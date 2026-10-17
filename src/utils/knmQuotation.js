@@ -41,6 +41,7 @@ export const KNM_DEFAULT_COMPANY = {
   preparerName: '',
   preparerTitle: '',
   showStamp: true,
+  stampScale: 1,
   showLogo: true,
   logo: '',
   logoName: '',
@@ -49,6 +50,11 @@ export const KNM_DEFAULT_COMPANY = {
   bankQr: '',
   bankQrName: '',
 };
+
+export function knmStampScale(value) {
+  const scale = Number(value);
+  return Number.isFinite(scale) && value !== '' && value != null ? Math.min(2, Math.max(0.5, scale)) : 1;
+}
 
 export function newKnmItem() {
   return {
@@ -225,7 +231,7 @@ export function finalizeKnmQuotation(quotation) {
 
 const KNM_SNAPSHOT_COMPANY_FIELDS = [
   'name', 'taxCode', 'address', 'hotline', 'email', 'website', 'bankName', 'bankAccountNumber', 'bankAccountHolder',
-  'preparerName', 'preparerTitle', 'showStamp', 'showLogo',
+  'preparerName', 'preparerTitle', 'showStamp', 'showLogo', 'stampScale',
 ];
 
 /** Comparable snapshot of what the user can change (for the "Chưa lưu" state and backups). */

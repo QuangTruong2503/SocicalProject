@@ -72,7 +72,7 @@ const LOCAL_ASSET_KEYS = { logo: 'logo', stamp: 'stamp', bank_qr: 'bankQr' };
 export const KNM_COMPANY_INFO_FIELDS = [
   'name', 'taxCode', 'address', 'hotline', 'email', 'website',
   'bankName', 'bankAccountNumber', 'bankAccountHolder',
-  'preparerName', 'preparerTitle', 'showStamp', 'showLogo',
+  'preparerName', 'preparerTitle', 'showStamp', 'showLogo', 'stampScale',
 ];
 
 export function pickCompanyInfo(company) {
