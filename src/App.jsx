@@ -1,7 +1,7 @@
 import { lazy, Suspense } from 'react';
 import { Routes, Route, NavLink, useLocation, Navigate } from 'react-router-dom';
 import { HelmetProvider, Helmet } from 'react-helmet-async';
-import { FiArrowRight, FiFileText, FiImage, FiLink2, FiPlayCircle, FiUser } from 'react-icons/fi';
+import { FiArrowRight, FiFileText, FiImage, FiLink2, FiPlayCircle, FiRepeat, FiUser } from 'react-icons/fi';
 import { useTheme } from './hooks/useTheme';
 import './styles/auth.css';
 const Watermark = lazy(() => import('./pages/Watermark.jsx'));
@@ -29,6 +29,7 @@ const AdminMemoryCardsPage = lazy(() => import('./pages/Admin/AdminMemoryCardsPa
 const AdminProductLinksPage = lazy(() => import('./pages/Admin/AdminProductLinksPage.jsx'));
 const AdminNotificationsPage = lazy(() => import('./pages/Admin/AdminNotificationsPage.jsx'));
 const NotificationsPage = lazy(() => import('./pages/NotificationsPage.jsx'));
+const FileConvertPage = lazy(() => import('./pages/FileConvert/FileConvertPage.jsx'));
 
 function ToolCard({ icon, title, description, link }) {
   return (
@@ -67,13 +68,19 @@ function HomePage() {
       description: 'Thêm dấu bản quyền vào ảnh.',
       link: '/watermark',
     },
+    {
+      icon: <FiRepeat />,
+      title: 'Chuyển đổi file',
+      description: 'Ảnh ↔ PDF, gộp và tách trang PDF.',
+      link: '/chuyen-doi-file',
+    },
   ];
 
   return (
     <>
       <Helmet>
         <title>Trang Chủ - AISEO Tools Suite</title>
-        <meta name="description" content="Mở nhanh công cụ tạo báo giá, tìm link ảnh sản phẩm và thêm watermark tại AISEO Tools Suite." />
+        <meta name="description" content="Mở nhanh công cụ tạo báo giá, tìm link ảnh sản phẩm, thêm watermark và chuyển đổi file PDF tại AISEO Tools Suite." />
       </Helmet>
 
       <div className="home-page-wrapper">
@@ -91,7 +98,7 @@ function HomePage() {
         <section className="home-tools-section" aria-labelledby="home-tools-title">
           <div className="home-section-heading">
             <h2 id="home-tools-title">Công cụ chính</h2>
-            <span>4 công cụ</span>
+            <span>{tools.length} công cụ</span>
           </div>
           <div className="home-tools-grid">
             {tools.map((tool) => (
@@ -208,6 +215,7 @@ export default function App() {
           <Suspense fallback={<div role="status" style={{ padding: '48px 24px', textAlign: 'center' }}>Đang tải công cụ…</div>}>
           <Routes>
             <Route path="/" element={<HomePage />} />
+            <Route path="/chuyen-doi-file" element={<FileConvertPage />} />
             <Route path="/notifications" element={<ProtectedRoute title="Đăng nhập để xem thông báo"><NotificationsPage /></ProtectedRoute>} />
             <Route path="/watermark/dashboard" element={<Navigate to="/admin/watermark" replace />} />
             <Route path="/quotation" element={<Navigate to="/bao-gia-minh-triet/tao-moi" replace />} />
