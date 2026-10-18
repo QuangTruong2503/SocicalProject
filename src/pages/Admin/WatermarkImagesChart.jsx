@@ -26,7 +26,7 @@ function formatBucket(bucket, granularity) {
 }
 
 // Integer-friendly "nice" step so axis ticks land on 1/2/5 × 10^n.
-function getNiceStep(max) {
+function getNiceStep(max, integer = true) {
   if (max <= 0) {
     return 1;
   }
@@ -36,27 +36,56 @@ function getNiceStep(max) {
   const normalized = raw / magnitude;
   const factor = normalized <= 1 ? 1 : normalized <= 2 ? 2 : normalized <= 5 ? 5 : 10;
 
-  return Math.max(1, factor * magnitude);
+  return integer ? Math.max(1, factor * magnitude) : factor * magnitude;
 }
 
-export default function WatermarkImagesChart({ series, granularity, loading }) {
+const DEFAULTS = {
+  getValue: (point) => point.images,
+  formatValue: (value) => `${formatNumber(value)} ảnh`,
+  getDetail: (point) => `${formatNumber(point.entries)} lượt tạo`,
+  formatTick: formatNumber,
+  emptyText: 'Chưa có ảnh nào được tạo trong khoảng thời gian này.',
+  label: 'Số ảnh watermark theo thời gian',
+  columns: ['Ảnh', 'Lượt tạo'],
+  getCells: (point) => [formatNumber(point.images), formatNumber(point.entries)],
+};
+
+/**
+ * Bar chart of one value per bucket. Defaults draw the watermark image counts;
+ * other pages pass their own accessors and labels (e.g. /admin/usage).
+ */
+export default function WatermarkImagesChart({
+  series,
+  granularity,
+  loading,
+  bucketKey = 'bucket',
+  getValue = DEFAULTS.getValue,
+  formatValue = DEFAULTS.formatValue,
+  getDetail = DEFAULTS.getDetail,
+  formatTick = DEFAULTS.formatTick,
+  emptyText = DEFAULTS.emptyText,
+  label = DEFAULTS.label,
+  columns = DEFAULTS.columns,
+  getCells = DEFAULTS.getCells,
+  integerTicks = true,
+}) {
   const [activeIndex, setActiveIndex] = useState(null);
 
   if (loading && series.length === 0) {
     return <div className={styles.chartSkeleton} aria-hidden="true" />;
   }
 
-  const maxValue = series.reduce((max, point) => Math.max(max, point.images), 0);
+  const maxValue = series.reduce((max, point) => Math.max(max, Number(getValue(point)) || 0), 0);
 
   if (maxValue === 0) {
     return (
       <div className={styles.chartEmpty}>
-        Chưa có ảnh nào được tạo trong khoảng thời gian này.
+        {emptyText}
       </div>
     );
   }
 
-  const step = getNiceStep(maxValue);
+  const step = getNiceStep(maxValue, integerTicks);
   const axisMax = step * Math.ceil(maxValue / step);
   const ticks = Array.from({ length: Math.round(axisMax / step) + 1 }, (_, index) => index * step).reverse();
   const labelEvery = Math.max(1, Math.ceil(series.length / 7));
@@ -71,7 +100,7 @@ export default function WatermarkImagesChart({ series, granularity, loading }) {
         <div className={styles.chartTicks} aria-hidden="true">
           {ticks.map((tick) => (
             <div key={tick} className={styles.chartTick}>
-              <span>{formatNumber(tick)}</span>
+              <span>{formatTick(tick)}</span>
             </div>
           ))}
         </div>
@@ -79,23 +108,23 @@ export default function WatermarkImagesChart({ series, granularity, loading }) {
         <div
           className={styles.chartBars}
           role="group"
-          aria-label="Số ảnh watermark theo thời gian"
+          aria-label={label}
           onPointerLeave={() => setActiveIndex(null)}
         >
           {series.map((point, index) => (
             <div
-              key={point.bucket}
+              key={point[bucketKey]}
               className={`${styles.chartColumn} ${activeIndex === index ? styles.chartColumnActive : ''}`}
               tabIndex={0}
-              aria-label={`${formatBucket(point.bucket, granularity)}: ${formatNumber(point.images)} ảnh, ${formatNumber(point.entries)} lượt tạo`}
+              aria-label={`${formatBucket(point[bucketKey], granularity)}: ${formatValue(getValue(point))}, ${getDetail(point)}`}
               onPointerEnter={() => setActiveIndex(index)}
               onFocus={() => setActiveIndex(index)}
               onBlur={() => setActiveIndex(null)}
             >
-              {point.images > 0 && (
+              {Number(getValue(point)) > 0 && (
                 <span
                   className={styles.chartBar}
-                  style={{ height: `${(point.images / axisMax) * 100}%` }}
+                  style={{ height: `${(Number(getValue(point)) / axisMax) * 100}%` }}
                 />
               )}
             </div>
@@ -107,9 +136,9 @@ export default function WatermarkImagesChart({ series, granularity, loading }) {
               style={{ left: `${activeRatio * 100}%`, transform: `translateX(${tooltipShift})` }}
               aria-hidden="true"
             >
-              <strong>{formatNumber(activePoint.images)} ảnh</strong>
-              <span>{formatNumber(activePoint.entries)} lượt tạo</span>
-              <small>{formatBucket(activePoint.bucket, granularity)}</small>
+              <strong>{formatValue(getValue(activePoint))}</strong>
+              <span>{getDetail(activePoint)}</span>
+              <small>{formatBucket(activePoint[bucketKey], granularity)}</small>
             </div>
           )}
         </div>
@@ -117,8 +146,8 @@ export default function WatermarkImagesChart({ series, granularity, loading }) {
 
       <div className={styles.chartAxis} aria-hidden="true">
         {series.map((point, index) => (
-          <span key={point.bucket}>
-            {index % labelEvery === 0 || index === series.length - 1 ? formatBucket(point.bucket, granularity) : ''}
+          <span key={point[bucketKey]}>
+            {index % labelEvery === 0 || index === series.length - 1 ? formatBucket(point[bucketKey], granularity) : ''}
           </span>
         ))}
       </div>
@@ -130,16 +159,15 @@ export default function WatermarkImagesChart({ series, granularity, loading }) {
             <thead>
               <tr>
                 <th>Thời gian</th>
-                <th>Ảnh</th>
-                <th>Lượt tạo</th>
+                <th>{columns[0]}</th>
+                <th>{columns[1]}</th>
               </tr>
             </thead>
             <tbody>
               {series.map((point) => (
-                <tr key={point.bucket}>
-                  <td>{formatBucket(point.bucket, granularity)}</td>
-                  <td>{formatNumber(point.images)}</td>
-                  <td>{formatNumber(point.entries)}</td>
+                <tr key={point[bucketKey]}>
+                  <td>{formatBucket(point[bucketKey], granularity)}</td>
+                  {getCells(point).map((cell, index) => <td key={columns[index]}>{cell}</td>)}
                 </tr>
               ))}
             </tbody>

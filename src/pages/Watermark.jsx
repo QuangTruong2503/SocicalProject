@@ -25,6 +25,16 @@ import {
   subscribeToWatermarkImageCounts,
 } from '../services/watermarkImageCountService.js';
 import { getOrCreateWatermarkVisitorId } from '../utils/watermarkVisitor.js';
+import { trackUsageEvent, trackUsageEvents } from '../services/usageTelemetryService.js';
+import {
+  buildApplyEvents,
+  buildCreateEvent,
+  buildDownloadEvent,
+  buildSingleDownloadEvent,
+  createSubject,
+  newUsageId,
+} from '../utils/usageEvents.js';
+import { runBatchDownload } from '../utils/watermarkDownload.js';
 import { createWatermarkEngine } from '../utils/watermarkEngine.js';
 import { DEFAULT_OPTIONS, mergeWatermarkOptions } from '../utils/watermarkOptions.js';
 import {
@@ -473,6 +483,13 @@ export default function Watermark() {
     taskRef.current = task;
     const sources = readableImages;
     const total = sources.length;
+    // Usage event: subject fixed now; one batch ID shared by the images, downloads and AI names of this set.
+    const subject = createSubject(userId, visitorId);
+    const imageBatchId = newUsageId();
+    const startedAt = performance.now();
+    const skipped = unreadableCount;
+    let processed = 0;
+    let unexpectedError = false;
     const renderOptions = {
       size: options.size,
       opacity: options.opacity,
@@ -494,6 +511,7 @@ export default function Watermark() {
 
           const item = {
             id: `res-${(resultIdRef.current += 1)}`,
+            batchId: imageBatchId,
             // Original (no logo) for AI naming; a File reference, not a copy.
             sourceFile: sources[index].file,
             url: URL.createObjectURL(blob),
@@ -510,6 +528,7 @@ export default function Watermark() {
           failedNames.push(sources[index].name);
         }
 
+        processed = index + 1;
         setProcessingProgress({ current: index + 1, total });
         toast.update(loadingToastId, { render: `Đang tạo ảnh (${index + 1}/${total})…` });
       }
@@ -546,16 +565,41 @@ export default function Watermark() {
         closeButton: true,
       });
     } catch (error) {
+      unexpectedError = true;
       toast.update(loadingToastId, { render: error.message, type: 'error', isLoading: false, autoClose: 5000 });
     } finally {
       taskRef.current = null;
       if (mountedRef.current) setProcessing(false);
+      // Images never started (stop button, page left, unexpected error) are "cancelled", not "failed".
+      trackUsageEvent(buildCreateEvent({
+        subject,
+        imageBatchId,
+        requested: total + skipped,
+        succeeded: created.length,
+        failed: failedNames.length,
+        skipped,
+        cancelled: total - processed,
+        aborted: task.cancelled || !mountedRef.current,
+        durationMs: performance.now() - startedAt,
+        errorCode: unexpectedError ? 'unexpected' : null,
+      }));
     }
   };
 
   // ── Download all ───────────────────────────────────────────────────
   const downloadAll = useCallback(async (mode, method) => {
     if (!results.length || taskRef.current || !engine) return;
+
+    const subject = createSubject(userId, visitorId);
+    const items = results;
+    const total = items.length;
+    const batchIds = new Set(items.map((item) => item.batchId));
+    const imageBatchId = batchIds.size === 1 ? items[0].batchId ?? null : null;
+    const imageSize = mode === '800x600' ? '800x600' : 'original';
+    const startedAt = performance.now();
+    const track = (outcome, errorCode) => trackUsageEvent(buildDownloadEvent({
+      subject, imageBatchId, method, imageSize, requested: total, outcome, durationMs: performance.now() - startedAt, errorCode,
+    }));
 
     // Ask for the ZIP destination first, while the click still counts as a user gesture.
     let fileHandle = null;
@@ -566,7 +610,11 @@ export default function Watermark() {
           types: [{ description: 'File ZIP', accept: { 'application/zip': ['.zip'] } }],
         });
       } catch (error) {
-        if (error?.name === 'AbortError') return;
+        if (error?.name === 'AbortError') {
+          // Closing the save dialog is not a download.
+          track({ prepared: 0, delivered: 0, outputFiles: 0, delivery: null, cancelled: true, error: null }, 'picker_cancelled');
+          return;
+        }
         fileHandle = null;
       }
     }
@@ -575,9 +623,7 @@ export default function Watermark() {
     taskRef.current = task;
     setIsDownloading(true);
 
-    const items = results;
     const names = getUniqueFileNames(items);
-    const total = items.length;
     setDownloadProgress({ current: 0, total, percent: 0, message: 'Đang chuẩn bị file tải xuống…' });
     const loadingToastId = toast.loading(`Đang chuẩn bị tải xuống (0/${total})…`);
     const prepare = (item) => (mode === '800x600' ? engine.resize(item.blob, 800, 600) : Promise.resolve(item.blob));
@@ -586,64 +632,56 @@ export default function Watermark() {
       toast.update(loadingToastId, { render: `${message}…`, progress: done / total });
     };
 
-    try {
-      if (method === 'zip') {
-        const { default: JSZip } = await import('jszip');
-        const zip = new JSZip();
+    const outcome = await runBatchDownload({
+      items,
+      names,
+      method,
+      prepare,
+      fileHandle,
+      task,
+      triggerDownload,
+      loadZip: async () => (await import('jszip')).default,
+      streamZip: streamZipToFile,
+      zipName: () => `watermark-${Date.now()}.zip`,
+      onProgress: ({ phase, done }) => {
+        if (phase === 'zip-add') reportProgress(done, `Đã thêm ${done}/${total} ảnh vào file ZIP`);
+        else if (phase === 'zip-pack') setDownloadProgress({ current: total, total, percent: 100, message: 'Đang đóng gói file ZIP…' });
+        else reportProgress(done, `Đã chuẩn bị ${done}/${total} ảnh`);
+      },
+    });
 
-        for (let index = 0; index < total; index += 1) {
-          if (task.cancelled) break;
-          zip.file(names[index], await prepare(items[index]));
-          reportProgress(index + 1, `Đã thêm ${index + 1}/${total} ảnh vào file ZIP`);
-        }
-
-        if (!task.cancelled) {
-          setDownloadProgress({ current: total, total, percent: 100, message: 'Đang đóng gói file ZIP…' });
-
-          if (fileHandle) {
-            const completed = await streamZipToFile(zip, fileHandle, () => task.cancelled);
-            if (!completed) task.cancelled = true;
-          } else {
-            const zipBlob = await zip.generateAsync({ type: 'blob', compression: 'STORE' });
-            if (!task.cancelled) triggerDownload(zipBlob, `watermark-${Date.now()}.zip`);
-          }
-        }
-      } else {
-        for (let index = 0; index < total; index += 1) {
-          if (task.cancelled) break;
-          triggerDownload(await prepare(items[index]), names[index]);
-          reportProgress(index + 1, `Đã chuẩn bị ${index + 1}/${total} ảnh`);
-          await new Promise((resolve) => setTimeout(resolve, 80));
-        }
-      }
-
-      if (task.cancelled) {
-        toast.update(loadingToastId, { render: 'Đã hủy tải xuống.', type: 'info', isLoading: false, progress: undefined, autoClose: 3000 });
-      } else {
-        toast.update(loadingToastId, {
-          render: method === 'zip'
-            ? (fileHandle ? `Đã lưu file ZIP gồm ${total} ảnh.` : `Đã chuẩn bị file ZIP gồm ${total} ảnh. Kiểm tra mục tải xuống.`)
-            : `Đã gửi ${total} ảnh tới trình duyệt để tải xuống.`,
-          type: 'success',
-          isLoading: false,
-          progress: undefined,
-          autoClose: 3000,
-          closeButton: true,
-        });
-      }
-    } catch (error) {
+    if (outcome.error) {
       toast.update(loadingToastId, {
-        render: error.message || 'Không thể chuẩn bị tải xuống. Vui lòng thử lại.',
+        render: outcome.error.message || 'Không thể chuẩn bị tải xuống. Vui lòng thử lại.',
         type: 'error', isLoading: false, progress: undefined, autoClose: 5000, closeButton: true,
       });
-    } finally {
-      taskRef.current = null;
-      if (mountedRef.current) {
-        setIsDownloading(false);
-        setDownloadProgress(null);
-      }
+    } else if (outcome.cancelled) {
+      toast.update(loadingToastId, { render: 'Đã hủy tải xuống.', type: 'info', isLoading: false, progress: undefined, autoClose: 3000 });
+    } else {
+      toast.update(loadingToastId, {
+        render: method === 'zip'
+          ? (fileHandle ? `Đã lưu file ZIP gồm ${total} ảnh.` : `Đã chuẩn bị file ZIP gồm ${total} ảnh. Kiểm tra mục tải xuống.`)
+          : `Đã gửi ${total} ảnh tới trình duyệt để tải xuống.`,
+        type: 'success',
+        isLoading: false,
+        progress: undefined,
+        autoClose: 3000,
+        closeButton: true,
+      });
     }
-  }, [engine, results]);
+    track(outcome);
+
+    taskRef.current = null;
+    if (mountedRef.current) {
+      setIsDownloading(false);
+      setDownloadProgress(null);
+    }
+  }, [engine, results, userId, visitorId]);
+
+  // "Tải xuống" on one card (anchor download in ResultCard).
+  const handleResultDownload = useCallback((result) => {
+    trackUsageEvent(buildSingleDownloadEvent({ subject: createSubject(userId, visitorId), imageBatchId: result.batchId ?? null }));
+  }, [userId, visitorId]);
 
   const handleDownloadAll = useCallback((mode) => {
     if (!results.length) return;
@@ -694,15 +732,25 @@ export default function Watermark() {
   }, [navigate]);
 
   /** Only IDs still present are renamed; unknown IDs are ignored. */
-  const handleRenameById = useCallback((namesById) => {
+  const handleRenameById = useCallback((namesById, stats) => {
     const has = (id) => Object.prototype.hasOwnProperty.call(namesById, id) && typeof namesById[id] === 'string';
-    const count = resultsRef.current.filter((result) => has(result.id)).length;
+    const renamed = resultsRef.current.filter((result) => has(result.id));
     if (!renameResults((result) => (has(result.id) ? { ...result, fileName: namesById[result.id] } : result))) {
       toast.error('Đang xử lý ảnh, chưa thể đổi tên. Vui lòng thử lại sau.');
       return;
     }
-    if (count) toast.success(`Đã đổi tên ${count} ảnh.`);
-  }, [renameResults]);
+    if (renamed.length) {
+      toast.success(`Đã đổi tên ${renamed.length} ảnh.`);
+      // Using suggestions already generated: an analytics event, never a new AI call.
+      if (stats?.groups?.length) {
+        trackUsageEvents(buildApplyEvents({
+          subject: createSubject(userId, visitorId),
+          imageBatchId: renamed[0].batchId ?? null,
+          groups: stats.groups,
+        }));
+      }
+    }
+  }, [renameResults, userId, visitorId]);
 
   const busy = processing || isDownloading;
   const canCreate = readableImages.length > 0 && !busy && optionsHydrated && Boolean(engine);
@@ -819,6 +867,7 @@ export default function Watermark() {
               onRenameFile={handleRenameResult}
               onRenameFiles={handleRenameFiles}
               onRenameById={handleRenameById}
+              onResultDownload={handleResultDownload}
               productName={options.productName}
               aiAccess={aiNamingAccess}
               onRequestAiLogin={handleRequestAiLogin}

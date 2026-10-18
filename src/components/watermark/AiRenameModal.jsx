@@ -11,8 +11,9 @@ import {
   parseSuggestionResponse,
   runWithConcurrency,
   slugifyFileName,
+  summarizeAppliedNames,
 } from '../../utils/aiImageNaming.js';
-import { AI_NAMING_ERRORS, FATAL_IMAGE_NAME_ERRORS, requestImageNameSuggestions } from '../../services/imageNameService.js';
+import { AI_NAMING_ERRORS, FATAL_IMAGE_NAME_ERRORS, newOperationId, requestImageNameSuggestions } from '../../services/imageNameService.js';
 import { describeAiNamingAccess } from '../../utils/aiNamingAccess.js';
 
 const ACCESS_REJECTIONS = new Set([AI_NAMING_ERRORS.authRequired, AI_NAMING_ERRORS.accessDenied]);
@@ -26,8 +27,8 @@ const hasName = (entry) => Boolean(entry?.name?.trim());
  * @param {{
  *   results: Array<{ id: string, fileName: string, url: string, thumb?: string, blob?: Blob, sourceFile?: Blob }>,
  *   defaultProductName?: string,
- *   draft?: { productName: string, prompt: string, entries: Record<string, { name: string, needsReview: boolean }> } | null,
- *   onApply: (namesById: Record<string, string>) => void,
+ *   draft?: { productName: string, prompt: string, entries: Record<string, { name: string, needsReview: boolean, aiRunId?: string, aiName?: string }> } | null,
+ *   onApply: (namesById: Record<string, string>, stats: { groups: Array<{ aiRunId: string | null, applied: number, aiUnchanged: number, edited: number }> }) => void,
  *   onClose: (draft: object | null) => void,
  * }} props
  */
@@ -50,7 +51,9 @@ export default function AiRenameModal({
   const [prompt, setPrompt] = useState(() => draft?.prompt ?? DEFAULT_IMAGE_NAME_PROMPT);
   // id → { status: 'idle' | 'pending' | 'done' | 'error', name, needsReview, error }
   const [entries, setEntries] = useState(() => Object.fromEntries(
-    Object.entries(draft?.entries || {}).map(([id, entry]) => [id, { status: 'done', name: entry.name, needsReview: entry.needsReview, error: null }]),
+    Object.entries(draft?.entries || {}).map(([id, entry]) => [id, {
+      status: 'done', name: entry.name, needsReview: entry.needsReview, error: null, aiRunId: entry.aiRunId, aiName: entry.aiName,
+    }]),
   ));
   const [running, setRunning] = useState(false);
   const [progress, setProgress] = useState({ done: 0, total: 0 });
@@ -101,7 +104,7 @@ export default function AiRenameModal({
     if (running) stopRun();
     const kept = Object.fromEntries(Object.entries(entries)
       .filter(([id, entry]) => resultIds.has(id) && hasName(entry))
-      .map(([id, entry]) => [id, { name: entry.name, needsReview: Boolean(entry.needsReview) }]));
+      .map(([id, entry]) => [id, { name: entry.name, needsReview: Boolean(entry.needsReview), aiRunId: entry.aiRunId, aiName: entry.aiName }]));
     onClose(Object.keys(kept).length ? { productName, prompt, entries: kept } : null);
   };
 
@@ -128,6 +131,8 @@ export default function AiRenameModal({
 
     const runId = runIdRef.current + 1;
     runIdRef.current = runId;
+    // One AI run per click; each batch below gets its own request ID.
+    const aiRunId = newOperationId();
     const controller = new AbortController();
     abortRef.current = controller;
     const isCurrent = () => runIdRef.current === runId;
@@ -173,7 +178,9 @@ export default function AiRenameModal({
       if (unreadable.length) markFailed(unreadable, 'Không đọc được ảnh này để phân tích.');
 
       if (images.length) {
-        const response = await requestImageNameSuggestions({ productName: name, prompt, images, signal: controller.signal });
+        const response = await requestImageNameSuggestions({
+          productName: name, prompt, images, signal: controller.signal, requestId: newOperationId(), aiRunId,
+        });
         // A closed dialog, a stopped run or a newer run must not receive this answer.
         if (!isCurrent() || response.code === 'aborted') return;
 
@@ -191,7 +198,7 @@ export default function AiRenameModal({
           setEntries((current) => {
             const next = { ...current };
             for (const [id, suggestion] of suggestions) {
-              next[id] = { status: 'done', name: suggestion.name, needsReview: suggestion.needsReview, error: null };
+              next[id] = { status: 'done', name: suggestion.name, needsReview: suggestion.needsReview, error: null, aiRunId, aiName: suggestion.name };
             }
             for (const id of unnamedIds) {
               next[id] = { name: '', needsReview: false, ...current[id], status: 'error', error: 'AI chưa đặt được tên cho ảnh này.' };
@@ -234,7 +241,7 @@ export default function AiRenameModal({
 
   const handleApply = () => {
     if (running || finalNames.size === 0) return;
-    onApply(Object.fromEntries(finalNames));
+    onApply(Object.fromEntries(finalNames), { groups: summarizeAppliedNames([...finalNames.keys()], entries) });
   };
 
   return (

@@ -2,6 +2,8 @@ import { supabase, supabaseConfig } from '../lib/supabase.js';
 
 const FUNCTION_NAME = 'suggest-image-names';
 const REQUEST_TIMEOUT_MS = 150_000;
+/** One automatic resend after a network failure, with the same requestId (the server dedupes it). */
+export const NETWORK_RESEND_DELAY_MS = 800;
 
 /** Overridable for a backend hosted elsewhere; the key itself never reaches the browser. */
 export function getImageNameEndpoint() {
@@ -33,12 +35,15 @@ const MESSAGES = {
   upstream_quota: 'Dịch vụ AI tạm thời hết hạn mức. Vui lòng liên hệ quản trị viên.',
   upstream_auth: 'Máy chủ AI chưa được cấu hình đúng. Vui lòng liên hệ quản trị viên.',
   invalid_response: 'Máy chủ trả về dữ liệu không hợp lệ. Hãy thử lại.',
+  usage_tracking_unavailable: 'Máy chủ chưa ghi nhận được lượt sử dụng nên chưa gửi ảnh tới AI. Hãy thử lại sau ít phút.',
+  AI_USAGE_PAUSED: 'Đặt tên ảnh bằng AI đang tạm dừng. Bạn vẫn có thể đổi tên thủ công.',
 };
 
 /** Errors that will fail again for every remaining batch, so the run stops. */
 export const FATAL_IMAGE_NAME_ERRORS = new Set([
   'AUTH_REQUIRED', 'AI_NAMING_ACCESS_DENIED', 'ACCESS_CHECK_FAILED', 'not_configured', 'not_deployed', 'network',
   'rate_limited', 'upstream_quota', 'upstream_auth', 'upstream_rejected',
+  'usage_tracking_unavailable', 'AI_USAGE_PAUSED', 'AI_QUOTA_EXCEEDED',
 ]);
 
 export function describeImageNameError(code, serverMessage, retryAfterSeconds) {
@@ -48,11 +53,27 @@ export function describeImageNameError(code, serverMessage, retryAfterSeconds) {
   return MESSAGES[code] || serverMessage || 'Không tạo được tên gợi ý. Hãy thử lại.';
 }
 
+/** Random UUID for request/run IDs (the browser always has crypto.randomUUID on HTTPS). */
+export function newOperationId() {
+  return crypto.randomUUID();
+}
+
+const waitUnlessAborted = (ms, signal) => new Promise((resolve) => {
+  const timer = setTimeout(resolve, ms);
+  signal.addEventListener('abort', () => { clearTimeout(timer); resolve(); }, { once: true });
+});
+
 /**
- * @param {{ productName: string, prompt: string, images: Array<{ id: string, position: number, dataUrl: string }>, signal?: AbortSignal }} input
- * @returns {Promise<{ data: { items: unknown[], failed: unknown[] } | null, error: string | null, code: string | null }>}
+ * `requestId` identifies this batch: a resend after a network error reuses it,
+ * so the server answers from its record instead of calling OpenAI again. A
+ * new click (Tạo / Thử lại) must use a new ID. `aiRunId` groups the batches
+ * of one click. Both are for the usage ledger only — the user comes from the JWT.
+ *
+ * @param {{ productName: string, prompt: string, images: Array<{ id: string, position: number, dataUrl: string }>,
+ *   signal?: AbortSignal, requestId?: string, aiRunId?: string }} input
+ * @returns {Promise<{ data: { items: unknown[], failed: unknown[] } | null, error: string | null, code: string | null, requestId?: string }>}
  */
-export async function requestImageNameSuggestions({ productName, prompt, images, signal }) {
+export async function requestImageNameSuggestions({ productName, prompt, images, signal, requestId = newOperationId(), aiRunId }) {
   const fail = (code, serverMessage, retryAfterSeconds) => ({
     data: null, code, error: describeImageNameError(code, serverMessage, retryAfterSeconds),
   });
@@ -68,17 +89,28 @@ export async function requestImageNameSuggestions({ productName, prompt, images,
   const onAbort = () => controller.abort();
   signal?.addEventListener('abort', onAbort, { once: true });
 
+  const send = () => fetch(getImageNameEndpoint(), {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      apikey: supabaseConfig.publishableKey || '',
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ productName, prompt, images, requestId, ...(aiRunId ? { aiRunId } : {}) }),
+    signal: controller.signal,
+  });
+
   try {
-    const response = await fetch(getImageNameEndpoint(), {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        apikey: supabaseConfig.publishableKey || '',
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ productName, prompt, images }),
-      signal: controller.signal,
-    });
+    let response;
+    try {
+      response = await send();
+    } catch (error) {
+      // The request may have reached the server: resend once with the same requestId.
+      if (controller.signal.aborted) throw error;
+      await waitUnlessAborted(NETWORK_RESEND_DELAY_MS, controller.signal);
+      if (controller.signal.aborted) throw error;
+      response = await send();
+    }
 
     let body = null;
     try {
@@ -95,7 +127,7 @@ export async function requestImageNameSuggestions({ productName, prompt, images,
       return fail(body?.error?.code || fallbackCode, body?.error?.message, retryAfter);
     }
     if (!body || !Array.isArray(body.items) || !Array.isArray(body.failed)) return fail('invalid_response');
-    return { data: { items: body.items, failed: body.failed }, error: null, code: null };
+    return { data: { items: body.items, failed: body.failed }, error: null, code: null, requestId };
   } catch {
     if (signal?.aborted) return { data: null, error: null, code: 'aborted' };
     return fail(timedOut ? 'timeout' : 'network');

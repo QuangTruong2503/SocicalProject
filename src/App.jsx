@@ -25,6 +25,7 @@ const AdminDashboardPage = lazy(() => import('./pages/Admin/AdminDashboardPage.j
 const AdminUsersPage = lazy(() => import('./pages/Admin/AdminUsersPage.jsx'));
 const AdminQuotationsPage = lazy(() => import('./pages/Admin/AdminQuotationsPage.jsx'));
 const AdminWatermarkPage = lazy(() => import('./pages/Admin/AdminWatermarkPage.jsx'));
+const AdminUsagePage = lazy(() => import('./pages/Admin/AdminUsagePage.jsx'));
 const AdminMemoryCardsPage = lazy(() => import('./pages/Admin/AdminMemoryCardsPage.jsx'));
 const AdminProductLinksPage = lazy(() => import('./pages/Admin/AdminProductLinksPage.jsx'));
 const AdminNotificationsPage = lazy(() => import('./pages/Admin/AdminNotificationsPage.jsx'));
@@ -228,6 +229,7 @@ export default function App() {
               <Route path="users" element={<AdminUsersPage />} />
               <Route path="quotations" element={<AdminQuotationsPage />} />
               <Route path="watermark" element={<AdminWatermarkPage />} />
+              <Route path="usage" element={<AdminUsagePage />} />
               <Route path="memory-cards" element={<AdminMemoryCardsPage />} />
               <Route path="product-links" element={<AdminProductLinksPage />} />
               <Route path="notifications" element={<AdminNotificationsPage />} />

@@ -23,14 +23,14 @@ Nút **Đặt tên bằng AI** ở khu vực Kết quả mở modal: nhập tên
 | --- | --- |
 | Ảnh mỗi request | 6 |
 | Data URL mỗi ảnh / body | 450.000 / 3.000.000 ký tự |
-| Tên sản phẩm / prompt | 150 / 2.000 ký tự |
-| Mỗi người dùng trong 10 phút | 40 request, 150 ảnh |
-| Request đồng thời | 2 mỗi người dùng, 8 mỗi instance |
+| Tên sản phẩm / prompt | 150 / 10.000 ký tự |
+| Mỗi người dùng trong 10 phút | 40 request, 150 ảnh (mặc định, chỉnh ở /admin/usage) |
+| Request đồng thời | 2 mỗi người dùng, 8 toàn hệ thống (dùng chung mọi instance) |
 | Timeout OpenAI | 45 giây mỗi lần, tối đa 3 lần |
 
 Retry (có backoff, tôn trọng `Retry-After`, tối đa 10 giây mỗi lần chờ) chỉ cho lỗi mạng, timeout, 408/409, 429 rate limit và 5xx. Không retry 400/401/403/404 và 429 do hết hạn mức (`insufficient_quota`, spend limit…). Kết quả bị cắt, bị từ chối hoặc không đúng JSON → trả 200 với mọi ảnh trong lô ở trạng thái lỗi để thử lại. Log chỉ ghi mã lỗi/HTTP status, không ghi API key, ảnh base64 hay prompt.
 
-Bộ giới hạn tần suất nằm trong bộ nhớ của từng instance Edge Function nên chỉ là lớp bảo vệ "best effort". Nếu cần hạn mức cứng theo tài khoản, bổ sung bảng đếm trong Postgres (chưa làm ở phiên bản này theo phạm vi yêu cầu). Nên đặt thêm **spend limit** cho project OpenAI.
+Giới hạn tần suất, số request đồng thời, quota ảnh theo ngày/tháng và công tắc tạm dừng được kiểm tra trong Postgres (`ai_usage_begin`), dùng chung mọi instance Edge Function; mỗi lô và từng attempt tới OpenAI được ghi vào sổ usage (token, model thực tế, chi phí ước tính). Nếu không ghi được bản ghi bắt đầu, function trả `503 usage_tracking_unavailable` và không gọi OpenAI. Chi tiết: [usage-logging.md](usage-logging.md). Nên đặt thêm **spend limit** cho project OpenAI.
 
 ## Phân quyền
 
@@ -43,7 +43,7 @@ Chỉ **admin** hoặc tài khoản có **gói Pro trở lên đang có hiệu l
 
 **Chưa có trong dự án:** thời hạn gói, trạng thái hủy/gia hạn hay subscription. Gói hiện do admin gán thủ công và có hiệu lực tới khi admin đổi; vì vậy "Pro hết hiệu lực" và "đã hủy nhưng còn hạn" chưa thể biểu diễn. Khi bổ sung dữ liệu thời hạn, chỉ cần mở rộng `can_use_ai_naming()`.
 
-Áp dụng: chạy `supabase/migrations/20261017100000_ai_naming_access.sql` (sau `supabase_admin_profiles_policies.sql` và `20261017090000_profiles_plan_check.sql`) bằng `npx supabase db push` hoặc SQL Editor, **trước** khi deploy lại function. Nếu chưa áp dụng, function trả `ACCESS_CHECK_FAILED` cho mọi người (đóng an toàn).
+Áp dụng: chạy `supabase/migrations/20261017100000_ai_naming_access.sql` (và hai migration sổ usage `20261018090000_usage_ledger.sql`, `20261018091000_usage_admin.sql`, xem [usage-logging.md](usage-logging.md#10-triển-khai)) (sau `supabase_admin_profiles_policies.sql` và `20261017090000_profiles_plan_check.sql`) bằng `npx supabase db push` hoặc SQL Editor, **trước** khi deploy lại function. Nếu chưa áp dụng, function trả `ACCESS_CHECK_FAILED` cho mọi người (đóng an toàn).
 
 ## Cấu hình và chạy
 
@@ -55,6 +55,8 @@ Chỉ **admin** hoặc tài khoản có **gói Pro trở lên đang có hiệu l
    # Tùy chọn:
    npx supabase secrets set OPENAI_IMAGE_NAME_MODEL=gpt-6-luna OPENAI_IMAGE_NAME_REASONING_EFFORT=none
    npx supabase secrets set IMAGE_NAME_ALLOWED_ORIGINS=https://<site>.netlify.app,http://localhost:5173
+   # Sổ usage (khuyên dùng): nhãn key, môi trường, khóa HMAC cho idempotency
+   npx supabase secrets set OPENAI_IMAGE_NAME_KEY_ALIAS=image-naming-prod-v1 AI_USAGE_ENVIRONMENT=production AI_USAGE_FINGERPRINT_SECRET=<chuỗi-ngẫu-nhiên-dài>
    ```
 
 3. Triển khai function (giữ kiểm tra JWT mặc định, không dùng `--no-verify-jwt`):

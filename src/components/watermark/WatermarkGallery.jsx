@@ -44,6 +44,7 @@ export default function WatermarkGallery({
   aiAccess = null,
   onRequestAiLogin,
   onRemoveResult,
+  onResultDownload,
   isProcessing,
   processingProgress,
   downloadProgress,
@@ -490,6 +491,7 @@ export default function WatermarkGallery({
                   downloadName={uniqueNames[index]}
                   onRenameFile={onRenameFile}
                   onRemoveResult={onRemoveResult}
+                  onDownloaded={onResultDownload}
                   onPreview={() => openPreview(index)}
                   style={{ animationDelay: `${Math.min(i, 7) * 35}ms` }}
                 />
@@ -624,8 +626,8 @@ export default function WatermarkGallery({
           onAccessRejected={aiAccess?.reportRejection}
           onRetryAccess={aiAccess?.refresh}
           onRequestLogin={onRequestAiLogin}
-          onApply={(namesById) => {
-            onRenameById(namesById);
+          onApply={(namesById, stats) => {
+            onRenameById(namesById, stats);
             setAiRenameDraft(null);
             closeAiRename();
           }}
@@ -796,13 +798,19 @@ export default function WatermarkGallery({
   );
 }
 
-function ResultCard({ result, index, downloadName, onPreview, onRenameFile, onRemoveResult, style }) {
+function ResultCard({ result, index, downloadName, onPreview, onRenameFile, onRemoveResult, onDownloaded, style }) {
   const isRenamedForDuplicate = downloadName !== normalizeDownloadName(result.fileName);
   const handleDownload = () => {
     const a = document.createElement('a');
     a.href = result.url;
     a.download = downloadName;
     a.click();
+    // Usage telemetry only; the download itself never depends on it.
+    try {
+      onDownloaded?.(result);
+    } catch {
+      // ignored
+    }
   };
 
   return (

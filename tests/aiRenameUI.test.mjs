@@ -10,6 +10,10 @@ const { default: WatermarkGallery } = await import('../src/components/watermark/
 const { DEFAULT_IMAGE_NAME_PROMPT } = await import('../src/utils/aiImageNaming.js');
 const { AuthContext } = await import('../src/context/authContext.js');
 const { useAiNamingAccess } = await import('../src/hooks/useAiNamingAccess.js');
+const { NETWORK_RESEND_DELAY_MS } = await import('../src/services/imageNameService.js');
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
+let applyStats;
+let cardDownloads;
 
 const PRODUCT = 'Máy khoan Bosch GSB 13 RE';
 const PRO_USER = { user: { id: 'user-1' }, profile: { id: 'user-1', role: 'user', plan: 'pro', status: 'active' }, isInitializing: false };
@@ -44,13 +48,18 @@ function Gallery({ initial }) {
     onClear() {},
     onDownloadAll() {},
     onRemoveResult() {},
+    onResultDownload(result) {
+      cardDownloads.push(result.id);
+      if (globalThis.__telemetryThrows) throw new Error('telemetry down');
+    },
     onRenameFile(index, fileName) {
       manualRenames.push([index, fileName]);
       setResults((current) => current.map((result, i) => (i === index ? { ...result, fileName } : result)));
     },
     // Same contract as Watermark.jsx: only IDs that still exist are renamed.
-    onRenameById(namesById) {
+    onRenameById(namesById, stats) {
       renameCalls.push(namesById);
+      applyStats.push(stats);
       setResults((current) => current.map((result) => (namesById[result.id] ? { ...result, fileName: namesById[result.id] } : result)));
     },
   }));
@@ -93,6 +102,9 @@ test.beforeEach(async () => {
   fetchQueue = [];
   fetchCalls = [];
   renameCalls = [];
+  applyStats = [];
+  cardDownloads = [];
+  globalThis.__telemetryThrows = false;
   manualRenames = [];
   loginRequests = [];
   globalThis.__aiThumbnailCalls = [];
@@ -180,6 +192,22 @@ test('suggests names by ID, retries only failed images, applies edits, downloads
     dom.window.HTMLAnchorElement.prototype.click = originalClick;
   }
   assert.deepEqual(downloads, ['dau-kep-moi.jpg']);
+  assert.deepEqual(cardDownloads, ['res-2'], 'single downloads go through the shared usage callback');
+});
+
+test('a failing usage callback never blocks the single download', async () => {
+  await render(makeResults(2));
+  globalThis.__telemetryThrows = true;
+  const downloads = [];
+  const originalClick = dom.window.HTMLAnchorElement.prototype.click;
+  dom.window.HTMLAnchorElement.prototype.click = function captureDownload() { downloads.push(this.download); };
+  try {
+    await click(document.querySelector('.wm-result-card .wm-result-dl-btn'));
+  } finally {
+    dom.window.HTMLAnchorElement.prototype.click = originalClick;
+  }
+  assert.equal(downloads.length, 1);
+  assert.deepEqual(cardDownloads, ['res-1']);
 });
 
 test('cancel does not rename; suggestions survive reopening without a new API call', async () => {
@@ -270,6 +298,8 @@ test('rate limit, timeout, network and session errors have specific messages', a
     await openAiDialog();
     if (response) fetchQueue.push(response);
     await generate();
+    // A network failure is resent once (same requestId) before it is reported.
+    if (!response) await settle(NETWORK_RESEND_DELAY_MS + 100);
     assert.match(dialog().textContent, message);
     await click(button('Hủy', dialog()));
     await act(async () => { root.unmount(); });
@@ -281,7 +311,10 @@ test('rate limit, timeout, network and session errors have specific messages', a
   await openAiDialog();
   await generate();
   assert.match(dialog().textContent, /Phiên đăng nhập đã hết hạn/);
-  assert.equal(fetchCalls.length, scenarios.length, 'no request without a session');
+  assert.equal(fetchCalls.length, scenarios.length + 1, 'no request without a session');
+  // Scenario 4 (network) made calls #4 and #5: the resend reuses the batch requestId.
+  assert.equal(fetchCalls[3].body.requestId, fetchCalls[4].body.requestId);
+  assert.notEqual(fetchCalls[2].body.requestId, fetchCalls[3].body.requestId);
 });
 
 test('large sets are split into ≤6-image requests with at most 2 in flight', async () => {
@@ -460,4 +493,74 @@ test('a profile change (e.g. admin grants Pro) triggers a new server check', asy
   assert.equal(globalThis.__aiRpcCalls.length, 2);
   await openAiDialog();
   assert.ok(document.getElementById('wm-ai-product-name'));
+});
+
+test('usage IDs: one aiRunId per click, a new requestId per batch; apply reports kept vs edited AI names', async () => {
+  await render(makeResults(13));
+  await openAiDialog();
+  const answer = (init) => {
+    const ids = JSON.parse(init.body).images.map((image) => image.id);
+    return ok(ids.map((imageId) => ({ imageId, suggestedName: `kim-${imageId}`, needsReview: false })))();
+  };
+  fetchQueue.push(answer, answer, answer);
+  await generate();
+  await settle(60);
+
+  const bodies = fetchCalls.map((call) => call.body);
+  assert.equal(bodies.length, 3);
+  assert.ok(bodies.every((body) => UUID.test(body.requestId) && UUID.test(body.aiRunId)));
+  assert.equal(new Set(bodies.map((body) => body.requestId)).size, 3, 'each batch is its own logical request');
+  assert.equal(new Set(bodies.map((body) => body.aiRunId)).size, 1, 'one run for the click');
+  assert.ok(bodies.every((body) => !('userId' in body) && !('plan' in body)), 'identity is never sent in the body');
+
+  await type(nameInput('res-1'), 'ten-sua-tay');
+  // Close and reopen: the draft comes back without any request.
+  await click(button('Hủy', dialog()));
+  await openAiDialog();
+  assert.equal(fetchCalls.length, 3, 'reopening the draft is not a new AI call');
+  assert.equal(nameInput('res-2').value, 'kim-res-2');
+
+  await click(button('Áp dụng tên (13)', dialog()));
+  assert.equal(fetchCalls.length, 3, 'applying names never calls the API');
+  assert.deepEqual(applyStats, [{ groups: [{ aiRunId: bodies[0].aiRunId, applied: 13, aiUnchanged: 12, edited: 1 }] }]);
+
+  // "Tạo lại tất cả" is a new user action: new run, new request IDs.
+  await openAiDialog();
+  fetchQueue.push(answer, answer, answer);
+  await generate();
+  await settle(60);
+  const again = fetchCalls.slice(3).map((call) => call.body);
+  assert.ok(again.length > 0);
+  assert.ok(again.every((body) => body.aiRunId !== bodies[0].aiRunId && !bodies.some((old) => old.requestId === body.requestId)));
+});
+
+test('the server deduplicating a resend (replay) is shown like a normal answer; paused/quota stop the run', async () => {
+  await render(makeResults(2));
+  await openAiDialog();
+  fetchQueue.push(respond(200, { items: [{ imageId: 'res-1', suggestedName: 'kim-a', needsReview: false }, { imageId: 'res-2', suggestedName: 'kim-b', needsReview: false }], failed: [], replayed: true }));
+  await generate();
+  assert.equal(nameInput('res-1').value, 'kim-a');
+  await click(button('Hủy', dialog()));
+  await act(async () => { root.unmount(); });
+  root = null;
+  fetchCalls = [];
+
+  for (const [error, message] of [
+    [{ code: 'AI_QUOTA_EXCEEDED', message: 'Bạn đã dùng hết hạn mức 300 ảnh đặt tên bằng AI trong ngày này.', retryAfterSeconds: 3600 }, /hết hạn mức 300 ảnh/],
+    [{ code: 'AI_USAGE_PAUSED', message: 'x' }, /đang tạm dừng/],
+    [{ code: 'usage_tracking_unavailable', message: 'x' }, /chưa ghi nhận được lượt sử dụng/],
+  ]) {
+    await render(makeResults(13));
+    await openAiDialog();
+    const failure = respond(error.code === 'AI_QUOTA_EXCEEDED' ? 429 : 503, { error });
+    fetchQueue.push(failure, failure);
+    await generate();
+    await settle(40);
+    assert.match(dialog().textContent, message);
+    assert.equal(fetchCalls.length, 2, 'fatal errors stop the remaining batches');
+    fetchCalls = [];
+    await click(button('Hủy', dialog()));
+    await act(async () => { root.unmount(); });
+    root = null;
+  }
 });

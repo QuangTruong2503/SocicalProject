@@ -1,13 +1,33 @@
 // Edge Function handler with mocked Supabase Auth and OpenAI. No network, no real key.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createSuggestImageNamesHandler, createRateLimiter, resolvePublicApiKey } from '../supabase/functions/suggest-image-names/handler.js';
+import { createSuggestImageNamesHandler, resolvePublicApiKey } from '../supabase/functions/suggest-image-names/handler.js';
 import { OPENAI_RESPONSES_URL } from '../supabase/functions/suggest-image-names/openai.js';
+import { IMAGE_NAME_LIMITS } from '../supabase/functions/suggest-image-names/imageNaming.js';
 
 const SUPABASE_URL = 'https://project.supabase.co';
 const FAKE_KEY = 'sk-test-SECRET-should-never-leak';
 const DATA_URL = `data:image/jpeg;base64,${'A'.repeat(400)}`;
 const image = (id, position = 1) => ({ id, position, dataUrl: DATA_URL });
+const USER_ID = '20000000-0000-4000-8000-000000000001';
+
+/** Accepts every batch; the real SQL is covered by tests/usageLedgerFunction.test.mjs. */
+function memoryLedger() {
+  const log = { begins: [], attemptStarts: [], attempts: [], finishes: [], rejections: [] };
+  let count = 0;
+  return {
+    log,
+    async begin(payload) {
+      log.begins.push(payload);
+      count += 1;
+      return { decision: 'accepted', request_id: `00000000-0000-4000-8000-${String(count).padStart(12, '0')}` };
+    },
+    async attemptStart(payload) { log.attemptStarts.push(payload); return { ok: true }; },
+    async attemptFinish(payload) { log.attempts.push(payload); return { ok: true }; },
+    async finish(payload) { log.finishes.push(payload); return { ok: true }; },
+    async recordRejection(payload) { log.rejections.push(payload); return { decision: 'rejected' }; },
+  };
+}
 
 function openAIResponse(items, extra = {}) {
   return {
@@ -22,13 +42,13 @@ function openAIResponse(items, extra = {}) {
  * `entitlement`: JSON returned by can_use_ai_naming, or a function (init) => Response.
  * `openai` is a queue: each entry is a JSON body (200) or a function (init) => Response.
  */
-function setup({ env = {}, entitlement = true, userStatus = 200, openai = [] } = {}) {
-  const calls = { openai: [], auth: 0, entitlement: [], sleeps: [], logs: [] };
+function setup({ env = {}, entitlement = true, userStatus = 200, openai = [], ledger = memoryLedger() } = {}) {
+  const calls = { openai: [], auth: 0, entitlement: [], sleeps: [], logs: [], ledger: ledger?.log };
   const queue = [...openai];
   const fetchImpl = async (url, init = {}) => {
     if (url === `${SUPABASE_URL}/auth/v1/user`) {
       calls.auth += 1;
-      return Response.json(userStatus === 200 ? { id: 'user-1' } : { msg: 'bad jwt' }, { status: userStatus });
+      return Response.json(userStatus === 200 ? { id: USER_ID } : { msg: 'bad jwt' }, { status: userStatus });
     }
     if (url === `${SUPABASE_URL}/rest/v1/rpc/can_use_ai_naming`) {
       calls.entitlement.push({ headers: init.headers, body: init.body });
@@ -59,6 +79,7 @@ function setup({ env = {}, entitlement = true, userStatus = 200, openai = [] } =
     random: () => 0,
     logger,
     openAITimeoutMs: 30,
+    ledger,
   });
   return { handler, calls };
 }
@@ -205,7 +226,8 @@ test('rejects invalid payloads before calling OpenAI', async () => {
     [validBody({ productName: '   ' }), 400, /tên sản phẩm/i],
     [validBody({ productName: '!!!' }), 400, /chữ cái hoặc chữ số/],
     [validBody({ productName: 'x'.repeat(151) }), 400, /tối đa 150/],
-    [validBody({ prompt: 'x'.repeat(2001) }), 400, /Prompt tối đa/],
+    [validBody({ prompt: 'x'.repeat(IMAGE_NAME_LIMITS.maxPromptLength + 1) }), 400, /Prompt tối đa/],
+    [validBody({ requestId: 'not-a-uuid' }), 400, /Mã yêu cầu/],
     [validBody({ images: [] }), 400, /Chưa có ảnh/],
     [validBody({ images: Array.from({ length: 7 }, (_, i) => image(`r${i}`, i + 1)) }), 400, /tối đa 6 ảnh/],
     [validBody({ images: [image('a'), image('a', 2)] }), 400, /trùng/],
@@ -380,29 +402,6 @@ test('incomplete, refused or malformed output → 200 with every image failed', 
     assert.equal(response.status, 200);
     assert.deepEqual((await response.json()).failed, [{ imageId: 'a', code }, { imageId: 'b', code }]);
   }
-});
-
-test('per-user rate limit and concurrency limit', async () => {
-  let clock = 0;
-  const limiter = createRateLimiter(() => clock, { windowMs: 1000, maxRequestsPerWindow: 2, maxImagesPerWindow: 10, maxConcurrentPerUser: 1, maxConcurrentTotal: 5 });
-  const release = limiter.acquire('u1', 3);
-  assert.throws(() => limiter.acquire('u1', 1), (error) => error.code === 'too_many_concurrent');
-  release();
-  limiter.acquire('u1', 3)();
-  assert.throws(() => limiter.acquire('u1', 1), (error) => error.code === 'rate_limited' && error.extra.retryAfterSeconds >= 1);
-  assert.doesNotThrow(() => limiter.acquire('u2', 1)());
-  clock = 1001;
-  assert.doesNotThrow(() => limiter.acquire('u1', 1)());
-  assert.throws(() => limiter.acquire('u3', 11), (error) => error.code === 'rate_limited');
-});
-
-test('handler enforces the per-user window', async () => {
-  const { handler } = setup({ openai: Array.from({ length: 60 }, () => openAIResponse([])) });
-  let lastStatus = 0;
-  for (let index = 0; index < 41; index += 1) {
-    lastStatus = (await handler(post(validBody({ images: [image('a')] })))).status;
-  }
-  assert.equal(lastStatus, 429);
 });
 
 test('logs never contain the API key, image data or prompt', async () => {

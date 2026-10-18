@@ -126,3 +126,21 @@ export async function createAiImageDataUrl(result) {
   }
   throw new Error('Không đọc được ảnh để gửi phân tích.');
 }
+
+/**
+ * What "Áp dụng tên" applied, per AI run (null = names typed without AI):
+ * names kept exactly as suggested vs edited. Only for usage analytics — no API call.
+ */
+export function summarizeAppliedNames(ids, entries) {
+  const groups = new Map();
+  for (const id of ids) {
+    const entry = entries[id];
+    const runId = entry?.aiRunId || null;
+    const group = groups.get(runId) || { aiRunId: runId, applied: 0, aiUnchanged: 0, edited: 0 };
+    group.applied += 1;
+    if (runId && entry.name === entry.aiName) group.aiUnchanged += 1;
+    else group.edited += 1;
+    groups.set(runId, group);
+  }
+  return [...groups.values()];
+}
