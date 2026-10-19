@@ -3,7 +3,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createSuggestImageNamesHandler, resolvePublicApiKey } from '../supabase/functions/suggest-image-names/handler.js';
 import { OPENAI_RESPONSES_URL } from '../supabase/functions/suggest-image-names/openai.js';
-import { IMAGE_NAME_LIMITS, IMAGE_NAME_MODELS } from '../supabase/functions/suggest-image-names/imageNaming.js';
+import { DEFAULT_IMAGE_NAME_PROMPT, IMAGE_NAME_LIMITS, IMAGE_NAME_MODELS } from '../supabase/functions/suggest-image-names/imageNaming.js';
 const ALL_MODELS = IMAGE_NAME_MODELS.map(({ id }) => id);
 
 const SUPABASE_URL = 'https://project.supabase.co';
@@ -354,9 +354,29 @@ test('editable prompt cannot change output format or IDs', async () => {
   const response = await handler(post(body));
   const json = await response.json();
   assert.equal(calls.openai[0].body.text.format.schema.properties.items.items.properties.imageId.enum[0], 'res-1');
-  // Output is still a slug, product name first, descriptor capped to 5 words.
+  // Output is still a slug, product name first, descriptor bounded by the shared limit.
   assert.match(json.items[0].suggestedName, /^may-khoan-bosch-gsb-13-re-[a-z0-9-]+$/);
-  assert.ok(json.items[0].suggestedName.split('-').length <= 7 + 5);
+  assert.ok(json.items[0].suggestedName.split('-').length <= 7 + IMAGE_NAME_LIMITS.maxDescriptorWords);
+});
+
+test('default prompt uses the app JSON contract; eight-word descriptors and review flags reach the correct IDs', async () => {
+  const { handler, calls } = setup({ openai: [openAIResponse([
+    { imageId: 'res-12', descriptor: 'công tắc trên thân máy nhìn từ trên', needsReview: false },
+    { imageId: 'res-5', descriptor: 'tem model trên thân máy', needsReview: true },
+  ])] });
+  const response = await handler(post(validBody({
+    prompt: '', productName: 'Máy mài Makita 9556HB', images: [image('res-5', 5), image('res-12', 12)],
+  })));
+  const payload = await response.json();
+  assert.equal(response.status, 200);
+  const request = calls.openai[0].body;
+  assert.equal(request.input[0].content[0].text, DEFAULT_IMAGE_NAME_PROMPT.replaceAll('{{productName}}', 'Máy mài Makita 9556HB'));
+  assert.deepEqual(request.text.format.schema.properties.items.items.properties.imageId.enum, ['res-5', 'res-12']);
+  assert.deepEqual(request.text.format.schema.properties.items.items.required, ['imageId', 'descriptor', 'needsReview']);
+  assert.deepEqual(Object.fromEntries(payload.items.map((item) => [item.imageId, [item.suggestedName, item.needsReview]])), {
+    'res-5': ['may-mai-makita-9556hb-tem-model-tren-than-may', true],
+    'res-12': ['may-mai-makita-9556hb-cong-tac-tren-than-may-nhin-tu-tren', false],
+  });
 });
 
 test('missing, duplicate and unknown IDs from the model are handled safely', async () => {

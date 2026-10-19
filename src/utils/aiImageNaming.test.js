@@ -46,9 +46,22 @@ test('composed name keeps the product name as the root and adds the descriptor',
   );
   // Long descriptors are capped to a few words.
   assert.equal(
-    composeSuggestedName({ productName: 'Kìm', descriptor: 'một hai ba bốn năm sáu bảy', position: 1 }).suggestedName,
-    'kim-mot-hai-ba-bon-nam',
+    composeSuggestedName({ productName: 'Kìm', descriptor: 'một hai ba bốn năm sáu bảy tám chín', position: 1 }).suggestedName,
+    'kim-mot-hai-ba-bon-nam-sau-bay-tam',
   );
+});
+
+test('longer meaningful descriptors survive normalization; uncertain model matches keep the supplied product name and review flag', () => {
+  const named = composeSuggestedName({
+    productName: 'Máy mài Makita 9556HB', descriptor: 'Công tắc trên thân máy nhìn từ trên', position: 12,
+  });
+  assert.equal(named.suggestedName, 'may-mai-makita-9556hb-cong-tac-tren-than-may-nhin-tu-tren');
+  const uncertain = composeSuggestedName({
+    productName: 'Máy mài Makita 9556HB', descriptor: 'Tem model trên thân máy', position: 15, needsReview: true,
+  });
+  const final = buildFinalFileNames([{ id: 'res-15', fileName: 'original.jpg', blob: jpeg }], { 'res-15': uncertain.suggestedName });
+  assert.equal(final.get('res-15'), 'may-mai-makita-9556hb-tem-model-tren-than-may.jpg');
+  assert.equal(uncertain.needsReview, true);
 });
 
 test('unclear image falls back to product name + position and is flagged', () => {
