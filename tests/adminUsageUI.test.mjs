@@ -5,10 +5,13 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import React, { act } from 'react';
 import { createRoot } from 'react-dom/client';
+import { MemoryRouter, Routes, Route, useLocation, useNavigate } from 'react-router-dom';
 
 globalThis.localStorage = dom.window.localStorage;
 const { HelmetProvider } = await import('react-helmet-async');
 const { default: AdminUsagePage } = await import('../src/pages/Admin/AdminUsagePage.jsx');
+const { default: AdminUsageRedirect } = await import('../src/pages/Admin/AdminUsageRedirect.jsx');
+const { default: AdminLayout } = await import('../src/pages/Admin/AdminLayout.jsx');
 const { customRange, formatUsd, presetRange, vnDateKey } = await import('../src/utils/usageDashboard.js');
 const { neutralizeCsvFormula } = await import('../src/utils/csv.js');
 
@@ -39,11 +42,25 @@ function overviewFixture(overrides = {}) {
 let root;
 let rpcCalls;
 let rpc;
+let navigate;
+
+function RouteState() {
+  const location = useLocation();
+  navigate = useNavigate();
+  return React.createElement('output', { id: 'route-state', hidden: true }, location.pathname + location.search);
+}
 
 async function settle(ms = 30) { await act(async () => { await new Promise((resolve) => setTimeout(resolve, ms)); }); }
-async function render() {
+async function render(entry = '/admin/usage') {
   root ??= createRoot(document.querySelector('#root'));
-  await act(async () => { root.render(React.createElement(HelmetProvider, null, React.createElement(AdminUsagePage))); });
+  await act(async () => { root.render(React.createElement(HelmetProvider, null,
+    React.createElement(MemoryRouter, { initialEntries: [entry] },
+      React.createElement(RouteState),
+      React.createElement(Routes, null,
+        React.createElement(Route, { path: '/admin', element: React.createElement(AdminLayout) },
+          React.createElement(Route, { path: 'usage', element: React.createElement(AdminUsagePage) }),
+          React.createElement(Route, { path: 'watermark', element: React.createElement(AdminUsageRedirect) })),
+        React.createElement(Route, { path: '/watermark/dashboard', element: React.createElement(AdminUsageRedirect) }))))); });
   await settle();
 }
 const text = () => document.querySelector('#root').textContent;
@@ -53,6 +70,8 @@ async function click(element) { assert.ok(element, 'control exists'); await act(
 test.beforeEach(async () => {
   rpcCalls = [];
   rpc = {};
+  globalThis.__watermarkInsert = null;
+  globalThis.__watermarkUnsubscribed = false;
   globalThis.__aiAccessRpc = async (name, params) => {
     rpcCalls.push({ name, params });
     return rpc[name] ? rpc[name](params) : { data: null, error: { code: 'PGRST202', message: 'not found' } };
@@ -170,17 +189,16 @@ test('filters are applied server-side; lists page with a cursor; CSV neutralizes
     ? { data: { rows: [row(3)], has_more: false, next_cursor: null }, error: null }
     : { data: { rows: [row(1), row(2)], has_more: params.p_limit < 5000, next_cursor: params.p_limit < 5000 ? { at: 'x', id: 'y' } : null }, error: null });
   await render();
-
+  await click(button('Nhật ký hoạt động'));
   const userInput = document.querySelector('input[aria-label="Lọc theo người dùng"]');
   await act(async () => {
     Object.getOwnPropertyDescriptor(dom.window.HTMLInputElement.prototype, 'value').set.call(userInput, 'pro@example.com');
     userInput.dispatchEvent(new dom.window.Event('input', { bubbles: true }));
   });
   await settle(450);
-  const filtered = rpcCalls.filter((entry) => entry.name === 'admin_usage_overview').at(-1);
+  const filtered = rpcCalls.filter((entry) => entry.name === 'admin_usage_activity').at(-1);
   assert.deepEqual(filtered.params.p_filters, { user: 'pro@example.com' });
 
-  await click(button('Nhật ký hoạt động'));
   assert.match(text(), /Đã gửi tới trình duyệt/);
   assert.equal(document.querySelectorAll('tbody tr').length, 2);
   await click(button('Tải thêm'));
@@ -230,7 +248,7 @@ test('AI tab: request lookup and the attempt detail', async () => {
     error: null,
   });
   await render();
-  await click(button('Sử dụng AI'));
+  await click(button('AI & chi phí'));
   assert.match(text(), /Chưa biết/, 'unknown cost is not shown as $0');
   const lookup = document.querySelector('input[aria-label="Tra cứu theo mã"]');
   await act(async () => {
@@ -245,4 +263,121 @@ test('AI tab: request lookup and the attempt detail', async () => {
   assert.ok(dialog);
   assert.equal(dialog.querySelectorAll('tbody tr').length, 3, 'every attempt, not only the last');
   assert.match(dialog.textContent, /Chưa biết \(có thể đã tính phí\)/);
+});
+
+function watermarkFixture() {
+  return { summary: { total_images: 81, total_entries: 9, unique_visitors: 5, unique_users: 3 },
+    previous: { total_images: 60, total_entries: 7, unique_visitors: 4, unique_users: 2 }, bucket: 'day',
+    series: [{ bucket: '2026-10-18', images: 81, entries: 9 }],
+    sources: [{ source_page: 'watermark', images: 60, entries: 6 }, { source_page: 'watermark/doantrang', images: 21, entries: 3 }] };
+}
+function setupWatermark() {
+  rpc.admin_usage_overview = () => ({ data: overviewFixture(), error: null });
+  rpc.watermark_admin_overview = () => ({ data: watermarkFixture(), error: null });
+  rpc.watermark_visitor_stats = (params) => ({ data: [{ group_key: 'v1', visitor_id: 'visitor-1', user_id: USER,
+    user_name: 'Người Pro', user_email: 'pro@example.com', total_images: 81, entry_count: 9, visitor_count: 1,
+    source_pages: ['watermark'], first_seen_at: '2026-10-15T02:00:00Z', last_seen_at: '2026-10-18T03:00:00Z', total_count: 51,
+    ...(params.p_offset ? { group_key: 'v2', user_name: 'Trang tiếp theo' } : {}) }], error: null });
+}
+const select = async (label, value) => act(async () => {
+  const element = document.querySelector(`select[aria-label="${label}"]`);
+  element.value = value;
+  element.dispatchEvent(new dom.window.Event('change', { bubbles: true }));
+});
+
+test('old Watermark route redirects to the unified page, dates survive and there is one navigation entry', async () => {
+  setupWatermark();
+  await render('/admin/watermark?range=custom&from=2026-10-01&to=2026-10-07');
+  assert.match(document.getElementById('route-state').textContent, /^\/admin\/usage\?.*tab=watermark/);
+  assert.equal(document.querySelectorAll('h1').length, 1);
+  assert.equal(document.querySelector('h1').textContent, 'Thống kê & sử dụng');
+  assert.equal(document.querySelectorAll('a[href="/admin/watermark"]').length, 0);
+  assert.equal(document.querySelectorAll('a[href="/admin/usage"]').length, 1);
+  const call = rpcCalls.find(({ name }) => name === 'watermark_admin_overview');
+  assert.equal(call.params.p_from, '2026-09-30T17:00:00.000Z');
+  assert.equal(call.params.p_to, '2026-10-07T17:00:00.000Z');
+  assert.match(text(), /Ảnh đã tạo81/);
+  assert.match(text(), /Tự động cập nhật/);
+  await click(button('Tổng quan'));
+  assert.match(text(), /Ảnh đã tạo18/, 'separate counters are never added');
+  assert.equal(document.querySelector('[aria-label="Chỉ số chính"]').querySelectorAll('article').length, 4);
+  assert.equal(document.querySelector('[aria-label="Lọc theo người dùng"]'), null, 'overview has no irrelevant filters');
+  await act(async () => { navigate(-1); }); await settle();
+  assert.match(text(), /Thống kê ảnh Watermark/);
+  await act(async () => { navigate('/watermark/dashboard'); }); await settle();
+  assert.match(document.getElementById('route-state').textContent, /^\/admin\/usage\?tab=watermark$/);
+});
+
+test('Watermark grouping, search, sorting, paging and CSV all share the chosen bounds; all history stays available', async () => {
+  setupWatermark();
+  await render('/admin/usage?tab=watermark&range=30d');
+  const overview = rpcCalls.find(({ name }) => name === 'watermark_admin_overview');
+  await click(button('Theo tài khoản'));
+  await select('Nguồn', 'watermark/doantrang'); await settle();
+  await act(async () => {
+    const search = document.querySelector('input[aria-label="Tìm kiếm"]');
+    Object.getOwnPropertyDescriptor(dom.window.HTMLInputElement.prototype, 'value').set.call(search, 'pro@example.com');
+    search.dispatchEvent(new dom.window.Event('input', { bubbles: true }));
+  }); await settle(400);
+  await click(button('Tổng ảnh'));
+  await click(document.querySelector('button[aria-label="Trang sau"]'));
+  const query = rpcCalls.filter(({ name }) => name === 'watermark_visitor_stats').at(-1).params;
+  assert.equal(query.p_from, overview.params.p_from); assert.equal(query.p_to, overview.params.p_to);
+  assert.equal(query.p_group_by, 'user'); assert.equal(query.p_source_page, 'watermark/doantrang');
+  assert.equal(query.p_search, 'pro@example.com'); assert.equal(query.p_offset, 50);
+  assert.equal(query.p_sort, 'total_images'); assert.equal(query.p_desc, false);
+  const originalCreate = globalThis.URL.createObjectURL;
+  const originalRevoke = globalThis.URL.revokeObjectURL;
+  const originalClick = dom.window.HTMLAnchorElement.prototype.click;
+  globalThis.URL.createObjectURL = () => 'blob:csv'; globalThis.URL.revokeObjectURL = () => {};
+  dom.window.HTMLAnchorElement.prototype.click = () => {};
+  try { await click(button('Xuất CSV')); } finally {
+    globalThis.URL.createObjectURL = originalCreate; globalThis.URL.revokeObjectURL = originalRevoke;
+    dom.window.HTMLAnchorElement.prototype.click = originalClick;
+  }
+  const exported = rpcCalls.filter(({ name }) => name === 'watermark_visitor_stats').at(-1).params;
+  assert.equal(exported.p_limit, 10000); assert.equal(exported.p_offset, 0);
+  assert.equal(exported.p_to, query.p_to); assert.equal(exported.p_search, query.p_search);
+  await click(button('Tất cả lịch sử'));
+  assert.equal(rpcCalls.filter(({ name }) => name === 'watermark_admin_overview').at(-1).params.p_from, null);
+  assert.equal(rpcCalls.filter(({ name }) => name === 'watermark_admin_overview').at(-1).params.p_bucket, 'month');
+  await click(button('Tổng quan'));
+  assert.match(document.getElementById('route-state').textContent, /range=30d/);
+  assert.ok(rpcCalls.filter(({ name }) => name === 'admin_usage_overview').at(-1).params.p_from);
+});
+
+test('list filters are scoped to their own tab; invalid dates never fetch Watermark', async () => {
+  setupWatermark();
+  rpc.admin_usage_requests = () => ({ data: { rows: [], has_more: false }, error: null });
+  rpc.admin_usage_activity = () => ({ data: { rows: [], has_more: false }, error: null });
+  await render('/admin/usage?tab=ai');
+  await select('Model', 'gpt-6-luna'); await settle(400);
+  assert.deepEqual(rpcCalls.filter(({ name }) => name === 'admin_usage_requests').at(-1).params.p_filters, { model: 'gpt-6-luna' });
+  await click(button('Nhật ký hoạt động'));
+  assert.deepEqual(rpcCalls.filter(({ name }) => name === 'admin_usage_activity').at(-1).params.p_filters, {});
+  assert.equal(document.querySelector('select[aria-label="Model"]'), null);
+  await click(button('AI & chi phí'));
+  assert.equal(document.querySelector('select[aria-label="Model"]').value, 'gpt-6-luna');
+  await act(async () => { navigate('/admin/usage?tab=watermark&range=custom&from=2026-10-07&to=2026-10-01'); }); await settle();
+  assert.match(text(), /Ngày kết thúc phải sau ngày bắt đầu/);
+  assert.equal(rpcCalls.filter(({ name }) => name.startsWith('watermark_')).length, 0);
+});
+
+test('Watermark realtime refreshes are debounced, manual refresh works, errors preserve data and unsubscribe on leaving', async () => {
+  setupWatermark();
+  await render('/admin/usage?tab=watermark');
+  const count = () => rpcCalls.filter(({ name }) => name === 'watermark_admin_overview').length;
+  const before = count();
+  await act(async () => {
+    for (let i = 0; i < 3; i += 1) globalThis.__watermarkInsert({ payload: { image_count: 1, visitor_id: 'v' } });
+  }); await settle(1600);
+  assert.equal(count(), before + 1);
+  await click(button('Làm mới'));
+  assert.equal(count(), before + 2);
+  rpc.watermark_admin_overview = () => ({ data: null, error: { message: 'Mất kết nối' } });
+  await click(button('Làm mới'));
+  assert.match(text(), /Không thể tải tổng quan watermark.*Đang hiển thị dữ liệu/);
+  assert.match(text(), /Ảnh đã tạo81/);
+  await click(button('Tổng quan'));
+  assert.equal(globalThis.__watermarkUnsubscribed, true);
 });

@@ -1,5 +1,70 @@
 /* /admin/usage — builds on Admin.module.css and the shared theme tokens. */
 
+.workspace { min-width: 0; }
+.workspaceHeader { padding-bottom: 20px; border-bottom: 1px solid var(--color-border); }
+.workspaceHeader h1 { font-size: clamp(24px, 3vw, 32px); letter-spacing: -.035em; text-transform: none; margin: 7px 0; }
+.workspaceHeader p { margin: 0; color: var(--color-text-secondary); font-size: 14px; line-height: 1.6; }
+.eyebrow { font-size: 10px !important; font-weight: 700; }
+.workspaceNav { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 5px; padding: 5px; margin: 0 0 25px; border: 1px solid var(--color-border); border-radius: 15px; background: var(--color-surface); }
+.workspaceTab { display: flex; align-items: center; gap: 9px; min-width: 0; min-height: 66px; padding: 10px 12px; border: 1px solid transparent; border-radius: 10px; background: transparent; color: var(--color-text-secondary); cursor: pointer; text-align: left; font: inherit; }
+.workspaceTab > svg { flex-shrink: 0; font-size: 16px; }
+.workspaceTab strong { display: block; font-size: 13px; line-height: 1.4; }
+.workspaceTab small { display: block; font-size: 11px; line-height: 1.5; margin-top: 3px; font-weight: 400; }
+.workspaceTab:hover { background: var(--color-nav-hover); color: var(--color-text); }
+.workspaceTabActive, .workspaceTabActive:hover { color: #166534; background: rgba(34, 197, 94, .1); border-color: rgba(22, 101, 52, .17); }
+[data-theme="dark"] .workspaceTabActive { color: #86efac; }
+.tabIntro { margin: 0 0 16px; }
+.tabIntro h2 { font-size: 20px; letter-spacing: -.02em; margin: 0 0 4px; }
+.tabIntro p { margin: 0; color: var(--color-text-secondary); font-size: 13px; line-height: 1.6; }
+.filterPanel { padding: 16px 18px; margin-bottom: 22px; border: 1px solid var(--color-border); border-radius: 14px; background: var(--color-surface); }
+.filterTop { display: flex; align-items: center; flex-wrap: wrap; gap: 10px 18px; }
+.filterLabel { font-size: 12px; font-weight: 650; color: var(--color-text-secondary); }
+.rangeSegments { flex-wrap: wrap; max-width: 100%; }
+.rangeNote { margin: 10px 0 0; color: var(--color-text-secondary); font-size: 11px; line-height: 1.6; }
+.filterPanel > .dateRange { margin-top: 12px; }
+.listFilters { display: flex; align-items: center; flex-wrap: wrap; gap: 9px; border-top: 1px solid var(--color-border); padding-top: 14px; margin-top: 14px; }
+.advancedFilters { font-size: 12px; }
+.advancedFilters summary { cursor: pointer; padding: 9px 0; color: var(--color-text-secondary); }
+.advancedFilters[open] { flex-basis: 100%; }
+.advancedFilters .inlineControls { padding: 4px 0; }
+.headlineGrid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; margin-bottom: 18px; }
+.headlineGrid > article { box-shadow: none; min-width: 0; border-top: 3px solid rgba(22, 163, 74, .55); }
+.headlineGrid > article > strong { font-size: clamp(24px, 2.5vw, 32px); letter-spacing: -.025em; word-break: break-word; }
+.headlineGrid > article > small { line-height: 1.5; }
+.overviewGuide { display: flex; justify-content: space-between; align-items: center; gap: 12px 20px; flex-wrap: wrap; padding: 16px 18px; margin-bottom: 20px; border: 1px solid var(--color-border); border-radius: 12px; background: var(--color-surface); }
+.overviewGuide strong { font-size: 13px; }
+.overviewGuide p { margin: 4px 0 0; font-size: 12px; line-height: 1.6; color: var(--color-text-secondary); }
+.detailSection { background: var(--color-surface); border: 1px solid var(--color-border); border-radius: 12px; margin-bottom: 14px; }
+.detailSection > summary { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 15px 18px; font-size: 13px; font-weight: 650; cursor: pointer; list-style: none; }
+.detailSection > summary::-webkit-details-marker { display: none; }
+.detailSection > summary::after { content: '+'; color: var(--color-text-secondary); font-size: 20px; font-weight: 400; }
+.detailSection[open] > summary::after { content: '−'; }
+.detailBody { padding: 0 18px 6px; }
+.sectionIntro { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: 12px 18px; margin-bottom: 18px; }
+.sectionIntro h2 { font-size: 17px; margin: 0 0 5px; }
+.sectionIntro p { margin: 0; max-width: 620px; font-size: 12px; color: var(--color-text-secondary); line-height: 1.6; }
+.workspace :is(button, input, select, summary, a):focus-visible { outline: 3px solid #22c55e; outline-offset: 3px; }
+
+@media (max-width: 1100px) {
+  .workspaceNav { display: flex; overflow-x: auto; overscroll-behavior-inline: contain; }
+  .workspaceTab { flex: 1 0 158px; }
+  .headlineGrid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 600px) {
+  .workspaceHeader { flex-direction: column; gap: 12px; }
+  .workspaceHeader > div:last-child { width: 100%; justify-content: space-between; }
+  .filterPanel { padding: 12px; }
+  .listFilters > input, .listFilters > select { width: 100%; flex-basis: 100%; }
+  .headlineGrid { gap: 10px; }
+  .headlineGrid > article { padding: 14px 12px; }
+  .overviewGuide { padding: 14px; }
+  .overviewGuide button { width: 100%; justify-content: center; }
+  .sectionIntro > div:last-child { justify-content: flex-start; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .workspace *, .workspace *::before, .workspace *::after { animation: none !important; transition: none !important; }
+}
+
 .muted { color: var(--color-text-secondary); font-size: 13px; margin: 0 0 14px; line-height: 1.5; }
 .subline { display: block; color: var(--color-text-secondary); font-size: 12px; font-weight: 400; }
 .subTitle { font-size: 14px; margin: 18px 0 8px; }

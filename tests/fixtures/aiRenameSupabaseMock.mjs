@@ -2,6 +2,14 @@ export const supabaseConfig = { url: 'https://project.supabase.co', publishableK
 // globalThis.__aiRenameSession: undefined → signed in, null → no session.
 // globalThis.__aiAccessRpc(name): answer for supabase.rpc (default: all naming models).
 export const supabase = {
+  channel: () => {
+    const channel = {
+      on(_type, _filter, onInsert) { globalThis.__watermarkInsert = onInsert; return channel; },
+      subscribe(onStatus) { onStatus('SUBSCRIBED'); return channel; },
+    };
+    return channel;
+  },
+  removeChannel: () => { globalThis.__watermarkInsert = null; globalThis.__watermarkUnsubscribed = true; },
   auth: {
     getSession: async () => ({
       data: { session: globalThis.__aiRenameSession === undefined ? { access_token: 'user-jwt' } : globalThis.__aiRenameSession },

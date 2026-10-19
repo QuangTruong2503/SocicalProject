@@ -108,9 +108,14 @@ export default function AdminUsageConfig({ reloadToken }) {
         <p className={us.muted}>Ngân sách bên dưới chỉ để cảnh báo, không phải giới hạn chi tiêu cứng. Key OpenAI dùng ở dự án khác phát sinh phí ngoài sổ này — nên dùng key/project riêng cho từng môi trường và tính năng, kèm spend limit trên OpenAI.</p>
       </section>
 
-      <LimitsForm settings={settings} busy={busy} onSave={(patch) => apply('settings.update', patch, 'Đã lưu giới hạn.')} />
       <PlanModels rows={state.data.plan_models} busy={busy} onSave={(payload) => apply('plan_models.update', payload, 'Đã lưu model theo gói.')} />
       <PlanQuotas quotas={state.data.plan_quotas} enforced={settings.quota_enforced} busy={busy} onSave={(payload) => apply('plan_quota.upsert', payload, 'Đã lưu hạn mức theo gói.')} />
+      <details className={us.detailSection}>
+        <summary>Giới hạn nâng cao & tỷ giá</summary>
+        <div className={us.detailBody}>
+          <LimitsForm settings={settings} busy={busy} onSave={(patch) => apply('settings.update', patch, 'Đã lưu giới hạn.')} />
+        </div>
+      </details>
       <UserQuotas rows={state.data.user_quotas} busy={busy} onSave={(payload) => apply('user_quota.upsert', payload, 'Đã lưu ngoại lệ.')} onDelete={(user) => apply('user_quota.delete', { user }, 'Đã xóa ngoại lệ.')} />
       <Budgets budgets={state.data.budgets} statuses={state.data.budget_status} busy={busy} onSave={(payload) => apply('budget.upsert', payload, 'Đã lưu ngân sách.')} onDelete={(id) => apply('budget.delete', { id }, 'Đã xóa ngân sách.')} />
       <Prices prices={state.data.prices} busy={busy} onAdd={(payload) => apply('price.add', payload, 'Đã thêm giá mới.')} />

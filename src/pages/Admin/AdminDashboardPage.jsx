@@ -66,7 +66,7 @@ export default function AdminDashboardPage() {
           <strong>{loading ? '...' : formatNumber(stats.knmQuotations)}</strong>
           <small>Báo giá máy móc, thiết bị</small>
         </Link>
-        <Link to="/admin/watermark" className={styles.statCard}>
+        <Link to="/admin/usage?tab=watermark" className={styles.statCard}>
           <span>Ảnh Watermark</span>
           <strong>{loading ? '...' : formatNumber(stats.watermarkImages)}</strong>
           <small>Tổng số ảnh đã xử lý</small>

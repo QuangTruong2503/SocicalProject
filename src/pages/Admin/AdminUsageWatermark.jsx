@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
-import { Helmet } from 'react-helmet-async';
 import { toast } from 'react-toastify';
-import { FaArrowDown, FaArrowsRotate, FaArrowUp, FaFileCsv } from 'react-icons/fa6';
+import { FaArrowDown, FaArrowUp, FaFileCsv } from 'react-icons/fa6';
 import {
   getWatermarkAdminOverview,
   getWatermarkVisitorStats,
@@ -9,23 +8,18 @@ import {
 } from '../../services/watermarkImageCountService.js';
 import WatermarkImagesChart from './WatermarkImagesChart.jsx';
 import { CopyButton, Pagination, SortHeader } from './AdminTableParts.jsx';
-import { downloadCsv, formatDateTime, formatNumber, formatRelative, shortId } from './adminUtils.js';
+import { downloadCsv, formatNumber, formatRelative, shortId } from './adminUtils.js';
+import { formatVnDateTime, vnDateKey } from '../../utils/usageDashboard.js';
 import styles from './Admin.module.css';
 import wm from './AdminWatermark.module.css';
+import us from './AdminUsage.module.css';
 
 const PAGE_SIZE = 50;
 const CSV_ROW_LIMIT = 10000;
 const LIVE_REFRESH_DELAY_MS = 1500;
 
-const RANGE_OPTIONS = [
-  { value: '7d', label: '7 ngày', days: 7 },
-  { value: '30d', label: '30 ngày', days: 30 },
-  { value: '90d', label: '90 ngày', days: 90 },
-  { value: 'all', label: 'Tất cả', days: null },
-];
-
 const GROUP_OPTIONS = [
-  { value: 'visitor', label: 'Theo visitor' },
+  { value: 'visitor', label: 'Theo trình duyệt' },
   { value: 'user', label: 'Theo tài khoản' },
 ];
 
@@ -34,24 +28,10 @@ const SOURCE_LABELS = {
   'watermark/doantrang': 'Đoan Trang',
 };
 
-const timeFormatter = new Intl.DateTimeFormat('vi-VN', { timeStyle: 'medium' });
+const timeFormatter = new Intl.DateTimeFormat('vi-VN', { timeStyle: 'medium', timeZone: 'Asia/Ho_Chi_Minh' });
 
 function getSourceLabel(sourcePage) {
   return SOURCE_LABELS[sourcePage] || sourcePage;
-}
-
-/** Start of the range at local midnight, so "7 ngày" = today + the 6 days before it. */
-function getRangeFrom(range) {
-  const option = RANGE_OPTIONS.find((item) => item.value === range);
-
-  if (!option?.days) {
-    return null;
-  }
-
-  const start = new Date();
-  start.setHours(0, 0, 0, 0);
-  start.setDate(start.getDate() - (option.days - 1));
-  return start.toISOString();
 }
 
 function getRowLabel(row) {
@@ -105,7 +85,7 @@ function StatTile({ label, value, previous, hint, loading }) {
   return (
     <article className={styles.statCard}>
       <span>{label}</span>
-      {loading ? <span className={styles.skeletonValue} aria-hidden="true" /> : <strong>{formatNumber(value)}</strong>}
+      {loading ? <span className={styles.skeletonValue} aria-hidden="true" /> : <strong>{value == null ? '—' : formatNumber(value)}</strong>}
       {delta ? (
         <small className={`${wm.delta} ${wm[`delta_${delta.direction}`]}`}>
           {DeltaIcon && <DeltaIcon aria-hidden="true" />} {delta.text}
@@ -117,15 +97,17 @@ function StatTile({ label, value, previous, hint, loading }) {
   );
 }
 
-export default function AdminWatermarkPage() {
-  const [range, setRange] = useState('30d');
+export default function AdminUsageWatermark({ range, rangeLabel, reloadToken }) {
+  const rangeKey = `${range.from}:${range.to}`;
   const [sourcePage, setSourcePage] = useState('');
   const [groupBy, setGroupBy] = useState('visitor');
   const [searchInput, setSearchInput] = useState('');
   const [search, setSearch] = useState('');
   const [sort, setSort] = useState({ key: 'total_images', desc: true });
-  const [page, setPage] = useState(0);
-  const [reloadToken, setReloadToken] = useState(0);
+  const [pagination, setPagination] = useState({ rangeKey, page: 0 });
+  const page = pagination.rangeKey === rangeKey ? pagination.page : 0;
+  const setPage = (nextPage) => setPagination({ rangeKey, page: nextPage });
+  const [liveToken, setLiveToken] = useState(0);
   const [overview, setOverview] = useState({ data: null, loading: true, error: '' });
   const [table, setTable] = useState({ rows: [], totalCount: 0, loading: true, loaded: false, error: '' });
   const [lastUpdatedAt, setLastUpdatedAt] = useState(null);
@@ -138,11 +120,11 @@ export default function AdminWatermarkPage() {
   useEffect(() => {
     const timeout = window.setTimeout(() => {
       setSearch(searchInput.trim());
-      setPage(0);
+      setPagination({ rangeKey, page: 0 });
     }, 300);
 
     return () => window.clearTimeout(timeout);
-  }, [searchInput]);
+  }, [searchInput, rangeKey]);
 
   useEffect(() => {
     const requestId = ++overviewRequestRef.current;
@@ -152,8 +134,9 @@ export default function AdminWatermarkPage() {
 
       const result = await getWatermarkAdminOverview({
         sourcePage: sourcePage || null,
-        from: getRangeFrom(range),
-        bucket: range === 'all' ? 'month' : 'day',
+        from: range.from,
+        to: range.to,
+        bucket: range.from ? 'day' : 'month',
       });
 
       if (requestId !== overviewRequestRef.current) {
@@ -172,7 +155,8 @@ export default function AdminWatermarkPage() {
     }
 
     loadOverview();
-  }, [range, sourcePage, reloadToken]);
+    return () => { overviewRequestRef.current += 1; };
+  }, [range.from, range.to, sourcePage, reloadToken, liveToken]);
 
   useEffect(() => {
     const requestId = ++tableRequestRef.current;
@@ -182,7 +166,8 @@ export default function AdminWatermarkPage() {
 
       const result = await getWatermarkVisitorStats({
         sourcePage: sourcePage || null,
-        from: getRangeFrom(range),
+        from: range.from,
+        to: range.to,
         search,
         groupBy,
         sort: sort.key,
@@ -210,7 +195,8 @@ export default function AdminWatermarkPage() {
     }
 
     loadTable();
-  }, [range, sourcePage, groupBy, search, sort, page, reloadToken]);
+    return () => { tableRequestRef.current += 1; };
+  }, [range.from, range.to, sourcePage, groupBy, search, sort, page, reloadToken, liveToken]);
 
   // New inserts arrive in bursts (one per batch); refresh once they settle.
   useEffect(() => {
@@ -219,7 +205,7 @@ export default function AdminWatermarkPage() {
     const unsubscribe = subscribeToWatermarkImageCounts(
       () => {
         window.clearTimeout(timeout);
-        timeout = window.setTimeout(() => setReloadToken((token) => token + 1), LIVE_REFRESH_DELAY_MS);
+        timeout = window.setTimeout(() => setLiveToken((token) => token + 1), LIVE_REFRESH_DELAY_MS);
       },
       (status) => setIsLive(status === 'SUBSCRIBED'),
     );
@@ -237,7 +223,6 @@ export default function AdminWatermarkPage() {
     };
   }
 
-  const handleRangeChange = changeFilter(setRange);
   const handleSourceChange = changeFilter(setSourcePage);
   const handleGroupChange = changeFilter(setGroupBy);
 
@@ -251,7 +236,7 @@ export default function AdminWatermarkPage() {
   }
 
   function refresh() {
-    setReloadToken((token) => token + 1);
+    setLiveToken((token) => token + 1);
   }
 
   async function handleExport() {
@@ -259,7 +244,8 @@ export default function AdminWatermarkPage() {
 
     const result = await getWatermarkVisitorStats({
       sourcePage: sourcePage || null,
-      from: getRangeFrom(range),
+      from: range.from,
+      to: range.to,
       search,
       groupBy,
       sort: sort.key,
@@ -280,8 +266,8 @@ export default function AdminWatermarkPage() {
       return;
     }
 
-    const stamp = new Date().toISOString().slice(0, 10);
-    exportVisitorCsv(result.data.rows, `watermark-${groupBy}-${range}-${stamp}.csv`);
+    const stamp = vnDateKey(new Date());
+    exportVisitorCsv(result.data.rows, `watermark-${groupBy}-${stamp}.csv`);
 
     if (result.data.totalCount > result.data.rows.length) {
       toast.warning(`Chỉ xuất ${formatNumber(result.data.rows.length)}/${formatNumber(result.data.totalCount)} dòng đầu tiên.`);
@@ -293,8 +279,6 @@ export default function AdminWatermarkPage() {
   const sources = overview.data?.sources || [];
   const isOverviewPending = overview.loading && !overview.data;
   const isTablePending = table.loading && !table.loaded;
-  const isRefreshing = overview.loading || table.loading;
-  const rangeLabel = RANGE_OPTIONS.find((item) => item.value === range)?.label || '';
   const errors = [...new Set([overview.error, table.error].filter(Boolean))];
   const sourceOptions = sourcePage && !sources.some((item) => item.sourcePage === sourcePage)
     ? [...sources, { sourcePage, images: 0 }]
@@ -302,44 +286,27 @@ export default function AdminWatermarkPage() {
 
   return (
     <>
-      <Helmet><title>Thống kê Watermark</title></Helmet>
-
-      <header className={styles.pageHeader}>
-        <div><span>QUẢN TRỊ HỆ THỐNG</span><h1>WATERMARK</h1></div>
+      <div className={us.sectionIntro}>
+        <div>
+          <h2>Thống kê ảnh Watermark</h2>
+          <p>Theo dõi ảnh đã tạo, nguồn sử dụng và tài khoản. Nhật ký tải xuống và đặt tên AI nằm ở các mục bên cạnh.</p>
+        </div>
         <div className={styles.headerActions}>
           <span className={`${wm.liveBadge} ${isLive ? wm.liveBadgeOn : ''}`} title={isLive ? 'Tự cập nhật khi có ảnh mới' : 'Chưa kết nối realtime'}>
             <span className={wm.liveDot} aria-hidden="true" />
-            {isLive ? 'Trực tiếp' : 'Ngoại tuyến'}
+            {isLive ? 'Tự động cập nhật' : 'Cập nhật thủ công'}
           </span>
           {lastUpdatedAt && (
             <span className={wm.updatedAt}>Cập nhật {timeFormatter.format(lastUpdatedAt)}</span>
           )}
-          <button type="button" className={styles.actionButton} onClick={refresh} disabled={isRefreshing}>
-            <FaArrowsRotate aria-hidden="true" className={isRefreshing ? styles.spin : undefined} />
-            Làm mới
-          </button>
-          <button type="button" className={styles.actionButton} onClick={handleExport} disabled={isExporting || isTablePending}>
+          <button type="button" className={styles.actionButton} onClick={handleExport} disabled={isExporting || table.loading || Boolean(table.error)}>
             <FaFileCsv aria-hidden="true" />
             {isExporting ? 'Đang xuất…' : 'Xuất CSV'}
           </button>
         </div>
-      </header>
+      </div>
 
-      <section className={styles.toolbar} aria-label="Bộ lọc">
-        <div className={wm.segmented} role="group" aria-label="Khoảng thời gian">
-          {RANGE_OPTIONS.map((option) => (
-            <button
-              key={option.value}
-              type="button"
-              className={`${wm.segment} ${range === option.value ? wm.segmentActive : ''}`}
-              aria-pressed={range === option.value}
-              onClick={() => handleRangeChange(option.value)}
-            >
-              {option.label}
-            </button>
-          ))}
-        </div>
-
+      <section className={styles.toolbar} aria-label="Bộ lọc Watermark">
         <select
           className={styles.control}
           value={sourcePage}
@@ -380,7 +347,7 @@ export default function AdminWatermarkPage() {
 
       {errors.length > 0 && (
         <div className={styles.alert} role="alert">
-          <span>{errors.join(' · ')}</span>
+          <span>{errors.join(' · ')}{overview.data || table.rows.length ? ' Đang hiển thị dữ liệu của lần tải trước.' : ''}</span>
           <button type="button" onClick={refresh}>Thử lại</button>
         </div>
       )}
@@ -401,7 +368,7 @@ export default function AdminWatermarkPage() {
           loading={isOverviewPending}
         />
         <StatTile
-          label="Visitor"
+          label="Trình duyệt sử dụng"
           value={summary?.uniqueVisitors}
           previous={previous?.uniqueVisitors}
           hint="Trình duyệt khác nhau"
@@ -430,7 +397,7 @@ export default function AdminWatermarkPage() {
 
       <section className={styles.card}>
         <div className={styles.cardHead}>
-          <h2>{groupBy === 'user' ? 'Theo tài khoản' : 'Theo visitor'}</h2>
+          <h2>{groupBy === 'user' ? 'Sử dụng theo tài khoản' : 'Sử dụng theo trình duyệt'}</h2>
           <span>{isTablePending ? 'Đang tải…' : `${formatNumber(table.totalCount)} dòng`}</span>
         </div>
 
@@ -499,8 +466,8 @@ export default function AdminWatermarkPage() {
                       ))}
                     </div>
                   </td>
-                  <td className={styles.dateCell} title={formatDateTime(row.firstSeenAt)}>{formatRelative(row.firstSeenAt)}</td>
-                  <td className={styles.dateCell} title={formatDateTime(row.lastSeenAt)}>{formatRelative(row.lastSeenAt)}</td>
+                  <td className={styles.dateCell} title={formatVnDateTime(row.firstSeenAt)}>{formatRelative(row.firstSeenAt)}</td>
+                  <td className={styles.dateCell} title={formatVnDateTime(row.lastSeenAt)}>{formatRelative(row.lastSeenAt)}</td>
                 </tr>
               ))}
             </tbody>

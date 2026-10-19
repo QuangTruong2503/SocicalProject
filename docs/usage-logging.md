@@ -1,6 +1,6 @@
 # Nhật ký sử dụng và theo dõi chi phí API
 
-Áp dụng cho `/watermark` (tạo ảnh watermark và tải file trên thiết bị) và **Đặt tên ảnh bằng AI** (gọi OpenAI qua Edge Function `suggest-image-names`). Dashboard quản trị: `/admin/usage` (“Sử dụng & chi phí”).
+Áp dụng cho `/watermark` (tạo ảnh watermark và tải file trên thiết bị) và **Đặt tên ảnh bằng AI** (gọi OpenAI qua Edge Function `suggest-image-names`). Dashboard quản trị hợp nhất: `/admin/usage` (“Thống kê & sử dụng”). `/admin/watermark` và `/watermark/dashboard` chuyển về `/admin/usage?tab=watermark`, giữ các tham số query đã có.
 
 Hệ thống trả lời được:
 
@@ -179,7 +179,15 @@ Mọi lọc, tổng hợp và phân trang chạy ở server; trình duyệt khô
 | Tỷ lệ tên AI áp dụng nguyên văn | ledger + activity | Theo **cohort** lượt chạy có request đầu tiên trong kỳ, theo tới khi áp dụng: tên giữ nguyên / gợi ý thành công. Không chia số áp dụng hôm nay cho số request hôm nay |
 | Bộ đếm cũ | `watermark_image_counts` | Hiển thị tham chiếu, **không cộng** với số mới |
 
-Tab: **Tổng quan** (thẻ số, biểu đồ theo ngày cho chi phí/token/request/ảnh, top 10 người dùng theo chi phí, lỗi theo request/attempt, ngân sách, sức khỏe dữ liệu), **Nhật ký hoạt động** (lọc thao tác, chi tiết operation/batch/run), **Sử dụng AI** (tra cứu theo request ID máy chủ, `requestId` trình duyệt, `x-request-id`, response ID hoặc run ID; chi tiết từng attempt), **Cấu hình & cảnh báo**.
+Trang gồm 5 mục, menu quản trị chỉ giữ một liên kết **Thống kê & sử dụng**:
+
+- **Tổng quan**: 4 chỉ số chính (ảnh tạo từ nhật ký, ảnh gửi tải, ảnh có gợi ý AI, chi phí AI), biểu đồ, top tài khoản, ngân sách. Số liệu hoạt động/AI chi tiết đặt trong phần mở rộng để màn hình gọn hơn.
+- **Watermark**: toàn bộ chức năng thống kê ảnh trước đây, gồm biểu đồ, nguồn, gom theo trình duyệt/tài khoản, tìm kiếm, sắp xếp, phân trang, CSV và tự cập nhật khi có ảnh mới. Có thêm giới hạn ngày kết thúc và thống nhất múi giờ Việt Nam.
+- **AI & chi phí**: các yêu cầu AI và chi tiết từng lần gọi; lọc người dùng/trạng thái/model. Key và môi trường nằm trong bộ lọc nâng cao.
+- **Nhật ký hoạt động**: tạo ảnh, tải xuống và áp dụng tên; lọc riêng người dùng/tính năng/trạng thái.
+- **Cấu hình & cảnh báo**: model theo gói, hạn mức, ngân sách, bảng giá và lịch sử thay đổi.
+
+Bộ chọn thời gian dùng chung cho các mục thống kê, với `tab`, `range`, `from`, `to` trong URL để mở lại/chia sẻ. Chọn ngày tùy ý tính cả ngày kết thúc theo UTC+7. **Tất cả lịch sử** chỉ áp dụng cho Watermark; chuyển sang mục khác sẽ dùng 30 ngày. Bộ lọc chi tiết của AI và Nhật ký độc lập; Tổng quan luôn hiển thị số liệu tổng trong kỳ. Lỗi một nguồn không chặn các mục khác; lỗi làm mới giữ số cũ và hiện thông báo. Giao diện hỗ trợ sáng/tối, menu cuộn ngang trên màn hình nhỏ và thao tác bằng bàn phím.
 
 Trong **Cấu hình & cảnh báo → Model AI theo gói**, admin tích chọn model cho Free/Pro/Enterprise/Quản trị viên rồi lưu từng dòng. Bỏ chọn tất cả sẽ tắt Đặt tên AI cho gói; mỗi gói dùng đúng danh sách riêng. Hành động `plan_models.update` ghi nhật ký trước/sau. `usage_private.plan_models` bật RLS và không cấp truy cập bảng trực tiếp; public RPC là `security invoker`, gọi các hàm private kiểm tra admin. `ai_naming_models()` chỉ trả quyền của chính JWT gọi. Watermark lọc dropdown theo quyền, Edge Function kiểm tra lại trước mỗi lần gọi OpenAI.
 
@@ -189,7 +197,7 @@ Response của Edge Function luôn có `requestId` (ID máy chủ); request gử
 
 ## 8. Nguồn dữ liệu cũ/mới và thời điểm bắt đầu
 
-- `watermark_image_counts` (bộ đếm công khai trên `/watermark`, trang `/admin/watermark`) **giữ nguyên** và vẫn được ghi mỗi lần tạo ảnh. Nó là nguồn duy nhất của bộ đếm công khai; `/admin/usage` dùng nhật ký mới. Không có chỉ số nào cộng hai nguồn.
+- `watermark_image_counts` (bộ đếm công khai trên `/watermark`, mục **Watermark** trong `/admin/usage`) **giữ nguyên** và vẫn được ghi mỗi lần tạo ảnh. Tổng quan và nhật ký chi tiết dùng sổ activity/AI mới. Không có chỉ số nào cộng hai nguồn; thời điểm bắt đầu thu thập khác nhau nên số ảnh có thể khác nhau.
 - Nhật ký tải ảnh, sự kiện áp dụng tên, request/attempt/token/chi phí chỉ có **từ lúc áp dụng migration và deploy** (`settings.tracking_started_at`, hiển thị ở “Sức khỏe dữ liệu”). Không dựng lại lịch sử. Cột `legacy` có sẵn nếu sau này nhập số đếm ảnh cũ; khi đó chỉ nhập số ảnh, không tạo request/attempt/token.
 
 ## 9. Lưu giữ và xóa dữ liệu
