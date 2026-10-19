@@ -5,8 +5,8 @@
  * in production, Node in tests): fetch, clock and sleep are injected.
  *
  * Nothing written here comes from the request body except validated IDs and
- * counts: the user is the verified JWT subject, model / key alias /
- * environment come from server env, tokens from the provider response.
+ * counts and the allowlisted model: the user is the verified JWT subject,
+ * key alias / environment come from server env, tokens from the provider response.
  */
 
 const RPC_TIMEOUT_MS = 5_000;
@@ -79,7 +79,7 @@ async function hmacSha256(keyBytes, message) {
  * AI_USAGE_FINGERPRINT_SECRET, or else derived from the OpenAI key (so rotating
  * that key only affects in-flight resends).
  */
-export async function computeFingerprint(getEnv, { productName, prompt, images }) {
+export async function computeFingerprint(getEnv, { productName, prompt, model, images }) {
   const dedicated = getEnv('AI_USAGE_FINGERPRINT_SECRET');
   const keyBytes = dedicated
     ? encoder.encode(dedicated)
@@ -87,6 +87,8 @@ export async function computeFingerprint(getEnv, { productName, prompt, images }
   const canonical = JSON.stringify({
     productName,
     prompt,
+    // Keep old clients' fingerprints stable; a selected model changes the operation.
+    ...(model ? { model } : {}),
     images: images.map((image) => [image.id, image.position, image.dataUrl]),
   });
   return toHex(await hmacSha256(keyBytes, canonical));

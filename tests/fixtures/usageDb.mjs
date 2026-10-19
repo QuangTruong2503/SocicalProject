@@ -10,6 +10,7 @@ const sql = await Promise.all([
   read('../../supabase/migrations/20261017100000_ai_naming_access.sql'),
   read('../../supabase/migrations/20261018090000_usage_ledger.sql'),
   read('../../supabase/migrations/20261018091000_usage_admin.sql'),
+  read('../../supabase/migrations/20261019045632_ai_naming_plan_models.sql'),
 ]);
 
 export const ids = {

@@ -15,6 +15,7 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{1
 let applyStats;
 let cardDownloads;
 
+const ALL_MODELS = ['gpt-6-luna', 'gpt-6.1-sol', 'gpt-6-astra'];
 const PRODUCT = 'Máy khoan Bosch GSB 13 RE';
 const PRO_USER = { user: { id: 'user-1' }, profile: { id: 'user-1', role: 'user', plan: 'pro', status: 'active' }, isInitializing: false };
 let root;
@@ -147,6 +148,7 @@ test('suggests names by ID, retries only failed images, applies edits, downloads
   assert.ok(!JSON.stringify(call).includes('sk-'), 'no OpenAI key in the browser request');
   assert.equal(call.body.productName, PRODUCT);
   assert.equal(call.body.prompt, DEFAULT_IMAGE_NAME_PROMPT);
+  assert.equal(call.body.model, 'gpt-6-luna');
   assert.deepEqual(call.body.images.map(({ id, position }) => [id, position]), [['res-1', 1], ['res-2', 2], ['res-3', 3]]);
   assert.ok(call.body.images.every((image) => image.dataUrl.startsWith('data:image/jpeg;base64,')));
   // The original (no logo) was downscaled to 512px; the exported blob was not touched.
@@ -364,6 +366,128 @@ test('product name is required; prompt is editable and restorable', async () => 
   assert.ok(document.querySelector('label[for="wm-ai-name-res-1"]'));
 });
 
+test('model and prompt survive close/apply and are sent in every batch; controls lock during a run', async () => {
+  await render(makeResults(7));
+  await openAiDialog();
+  const customPrompt = 'Mô tả ảnh của {{productName}} theo góc chụp';
+  await type(document.getElementById('wm-ai-prompt'), customPrompt);
+  const selectModel = async (value) => {
+    await act(async () => {
+      const select = document.getElementById('wm-ai-model');
+      select.value = value;
+      select.dispatchEvent(new dom.window.Event('change', { bubbles: true }));
+    });
+  };
+  await selectModel('gpt-6.1-sol');
+  assert.ok(document.querySelector('label[for="wm-ai-model"]'));
+  assert.equal(document.getElementById('wm-ai-prompt').closest('details'), null, 'prompt is visible immediately');
+  await click(button('Hủy', dialog()));
+  assert.equal(renameCalls.length, 0);
+  await openAiDialog();
+  assert.equal(document.getElementById('wm-ai-model').value, 'gpt-6.1-sol');
+  assert.equal(document.getElementById('wm-ai-prompt').value, customPrompt);
+
+  const pending = [];
+  const deferred = (init) => new Promise((resolve) => pending.push(() => resolve(new Response(JSON.stringify({
+    items: JSON.parse(init.body).images.map(({ id }) => ({ imageId: id, suggestedName: `ten-${id}`, needsReview: false })),
+    failed: [],
+  }), { status: 200 }))));
+  fetchQueue.push(deferred, deferred);
+  await generate();
+  assert.equal(fetchCalls.length, 2);
+  assert.equal(document.getElementById('wm-ai-model').disabled, true);
+  assert.equal(document.getElementById('wm-ai-prompt').disabled, true);
+  assert.ok(fetchCalls.every(({ body }) => body.model === 'gpt-6.1-sol' && body.prompt === customPrompt));
+  await act(async () => { pending.forEach((resolve) => resolve()); });
+  await settle();
+  await click(button('Áp dụng tên', dialog()));
+  await openAiDialog();
+  assert.equal(document.getElementById('wm-ai-model').value, 'gpt-6.1-sol');
+  assert.equal(document.getElementById('wm-ai-prompt').value, customPrompt);
+
+  await selectModel('gpt-6-astra');
+  fetchQueue.push(ok([]), ok([]));
+  await generate();
+  assert.ok(fetchCalls.slice(2).every(({ body }) => body.model === 'gpt-6-astra'));
+});
+
+test('prompt autosaves across page remounts, including blank prompts and restoring the default', async () => {
+  const remountPage = async () => {
+    await act(async () => { root.unmount(); });
+    root = null;
+    await render(makeResults(1));
+    await openAiDialog();
+  };
+  await render(makeResults(1));
+  await openAiDialog();
+  const customPrompt = 'Prompt riêng đã lưu\nSản phẩm: {{productName}}';
+  await type(document.getElementById('wm-ai-prompt'), customPrompt);
+
+  // No generation, apply or close is needed to save the user's edits.
+  await remountPage();
+  assert.equal(document.getElementById('wm-ai-prompt').value, customPrompt);
+  fetchQueue.push(ok([{ imageId: 'res-1', suggestedName: 'ten-moi', needsReview: false }]));
+  await generate();
+  assert.equal(fetchCalls[0].body.prompt, customPrompt);
+
+  await type(document.getElementById('wm-ai-prompt'), '');
+  await remountPage();
+  assert.equal(document.getElementById('wm-ai-prompt').value, '');
+  await click(button('Khôi phục mặc định', dialog()));
+  await remountPage();
+  assert.equal(document.getElementById('wm-ai-prompt').value, DEFAULT_IMAGE_NAME_PROMPT);
+});
+
+test('unavailable local storage does not prevent editing or generating with a custom prompt', async () => {
+  const storageProto = dom.window.Storage.prototype;
+  const originalGet = storageProto.getItem;
+  const originalSet = storageProto.setItem;
+  try {
+    storageProto.getItem = storageProto.setItem = () => { throw new DOMException('Storage disabled', 'SecurityError'); };
+    await render(makeResults(1));
+    await openAiDialog();
+    assert.equal(document.getElementById('wm-ai-prompt').value, DEFAULT_IMAGE_NAME_PROMPT);
+    await type(document.getElementById('wm-ai-prompt'), 'Prompt không cần bộ nhớ');
+    fetchQueue.push(ok([{ imageId: 'res-1', suggestedName: 'ten-moi', needsReview: false }]));
+    await generate();
+    assert.equal(fetchCalls[0].body.prompt, 'Prompt không cần bộ nhớ');
+  } finally {
+    storageProto.getItem = originalGet;
+    storageProto.setItem = originalSet;
+  }
+});
+
+test('only server-granted models appear; revoked selections refresh without losing prompt or suggestions', async () => {
+  let models = ['gpt-6.1-sol'];
+  globalThis.__aiAccessRpc = () => ({ data: models, error: null });
+  // Even a Free account may use the models the server grants it.
+  await render(makeResults(1), { ...PRO_USER, profile: { ...PRO_USER.profile, plan: 'free' } });
+  await openAiDialog();
+  assert.deepEqual([...document.querySelectorAll('#wm-ai-model option')].map((option) => option.value), models);
+  assert.equal(document.getElementById('wm-ai-model').value, 'gpt-6.1-sol');
+  await type(document.getElementById('wm-ai-prompt'), 'Prompt giữ lại');
+  fetchQueue.push(ok([{ imageId: 'res-1', suggestedName: 'ten-sol', needsReview: false }]));
+  await generate();
+  assert.equal(fetchCalls[0].body.model, 'gpt-6.1-sol');
+
+  models = ['gpt-6-luna'];
+  fetchQueue.push(respond(403, { error: { code: 'AI_NAMING_MODEL_DENIED' } }));
+  await generate();
+  await settle();
+  assert.deepEqual([...document.querySelectorAll('#wm-ai-model option')].map((option) => option.value), models);
+  assert.equal(nameInput('res-1').value, 'ten-sol');
+  assert.equal(document.getElementById('wm-ai-prompt').value, 'Prompt giữ lại');
+  fetchQueue.push(ok([{ imageId: 'res-1', suggestedName: 'ten-luna', needsReview: false }]));
+  await generate();
+  assert.equal(fetchCalls.at(-1).body.model, 'gpt-6-luna');
+
+  models = [];
+  await act(async () => { dom.window.dispatchEvent(new dom.window.Event('focus')); });
+  await settle();
+  assert.equal(button('Tạo lại tất cả', dialog()).disabled, true);
+  assert.equal(button('Áp dụng tên', dialog()).disabled, false, 'existing suggestions remain usable after permission revocation');
+});
+
 test('unreadable original falls back to the exported image', async () => {
   const [result] = makeResults(1);
   result.sourceFile = { name: 'broken' };
@@ -378,7 +502,7 @@ test('unreadable original falls back to the exported image', async () => {
 // ── Access control in the UI (the backend decision is tested separately)
 
 const aiButton = () => document.querySelector('.wm-ai-rename-button');
-const DENIED = 'Đặt tên AI dành cho tài khoản Pro trở lên.';
+const DENIED = 'Gói tài khoản của bạn chưa được cấp quyền Đặt tên AI.';
 
 test('while access is loading the AI button is disabled and nothing can be sent', async () => {
   let resolveAccess;
@@ -389,16 +513,16 @@ test('while access is loading the AI button is disabled and nothing can be sent'
   await act(async () => { aiButton().click(); });
   assert.equal(dialog(), null);
 
-  await act(async () => { resolveAccess({ data: true, error: null }); });
+  await act(async () => { resolveAccess({ data: ALL_MODELS, error: null }); });
   await settle();
   assert.equal(aiButton().disabled, false);
-  assert.deepEqual(globalThis.__aiRpcCalls.map((call) => call.name), ['can_use_ai_naming']);
+  assert.deepEqual(globalThis.__aiRpcCalls.map((call) => call.name), ['ai_naming_models']);
 });
 
 test('below Pro: explanation instead of the AI dialog, no request, manual rename still works', async () => {
-  globalThis.__aiAccessRpc = () => ({ data: false, error: null });
+  globalThis.__aiAccessRpc = () => ({ data: [], error: null });
   await render(makeResults(2), { ...PRO_USER, profile: { ...PRO_USER.profile, plan: 'free' } });
-  assert.match(aiButton().textContent, /Pro/, 'button stays visible with a Pro hint');
+  assert.match(aiButton().textContent, /Đặt tên bằng AI/, 'button stays visible');
   await click(aiButton());
 
   assert.equal(document.getElementById('wm-ai-access-message').textContent, DENIED);
@@ -432,7 +556,7 @@ test('entitlement lookup error: retry, and the AI dialog opens once allowed', as
   await render(makeResults(1));
   await click(aiButton());
   assert.match(dialog().textContent, /Không kiểm tra được quyền sử dụng/);
-  globalThis.__aiAccessRpc = () => ({ data: true, error: null });
+  globalThis.__aiAccessRpc = () => ({ data: ALL_MODELS, error: null });
   await click(button('Thử lại', dialog()));
   await settle();
   assert.ok(document.getElementById('wm-ai-product-name'), 'AI dialog replaced the explanation');
@@ -442,7 +566,7 @@ test('spoofed role/plan in the profile or localStorage do not unlock the feature
   localStorage.setItem('plan', 'enterprise');
   localStorage.setItem('role', 'admin');
   localStorage.setItem('canUseAiNaming', 'true');
-  globalThis.__aiAccessRpc = () => ({ data: false, error: null }); // what the server decides
+  globalThis.__aiAccessRpc = () => ({ data: [], error: null }); // what the server decides
   await render(makeResults(1), { ...PRO_USER, profile: { ...PRO_USER.profile, role: 'admin', plan: 'enterprise' } });
   await click(aiButton());
   assert.equal(document.getElementById('wm-ai-access-message').textContent, DENIED);
@@ -457,7 +581,7 @@ test('backend 403 while the dialog is open: generation locks, names are kept and
   await type(nameInput('res-2'), 'ten-dang-sua');
   await type(nameInput('res-2'), '');
   // Plan removed by an admin before the retry.
-  globalThis.__aiAccessRpc = () => ({ data: false, error: null });
+  globalThis.__aiAccessRpc = () => ({ data: [], error: null });
   fetchQueue.push(respond(403, { error: { code: 'AI_NAMING_ACCESS_DENIED', message: DENIED } }));
   await generate();
 
@@ -485,9 +609,9 @@ test('backend 401 while the dialog is open: login prompt in place, edits kept', 
 });
 
 test('a profile change (e.g. admin grants Pro) triggers a new server check', async () => {
-  globalThis.__aiAccessRpc = () => ({ data: false, error: null });
+  globalThis.__aiAccessRpc = () => ({ data: [], error: null });
   await render(makeResults(1), { ...PRO_USER, profile: { ...PRO_USER.profile, plan: 'free' } });
-  globalThis.__aiAccessRpc = () => ({ data: true, error: null });
+  globalThis.__aiAccessRpc = () => ({ data: ALL_MODELS, error: null });
   await act(async () => { setAuthFromTest(PRO_USER); });
   await settle();
   assert.equal(globalThis.__aiRpcCalls.length, 2);

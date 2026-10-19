@@ -46,7 +46,7 @@ const hang = (init) => new Promise((_, reject) => init.signal.addEventListener('
 
 /**
  * One handler instance. Tokens are "jwt:<user id>"; `denied` users get
- * can_use_ai_naming = false. `openai` is a shared queue of responders.
+ * ai_naming_models = []. `openai` is a shared queue of responders.
  */
 function createInstance(db, { openai = [], env = {}, denied = [], ledger, calls = { openai: 0, logs: [] } } = {}) {
   const fetchImpl = async (url, init = {}) => {
@@ -55,7 +55,11 @@ function createInstance(db, { openai = [], env = {}, denied = [], ledger, calls 
       if (!token.startsWith('jwt:')) return Response.json({ msg: 'bad jwt' }, { status: 401 });
       return Response.json({ id: token.slice(4) });
     }
-    if (url === `${SUPABASE_URL}/rest/v1/rpc/can_use_ai_naming`) return Response.json(!denied.includes(token.slice(4)));
+    if (url === `${SUPABASE_URL}/rest/v1/rpc/ai_naming_models`) {
+      if (denied.includes(token.slice(4))) return Response.json([]);
+      const { rows: [row] } = await queryAs(db, 'authenticated', token.slice(4), 'select public.ai_naming_models() as models');
+      return Response.json(row.models);
+    }
     if (url === OPENAI_RESPONSES_URL) {
       calls.openai += 1;
       const next = openai.shift();
@@ -227,6 +231,12 @@ test('same requestId twice (also concurrently) calls OpenAI once; a changed payl
   const conflict = await a.handler(post(batch(1, 2, { productName: 'Sản phẩm khác' })));
   assert.equal(conflict.status, 409);
   assert.equal((await conflict.json()).error.code, 'IDEMPOTENCY_CONFLICT');
+  for (const changed of [{ model: 'gpt-6.1-sol' }, { prompt: 'Prompt mới' }]) {
+    const differentSettings = await a.handler(post(batch(1, 2, changed)));
+    assert.equal(differentSettings.status, 409);
+    assert.equal((await differentSettings.json()).error.code, 'IDEMPOTENCY_CONFLICT');
+  }
+  assert.equal(shared.openai, 1, 'changed model/prompt cannot replay or start a paid call under the same ID');
   assert.equal(shared.openai, 1);
 
   // Another account reusing the same ID gets its own request — never the first user's result.
@@ -254,6 +264,23 @@ test('a failed or unknown outcome is not retried for free under the same request
   assert.equal(calls.openai, 4);
 });
 
+test('admin model changes in SQL are enforced by the handler before another paid call and rejections are logged', async (t) => {
+  const db = await createUsageDb(t);
+  const { handler, calls } = createInstance(db);
+  assert.equal((await handler(post(batch(1, 1, { model: 'gpt-6.1-sol' })))).status, 200);
+  await queryAs(db, 'authenticated', ids.admin,
+    "select public.admin_usage_config_change('plan_models.update', $1::jsonb)",
+    [JSON.stringify({ plan: 'pro', allowed_models: ['gpt-6-luna'] })]);
+  const rejected = await handler(post(batch(2, 1, { model: 'gpt-6.1-sol', role: 'admin', plan: 'enterprise' })));
+  assert.equal(rejected.status, 403);
+  assert.equal((await rejected.json()).error.code, 'AI_NAMING_MODEL_DENIED');
+  assert.equal(calls.openai, 1);
+  assert.equal((await handler(post(batch(3, 1, { model: 'gpt-6-luna' })))).status, 200);
+  assert.equal(calls.openai, 2);
+  const [record] = await rows(db, "select requested_model, status, user_id from usage_private.ai_usage_requests where error_code = 'AI_NAMING_MODEL_DENIED'");
+  assert.deepEqual(record, { requested_model: 'gpt-6.1-sol', status: 'rejected', user_id: ids.pro });
+});
+
 test('ledger down before the call → 503 and OpenAI is never called', async (t) => {
   const db = await createUsageDb(t);
   const ledger = createPgliteLedger(db, { failOn: { ai_usage_begin: () => true } });
@@ -268,7 +295,7 @@ test('ledger down before the call → 503 and OpenAI is never called', async (t)
     getEnv: (name) => ({ SUPABASE_URL, SUPABASE_PUBLISHABLE_KEYS: '["pk"]', OPENAI_IMAGE_NAME_KEY: FAKE_KEY })[name],
     fetchImpl: async (url) => {
       if (url.endsWith('/auth/v1/user')) return Response.json({ id: ids.pro });
-      if (url.endsWith('/can_use_ai_naming')) return Response.json(true);
+      if (url.endsWith('/ai_naming_models')) return Response.json(['gpt-6-luna']);
       throw new Error(`unexpected ${url}`);
     },
     logger: { warn() {}, error() {} },
@@ -320,6 +347,7 @@ test('limits are shared by every instance: concurrency, window, quota, pause', a
   assert.equal((await instances[0].handler(post(batch(10, 1), ids.pro2))).status, 200);
 
   // Window: 40 requests / 10 min per user (the previous in-memory defaults).
+  await db.exec("update usage_private.plan_models set allowed_models = array['gpt-6-luna'] where plan = 'free'");
   await db.exec(`insert into usage_private.ai_usage_requests (user_id, feature, environment, status, images_requested, created_at, finished_at)
     select '${ids.free}', 'ai_image_naming', 'test', 'succeeded', 1, now() - interval '1 minute', now() from generate_series(1, 40)`);
   const limited = await instances[1].handler(post(batch(11, 1), ids.free));

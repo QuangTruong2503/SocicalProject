@@ -143,6 +143,7 @@ export const DELIVERY_LABELS = { browser_handoff: 'Đã gửi tới trình duy�
 
 export const ERROR_LABELS = {
   AI_NAMING_ACCESS_DENIED: 'Không đủ quyền (gói)',
+  AI_NAMING_MODEL_DENIED: 'Model chưa được cấp cho gói',
   AI_QUOTA_EXCEEDED: 'Vượt hạn mức',
   AI_USAGE_PAUSED: 'Đang tạm dừng',
   IDEMPOTENCY_CONFLICT: 'Trùng mã, khác dữ liệu',

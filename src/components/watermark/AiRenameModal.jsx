@@ -3,8 +3,10 @@ import WatermarkModal from './WatermarkModal.jsx';
 import {
   AI_NAMING_RUN_LIMIT,
   AI_REQUEST_CONCURRENCY,
+  DEFAULT_IMAGE_NAME_MODEL,
   DEFAULT_IMAGE_NAME_PROMPT,
   IMAGE_NAME_LIMITS,
+  IMAGE_NAME_MODELS,
   buildFinalFileNames,
   chunkArray,
   createAiImageDataUrl,
@@ -16,9 +18,20 @@ import {
 import { AI_NAMING_ERRORS, FATAL_IMAGE_NAME_ERRORS, newOperationId, requestImageNameSuggestions } from '../../services/imageNameService.js';
 import { describeAiNamingAccess } from '../../utils/aiNamingAccess.js';
 
-const ACCESS_REJECTIONS = new Set([AI_NAMING_ERRORS.authRequired, AI_NAMING_ERRORS.accessDenied]);
+const ACCESS_REJECTIONS = new Set([AI_NAMING_ERRORS.authRequired, AI_NAMING_ERRORS.accessDenied, AI_NAMING_ERRORS.modelDenied]);
 
 const hasName = (entry) => Boolean(entry?.name?.trim());
+const PROMPT_STORAGE_KEY = 'watermark_ai_naming_prompt';
+
+function loadSavedPrompt() {
+  try {
+    const saved = localStorage.getItem(PROMPT_STORAGE_KEY);
+    if (saved !== null && saved.length <= IMAGE_NAME_LIMITS.maxPromptLength) return saved;
+  } catch {
+    // Storage may be disabled; editing and generating names still work.
+  }
+  return DEFAULT_IMAGE_NAME_PROMPT;
+}
 
 /**
  * "Đặt tên bằng AI": suggests a file name per result from its content. Names
@@ -27,8 +40,8 @@ const hasName = (entry) => Boolean(entry?.name?.trim());
  * @param {{
  *   results: Array<{ id: string, fileName: string, url: string, thumb?: string, blob?: Blob, sourceFile?: Blob }>,
  *   defaultProductName?: string,
- *   draft?: { productName: string, prompt: string, entries: Record<string, { name: string, needsReview: boolean, aiRunId?: string, aiName?: string }> } | null,
- *   onApply: (namesById: Record<string, string>, stats: { groups: Array<{ aiRunId: string | null, applied: number, aiUnchanged: number, edited: number }> }) => void,
+ *   draft?: { productName: string, prompt: string, model?: string, entries: Record<string, { name: string, needsReview: boolean, aiRunId?: string, aiName?: string }> } | null,
+ *   onApply: (namesById: Record<string, string>, stats: { groups: Array<{ aiRunId: string | null, applied: number, aiUnchanged: number, edited: number }> }, settings: object) => void,
  *   onClose: (draft: object | null) => void,
  * }} props
  */
@@ -37,6 +50,7 @@ export default function AiRenameModal({
   defaultProductName = '',
   draft = null,
   accessStatus = 'loading',
+  allowedModels = [],
   accessError = null,
   onAccessRejected,
   onRetryAccess,
@@ -48,7 +62,10 @@ export default function AiRenameModal({
   const canGenerate = accessStatus === 'allowed';
   const accessCopy = canGenerate ? null : describeAiNamingAccess(accessStatus, accessError);
   const [productName, setProductName] = useState(() => draft?.productName ?? defaultProductName ?? '');
-  const [prompt, setPrompt] = useState(() => draft?.prompt ?? DEFAULT_IMAGE_NAME_PROMPT);
+  const [prompt, setPrompt] = useState(() => draft?.prompt ?? loadSavedPrompt());
+  const [model, setModel] = useState(() => draft?.model ?? DEFAULT_IMAGE_NAME_MODEL);
+  const availableModels = IMAGE_NAME_MODELS.filter(({ id }) => allowedModels.includes(id));
+  const selectedModel = availableModels.some(({ id }) => id === model) ? model : availableModels[0]?.id ?? '';
   // id → { status: 'idle' | 'pending' | 'done' | 'error', name, needsReview, error }
   const [entries, setEntries] = useState(() => Object.fromEntries(
     Object.entries(draft?.entries || {}).map(([id, entry]) => [id, {
@@ -63,6 +80,14 @@ export default function AiRenameModal({
   const runIdRef = useRef(0);
   const abortRef = useRef(null);
   const productInputRef = useRef(null);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(PROMPT_STORAGE_KEY, prompt);
+    } catch {
+      // A full or unavailable store must not interrupt the dialog.
+    }
+  }, [prompt]);
 
   useEffect(() => () => {
     runIdRef.current += 1;
@@ -105,13 +130,13 @@ export default function AiRenameModal({
     const kept = Object.fromEntries(Object.entries(entries)
       .filter(([id, entry]) => resultIds.has(id) && hasName(entry))
       .map(([id, entry]) => [id, { name: entry.name, needsReview: Boolean(entry.needsReview), aiRunId: entry.aiRunId, aiName: entry.aiName }]));
-    onClose(Object.keys(kept).length ? { productName, prompt, entries: kept } : null);
+    onClose({ productName, prompt, model: selectedModel, entries: kept });
   };
 
   const handleGenerate = async (event) => {
     event?.preventDefault();
     // abortRef is set synchronously, so a double click before re-render cannot start a second run.
-    if (running || abortRef.current || !canGenerate) return;
+    if (running || abortRef.current || !canGenerate || !selectedModel) return;
 
     const name = productName.trim();
     if (!name || !slugifyFileName(name)) {
@@ -179,7 +204,7 @@ export default function AiRenameModal({
 
       if (images.length) {
         const response = await requestImageNameSuggestions({
-          productName: name, prompt, images, signal: controller.signal, requestId: newOperationId(), aiRunId,
+          productName: name, prompt, model: selectedModel, images, signal: controller.signal, requestId: newOperationId(), aiRunId,
         });
         // A closed dialog, a stopped run or a newer run must not receive this answer.
         if (!isCurrent() || response.code === 'aborted') return;
@@ -241,7 +266,7 @@ export default function AiRenameModal({
 
   const handleApply = () => {
     if (running || finalNames.size === 0) return;
-    onApply(Object.fromEntries(finalNames), { groups: summarizeAppliedNames([...finalNames.keys()], entries) });
+    onApply(Object.fromEntries(finalNames), { groups: summarizeAppliedNames([...finalNames.keys()], entries) }, { productName, prompt, model: selectedModel, entries: {} });
   };
 
   return (
@@ -296,8 +321,21 @@ export default function AiRenameModal({
           />
         </div>
 
-        <details className="wm-ai-prompt">
-          <summary>Prompt mẫu (có thể chỉnh sửa)</summary>
+        <div className="wm-bulk-rename-field">
+          <label className="wm-bulk-rename-field-label" htmlFor="wm-ai-model"><strong>Model AI</strong></label>
+          <select
+            id="wm-ai-model"
+            className="wm-ai-rename-input"
+            value={selectedModel}
+            onChange={(event) => setModel(event.target.value)}
+            disabled={running || !canGenerate}
+          >
+            {!availableModels.length && <option value="">Chưa có model được cấp quyền</option>}
+            {availableModels.map((option) => <option key={option.id} value={option.id}>{option.label}</option>)}
+          </select>
+        </div>
+
+        <div className="wm-ai-prompt">
           <div className="wm-bulk-rename-field">
             <span className="wm-bulk-rename-field-label">
               <label htmlFor="wm-ai-prompt"><strong>Nội dung prompt</strong></label>
@@ -316,7 +354,7 @@ export default function AiRenameModal({
           </div>
           <div className="wm-ai-prompt-footer">
             <small id="wm-ai-prompt-hint">
-              {'{{productName}}'} được thay bằng tên sản phẩm. Định dạng kết quả, ID ảnh và giới hạn dữ liệu do hệ thống cố định.
+              {'{{productName}}'} được thay bằng tên sản phẩm. Prompt tự động lưu trên trình duyệt này. Để trống để dùng prompt mặc định.
             </small>
             <button
               type="button"
@@ -327,7 +365,7 @@ export default function AiRenameModal({
               Khôi phục mặc định
             </button>
           </div>
-        </details>
+        </div>
 
         {formError && <p className="wm-ai-rename-error" id="wm-ai-form-error" role="alert">{formError}</p>}
 
@@ -343,7 +381,7 @@ export default function AiRenameModal({
             <button
               type="submit"
               className="wm-bulk-rename-confirm wm-ai-generate"
-              disabled={running || results.length === 0 || !canGenerate}
+              disabled={running || results.length === 0 || !canGenerate || !selectedModel}
               aria-busy={running || accessStatus === 'loading' || undefined}
               aria-describedby={accessCopy ? 'wm-ai-access-notice' : undefined}
             >

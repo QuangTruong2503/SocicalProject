@@ -1,7 +1,7 @@
 /**
  * POST /functions/v1/suggest-image-names
  *
- * Body: { productName, prompt?, images: [{ id, position, dataUrl }], requestId?, aiRunId? }  (≤ 6 images)
+ * Body: { productName, prompt?, model?, images: [{ id, position, dataUrl }], requestId?, aiRunId? }  (≤ 6 images)
  *       requestId: UUID of this batch operation; a resend after a network error
  *       reuses it and never triggers a second provider call. aiRunId groups the
  *       batches of one click. Both optional (older clients).
@@ -21,6 +21,7 @@ import {
   DEFAULT_IMAGE_NAME_PROMPT,
   IMAGE_ID_PATTERN,
   IMAGE_NAME_LIMITS,
+  IMAGE_NAME_MODELS,
   composeSuggestedName,
   matchItemsById,
   renderPromptTemplate,
@@ -52,7 +53,8 @@ const REASONING_EFFORTS = new Set(['none', 'minimal', 'low', 'medium', 'high', '
 const ERROR_MESSAGES = {
   method_not_allowed: 'Chỉ hỗ trợ phương thức POST.',
   AUTH_REQUIRED: 'Bạn cần đăng nhập để dùng Đặt tên AI.',
-  AI_NAMING_ACCESS_DENIED: 'Đặt tên AI dành cho tài khoản Pro trở lên.',
+  AI_NAMING_ACCESS_DENIED: 'Gói tài khoản của bạn chưa được cấp quyền Đặt tên AI.',
+  AI_NAMING_MODEL_DENIED: 'Gói tài khoản của bạn không được sử dụng model này. Vui lòng chọn model khác.',
   ACCESS_CHECK_FAILED: 'Không kiểm tra được quyền sử dụng. Vui lòng thử lại sau.',
   not_configured: 'Tính năng đặt tên bằng AI chưa được cấu hình trên máy chủ.',
   usage_tracking_unavailable: 'Chưa ghi nhận được lượt sử dụng nên yêu cầu chưa được gửi tới AI. Vui lòng thử lại sau.',
@@ -92,7 +94,7 @@ const OUTPUT_ERROR_CODES = new Set(['upstream_incomplete', 'upstream_refused', '
 
 // Refusals after the JWT was verified, recorded in the ledger (no attempt rows).
 // Limits/quota/pause refusals are recorded by ai_usage_begin itself.
-const RECORDED_REJECTIONS = new Set(['AI_NAMING_ACCESS_DENIED', 'invalid_request', 'payload_too_large', 'not_configured']);
+const RECORDED_REJECTIONS = new Set(['AI_NAMING_ACCESS_DENIED', 'AI_NAMING_MODEL_DENIED', 'invalid_request', 'payload_too_large', 'not_configured']);
 
 class RequestError extends Error {
   constructor(code, status, message, extra = {}) {
@@ -149,7 +151,7 @@ export function resolvePublicApiKey(getEnv) {
 /**
  * Verifies the session and the "Đặt tên AI" entitlement on every request,
  * before the body (images) is read or OpenAI is called. Identity comes from
- * the JWT only (Supabase Auth); the decision from public.can_use_ai_naming(),
+ * the JWT only (Supabase Auth); models come from public.ai_naming_models(),
  * evaluated by Postgres for auth.uid() of that same JWT — nothing in the
  * request body is trusted. No caching: a downgrade applies to the next request.
  * Any failure to decide denies access (ACCESS_CHECK_FAILED, retryable).
@@ -180,29 +182,28 @@ async function authorizeAiNaming(request, { getEnv, fetchImpl, logger }) {
   }
   if (typeof user?.id !== 'string' || !UUID_PATTERN.test(user.id)) throw new RequestError('AUTH_REQUIRED', 401);
 
-  let allowed;
+  let models;
   try {
-    const response = await fetchImpl(`${supabaseUrl}/rest/v1/rpc/can_use_ai_naming`, {
+    const response = await fetchImpl(`${supabaseUrl}/rest/v1/rpc/ai_naming_models`, {
       method: 'POST',
       headers: { ...headers, 'Content-Type': 'application/json' },
       body: '{}',
     });
     if (response.status === 401) throw new RequestError('AUTH_REQUIRED', 401);
-    // 404 here usually means migration 20261017100000_ai_naming_access.sql is not applied.
+    // 404 here usually means the plan-model migration is not applied.
     if (!response.ok) throw checkFailed('entitlement', response.status);
-    allowed = await response.json();
+    models = await response.json();
   } catch (error) {
     if (error instanceof RequestError) throw error;
     throw checkFailed('entitlement', 0);
   }
-  if (allowed === false) {
+  if (!Array.isArray(models) || models.some((model) => typeof model !== 'string')) throw checkFailed('entitlement', 200);
+  if (models.length === 0) {
     const denied = new RequestError('AI_NAMING_ACCESS_DENIED', 403);
     denied.verifiedUserId = user.id;
     throw denied;
   }
-  if (allowed !== true) throw checkFailed('entitlement', 200);
-
-  return user.id;
+  return { userId: user.id, models };
 }
 
 function stripControlChars(value, replacement, keep = '') {
@@ -218,6 +219,12 @@ function stripControlChars(value, replacement, keep = '') {
 export function validatePayload(body) {
   const invalid = (message) => new RequestError('invalid_request', 400, message);
   if (!body || typeof body !== 'object' || Array.isArray(body)) throw invalid();
+
+  if (body.model != null && typeof body.model !== 'string') throw invalid('Model không hợp lệ.');
+  const model = body.model?.trim() || null;
+  if (model && !IMAGE_NAME_MODELS.some((option) => option.id === model)) {
+    throw invalid('Model không được hỗ trợ. Vui lòng chọn model trong danh sách.');
+  }
 
   const productName = typeof body.productName === 'string'
     ? stripControlChars(body.productName, ' ').replace(/\s+/g, ' ').trim()
@@ -262,7 +269,7 @@ export function validatePayload(body) {
     return { id, position, dataUrl };
   });
 
-  return { productName, prompt, images, requestId, aiRunId };
+  return { productName, prompt, model, images, requestId, aiRunId };
 }
 
 /** A refusal decided by ai_usage_begin (already recorded there). */
@@ -329,7 +336,7 @@ export function createSuggestImageNamesHandler({
 
     let ledger = null;
     // Ledger context, filled once the JWT subject is known. Nothing in it comes
-    // from the body except validated IDs and the image count.
+    // from the body except validated IDs, model and the image count.
     let context = null;
 
     try {
@@ -338,7 +345,7 @@ export function createSuggestImageNamesHandler({
       const declaredLength = Number(request.headers.get('content-length'));
       if (declaredLength > IMAGE_NAME_LIMITS.maxBodyLength) throw new RequestError('payload_too_large', 413);
 
-      const model = getEnv('OPENAI_IMAGE_NAME_MODEL') || DEFAULT_IMAGE_NAME_MODEL;
+      let model = getEnv('OPENAI_IMAGE_NAME_MODEL') || DEFAULT_IMAGE_NAME_MODEL;
       const keyAlias = resolveKeyAlias(getEnv);
       if (!keyAlias.valid && !aliasWarned) {
         aliasWarned = true;
@@ -357,14 +364,14 @@ export function createSuggestImageNamesHandler({
       ledger = getLedger();
 
       // Entitlement before reading the images: denied callers never upload data or reach OpenAI.
-      let userId;
+      let access;
       try {
-        userId = await authorizeAiNaming(request, { getEnv, fetchImpl, logger });
+        access = await authorizeAiNaming(request, { getEnv, fetchImpl, logger });
       } catch (error) {
         if (error.verifiedUserId) context = baseContext(error.verifiedUserId);
         throw error;
       }
-      context = baseContext(userId);
+      context = baseContext(access.userId);
 
       const raw = await request.text();
       if (raw.length > IMAGE_NAME_LIMITS.maxBodyLength) throw new RequestError('payload_too_large', 413);
@@ -375,12 +382,15 @@ export function createSuggestImageNamesHandler({
         throw new RequestError('invalid_request', 400);
       }
       const payload = validatePayload(body);
+      model = payload.model || model;
       context = {
         ...context,
+        requested_model: model,
         client_request_id: payload.requestId,
         ai_run_id: payload.aiRunId,
         images_requested: payload.images.length,
       };
+      if (!access.models.includes(model)) throw new RequestError('AI_NAMING_MODEL_DENIED', 403);
 
       const apiKey = getEnv('OPENAI_IMAGE_NAME_KEY');
       if (!apiKey) throw new RequestError('not_configured', 503);
@@ -409,7 +419,11 @@ export function createSuggestImageNamesHandler({
 
       const requestId = decision.request_id;
       const configuredEffort = (getEnv('OPENAI_IMAGE_NAME_REASONING_EFFORT') ?? DEFAULT_REASONING_EFFORT).trim().toLowerCase();
-      const reasoningEffort = REASONING_EFFORTS.has(configuredEffort) ? configuredEffort : '';
+      let reasoningEffort = REASONING_EFFORTS.has(configuredEffort) ? configuredEffort : '';
+      // Sol and Astra require reasoning; neither accepts Luna's default `none`.
+      if (['gpt-6.1-sol', 'gpt-6-astra'].includes(model) && ['none', 'minimal'].includes(reasoningEffort)) {
+        reasoningEffort = 'low';
+      }
       const requestedIds = payload.images.map((image) => image.id);
 
       // Each attempt is recorded as it happens; a failed write is logged and

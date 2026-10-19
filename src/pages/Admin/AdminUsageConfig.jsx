@@ -3,6 +3,7 @@ import { toast } from 'react-toastify';
 import Dialog from '../../components/dialog/Dialog.jsx';
 import { changeUsageConfig, getUsageConfig } from '../../services/adminUsageService.js';
 import { formatCount, formatUsd, formatVnDateTime } from '../../utils/usageDashboard.js';
+import { IMAGE_NAME_MODELS } from '../../utils/aiImageNaming.js';
 import styles from './Admin.module.css';
 import us from './AdminUsage.module.css';
 
@@ -25,6 +26,7 @@ const LIMIT_FIELDS = [
 const ACTION_LABELS = {
   'settings.update': 'Đổi thiết lập',
   'plan_quota.upsert': 'Hạn mức theo gói',
+  'plan_models.update': 'Model theo gói',
   'user_quota.upsert': 'Ngoại lệ người dùng',
   'user_quota.delete': 'Xóa ngoại lệ',
   'budget.upsert': 'Ngân sách',
@@ -107,6 +109,7 @@ export default function AdminUsageConfig({ reloadToken }) {
       </section>
 
       <LimitsForm settings={settings} busy={busy} onSave={(patch) => apply('settings.update', patch, 'Đã lưu giới hạn.')} />
+      <PlanModels rows={state.data.plan_models} busy={busy} onSave={(payload) => apply('plan_models.update', payload, 'Đã lưu model theo gói.')} />
       <PlanQuotas quotas={state.data.plan_quotas} enforced={settings.quota_enforced} busy={busy} onSave={(payload) => apply('plan_quota.upsert', payload, 'Đã lưu hạn mức theo gói.')} />
       <UserQuotas rows={state.data.user_quotas} busy={busy} onSave={(payload) => apply('user_quota.upsert', payload, 'Đã lưu ngoại lệ.')} onDelete={(user) => apply('user_quota.delete', { user }, 'Đã xóa ngoại lệ.')} />
       <Budgets budgets={state.data.budgets} statuses={state.data.budget_status} busy={busy} onSave={(payload) => apply('budget.upsert', payload, 'Đã lưu ngân sách.')} onDelete={(id) => apply('budget.delete', { id }, 'Đã xóa ngân sách.')} />
@@ -235,6 +238,52 @@ function LimitsForm({ settings, busy, onSave }) {
         </div>
       </form>
     </section>
+  );
+}
+
+function PlanModels({ rows, busy, onSave }) {
+  return (
+    <section className={styles.card} aria-labelledby="usage-models-title">
+      <div className={styles.cardHead}>
+        <h2 id="usage-models-title">Model AI theo gói</h2>
+        <span>Chọn model được phép dùng cho Đặt tên ảnh bằng AI.</span>
+      </div>
+      <p className={us.muted}>Mỗi gói dùng đúng các model được chọn, không kế thừa từ gói khác. Bỏ chọn tất cả để tắt AI cho gói đó. Tài khoản admin áp dụng dòng Quản trị viên.</p>
+      {!rows ? <p className={us.fieldError} role="alert">Chưa áp dụng migration phân quyền model theo gói (ai_naming_plan_models.sql).</p> : (
+        <div className={styles.tableWrap}>
+          <table className={`${styles.table} ${us.compactTable}`}>
+            <thead><tr><th>Gói</th>{IMAGE_NAME_MODELS.map(({ id, label }) => <th key={id}>{label}</th>)}<th aria-label="Lưu model" /></tr></thead>
+            <tbody>
+              {PLAN_ROWS.map(({ plan, label }) => {
+                const models = rows.find((row) => row.plan === plan)?.allowed_models || [];
+                return <PlanModelRow key={`${plan}:${models.join(',')}`} plan={plan} label={label} models={models} busy={busy} onSave={onSave} />;
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </section>
+  );
+}
+
+function PlanModelRow({ plan, label, models, busy, onSave }) {
+  const [selected, setSelected] = useState(models);
+  const dirty = IMAGE_NAME_MODELS.some(({ id }) => selected.includes(id) !== models.includes(id));
+  return (
+    <tr>
+      <th scope="row">{label}</th>
+      {IMAGE_NAME_MODELS.map(({ id, label: modelLabel }) => (
+        <td key={id}>
+          <input type="checkbox" checked={selected.includes(id)} disabled={busy}
+            aria-label={`Cho phép ${modelLabel}, gói ${label}`}
+            onChange={(event) => setSelected((current) => event.target.checked ? [...current, id] : current.filter((value) => value !== id))} />
+        </td>
+      ))}
+      <td>
+        <button type="button" className={styles.actionButton} disabled={busy || !dirty} aria-label={`Lưu model gói ${label}`}
+          onClick={() => onSave({ plan, allowed_models: IMAGE_NAME_MODELS.filter(({ id }) => selected.includes(id)).map(({ id }) => id) })}>Lưu</button>
+      </td>
+    </tr>
   );
 }
 

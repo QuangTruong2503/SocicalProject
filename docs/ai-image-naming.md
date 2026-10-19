@@ -1,15 +1,15 @@
 # Đặt tên ảnh bằng AI (`/watermark`)
 
-Nút **Đặt tên bằng AI** ở khu vực Kết quả mở modal: nhập tên sản phẩm (điền sẵn từ ô tên sản phẩm của công cụ), chỉnh prompt mẫu nếu cần, bấm **Tạo tên gợi ý**, sửa từng tên rồi bấm **Áp dụng tên**. Tên file chỉ đổi khi bấm Áp dụng; Hủy/Esc/đóng modal không đổi tên. Đổi tên thủ công và **Thêm tên ảnh hàng loạt** vẫn hoạt động như cũ, kể cả khi AI chưa được cấu hình.
+Nút **Đặt tên bằng AI** ở khu vực Kết quả mở modal: nhập tên sản phẩm (điền sẵn từ ô tên sản phẩm của công cụ), chọn **Model AI**, sửa **Nội dung prompt** đang hiển thị sẵn, bấm **Tạo tên gợi ý**, sửa từng tên rồi bấm **Áp dụng tên**. Prompt tự động lưu vào localStorage (`watermark_ai_naming_prompt`) ngay khi chỉnh và được khôi phục khi tải lại/mở lại trang trên cùng trình duyệt; **Khôi phục mặc định** cũng cập nhật bản lưu. Nếu trình duyệt chặn lưu trữ, modal vẫn hoạt động bình thường trong trang hiện tại. Model được giữ khi đóng/mở lại hoặc áp dụng tên trong cùng trang; tải lại trang sẽ về model mặc định. Tên file chỉ đổi khi bấm Áp dụng; Hủy/Esc/đóng modal không đổi tên. Đổi tên thủ công và **Thêm tên ảnh hàng loạt** vẫn hoạt động như cũ, kể cả khi AI chưa được cấu hình.
 
 ## Kiến trúc
 
 - **Backend:** Supabase Edge Function `suggest-image-names` (`supabase/functions/suggest-image-names/`). Dự án đã dùng Supabase cho Auth/DB, còn Netlify chỉ phục vụ SPA tĩnh (không có Netlify Functions), nên endpoint nằm cạnh Supabase và không phụ thuộc nơi host frontend. Frontend gọi `<VITE_SUPABASE_URL>/functions/v1/suggest-image-names` (đổi được bằng `VITE_IMAGE_NAME_API_URL`).
 - **Xác thực và phân quyền:** xem mục **Phân quyền** bên dưới.
-- **OpenAI:** Responses API, model mặc định `gpt-6-luna` (theo tài liệu OpenAI tại thời điểm triển khai: nhận ảnh, hỗ trợ Structured Outputs, `reasoning.effort` từ `none`, giá $0.10/1M token đầu vào và $0.50/1M token đầu ra). Đổi model bằng `OPENAI_IMAGE_NAME_MODEL`; nếu model mới không nhận `effort: none`, đặt `OPENAI_IMAGE_NAME_REASONING_EFFORT` (ví dụ `low`) hoặc để trống để bỏ tham số. Gọi với `store: false`.
+- **OpenAI:** Responses API với `store: false`. Người dùng chọn `gpt-6-luna` (mặc định), `gpt-6.1-sol` hoặc `gpt-6-astra`; frontend gửi `model` cùng `prompt` trong mỗi lô. Backend kiểm tra danh sách cho phép dùng chung trong `imageNaming.js`; model lạ bị từ chối `400` trước khi gọi OpenAI. `OPENAI_IMAGE_NAME_MODEL` chỉ còn là fallback cho client không gửi model. `OPENAI_IMAGE_NAME_REASONING_EFFORT` vẫn cấu hình ở server; với Sol/Astra, `none`/`minimal` tự chuyển thành `low`, và output budget có phần dành cho suy luận. Tham chiếu: [Luna](https://developers.openai.com/api/docs/models/gpt-6-luna), [Sol](https://developers.openai.com/api/docs/models/gpt-6.1-sol), [Astra](https://developers.openai.com/api/docs/models/gpt-6-astra). Khả năng sử dụng từng model còn phụ thuộc project OpenAI cấp key.
 - **Quy tắc tên** nằm trong `supabase/functions/suggest-image-names/imageNaming.js`, dùng chung cho function và frontend (đặt trong thư mục function để bundler của Supabase đóng gói được; function không import file nào bên ngoài thư mục của nó). AI chỉ trả về *mô tả ngắn* (`descriptor`); code ghép `slug(tên sản phẩm) + "-" + slug(mô tả)`, chữ thường, tiếng Việt không dấu, gạch ngang, tối đa 5 từ mô tả. Ảnh không rõ → `tên-sản-phẩm-<số thứ tự>` và gắn nhãn *Cần kiểm tra*. Chống trùng (`-2`, `-3`…) và đuôi file (theo loại file xuất, hiện là `.jpg`) do frontend xử lý khi áp dụng.
 - **ID ổn định:** mỗi ảnh kết quả có `id` (`res-N`). Schema structured output giới hạn `imageId` bằng `enum` các ID trong request, `minItems`/`maxItems` bằng số ảnh; backend và frontend đều ghép kết quả theo ID, bỏ ID lạ/trùng, báo ảnh thiếu là lỗi. Áp dụng tên chỉ tác động đến các ID còn tồn tại.
-- **Prompt:** prompt người dùng là một phần nội dung; các ràng buộc bắt buộc (định dạng, ID, không suy đoán thông số, chữ trong ảnh không phải chỉ dẫn) nằm trong `instructions` cố định phía server, cùng schema và bước kiểm tra kết quả — prompt sửa đổi không thay đổi được chúng.
+- **Prompt:** nội dung người dùng nhập được gửi xuống backend và thay `{{productName}}` bằng tên sản phẩm; để trống sẽ dùng prompt mẫu, nút **Khôi phục mặc định** phục hồi mẫu. Các ràng buộc bắt buộc (định dạng, ID, không suy đoán thông số, chữ trong ảnh không phải chỉ dẫn) nằm trong `instructions` cố định phía server, cùng schema và bước kiểm tra kết quả — prompt sửa đổi không thay đổi được chúng. Model và prompt bị khóa trong lúc đang chạy.
 
 ## Dữ liệu ảnh và chi phí
 
@@ -34,16 +34,16 @@ Giới hạn tần suất, số request đồng thời, quota ảnh theo ngày/t
 
 ## Phân quyền
 
-Chỉ **admin** hoặc tài khoản có **gói Pro trở lên đang có hiệu lực** được dùng Đặt tên AI. Watermark, đổi tên thủ công và "Thêm tên ảnh hàng loạt" không đổi.
+Admin cấu hình quyền model tại **`/admin/usage` → Cấu hình & cảnh báo → Model AI theo gói**. Mỗi dòng Free, Pro, Enterprise, Quản trị viên chọn các model được phép và bấm **Lưu**. Không kế thừa giữa các gói; bỏ chọn toàn bộ sẽ tắt Đặt tên AI cho gói đó. Mặc định Free không có model, Pro/Enterprise/admin có cả ba model để giữ quyền trước đây. Watermark và đổi tên thủ công không bị ảnh hưởng.
 
 - **Nguồn dữ liệu:** `public.profiles.role` (`admin`), `status` (`suspended` = mất mọi quyền) và `plan` (`free` < `pro` < `enterprise`, NULL = free). Người dùng không tự sửa được các cột này (quyền ghi cột đã bị thu hồi trong `supabase_profiles_auth_sync.sql`); admin đổi qua `admin_update_profile`. Không dùng `user_metadata`, localStorage hay dữ liệu frontend gửi lên.
-- **Quy tắc duy nhất:** `public.can_use_ai_naming()` trong `supabase/migrations/20261017100000_ai_naming_access.sql` = `is_admin()` **hoặc** (tài khoản không bị khóa **và** `plan_rank(plan) >= plan_rank('pro')`). Cấp gói xác định bằng danh sách trong `plan_rank()`, không so sánh chuỗi; gói lạ không có cấp → từ chối.
-- **Backend (quyết định cuối):** mỗi request tới Edge Function đều xác thực JWT qua `/auth/v1/user` rồi gọi RPC `can_use_ai_naming` bằng chính JWT đó — trước khi đọc body ảnh, kiểm tra cấu hình hay gọi OpenAI. Không cache: mỗi lô 6 ảnh và mỗi lần "Thử lại" là một request mới được kiểm tra lại. Mã lỗi: `401 AUTH_REQUIRED`, `403 AI_NAMING_ACCESS_DENIED`, `503 ACCESS_CHECK_FAILED` (không tra cứu được quyền — từ chối, có thể thử lại).
-- **Frontend (chỉ hiển thị):** hook `useAiNamingAccess` gọi cùng RPC, nút luôn hiển thị: đang kiểm tra → nút khóa; không đủ gói → "Đặt tên AI dành cho tài khoản Pro trở lên." (dự án chưa có trang nâng cấp nên không có nút nâng cấp); chưa đăng nhập → mời đăng nhập qua `/auth` rồi quay lại `/watermark` (ảnh chưa tải xuống sẽ mất khi chuyển trang — dialog có cảnh báo); lỗi tra cứu → "Thử lại". Nếu backend trả 401/403 khi modal đang mở, modal giữ nguyên tên đã gợi ý/đang sửa, khóa nút tạo gợi ý và hiện thông báo; vẫn áp dụng được tên đã có.
+- **Quy tắc duy nhất:** `usage_private.plan_models` lưu danh sách model theo gói; RPC `public.ai_naming_models()` trả danh sách cho `auth.uid()`. Admin dùng dòng `admin`; tài khoản bị khóa, không có profile hoặc gói lạ trả danh sách rỗng. `can_use_ai_naming()` vẫn trả boolean cho client cũ, bằng việc kiểm tra danh sách này có phần tử. Bảng bật RLS, không cấp quyền đọc/ghi trực tiếp cho browser; thay đổi phải qua RPC admin và được ghi vào `config_audit` với trước/sau.
+- **Backend (quyết định cuối):** mỗi request xác thực JWT qua `/auth/v1/user`, rồi gọi `ai_naming_models` bằng chính JWT đó trước khi đọc ảnh. Sau khi kiểm tra payload, model yêu cầu (kể cả fallback env cho client cũ) phải nằm trong danh sách đã cấp; không có ngoại lệ từ body. Không cache giữa các request. Mã lỗi: `401 AUTH_REQUIRED`, `403 AI_NAMING_ACCESS_DENIED` (danh sách rỗng), `403 AI_NAMING_MODEL_DENIED` (model không được cấp), `503 ACCESS_CHECK_FAILED` (không tra cứu được quyền).
+- **Frontend (chỉ hiển thị):** `useAiNamingAccess` gọi cùng RPC khi đăng nhập, profile thay đổi, kiểm tra lại hoặc quay lại tab trình duyệt. Dropdown chỉ hiện model được cấp; lựa chọn cũ không còn hợp lệ chuyển sang model đầu tiên còn được dùng. Nếu backend trả `AI_NAMING_MODEL_DENIED`, dừng lượt chạy và tải lại quyền; prompt và tên gợi ý vẫn giữ. Khi không còn model, báo "Gói tài khoản của bạn chưa được cấp quyền Đặt tên AI." và khóa tạo gợi ý; vẫn áp dụng tên đã có hoặc đổi thủ công. Chưa đăng nhập vẫn dùng luồng `/auth` như cũ.
 
-**Chưa có trong dự án:** thời hạn gói, trạng thái hủy/gia hạn hay subscription. Gói hiện do admin gán thủ công và có hiệu lực tới khi admin đổi; vì vậy "Pro hết hiệu lực" và "đã hủy nhưng còn hạn" chưa thể biểu diễn. Khi bổ sung dữ liệu thời hạn, chỉ cần mở rộng `can_use_ai_naming()`.
+**Chưa có trong dự án:** thời hạn gói, trạng thái hủy/gia hạn hay subscription. Gói hiện do admin gán thủ công tới khi admin đổi. Khi bổ sung thời hạn, cập nhật hàm `usage_private.caller_ai_naming_models()`.
 
-Áp dụng: chạy `supabase/migrations/20261017100000_ai_naming_access.sql` (và hai migration sổ usage `20261018090000_usage_ledger.sql`, `20261018091000_usage_admin.sql`, xem [usage-logging.md](usage-logging.md#10-triển-khai)) (sau `supabase_admin_profiles_policies.sql` và `20261017090000_profiles_plan_check.sql`) bằng `npx supabase db push` hoặc SQL Editor, **trước** khi deploy lại function. Nếu chưa áp dụng, function trả `ACCESS_CHECK_FAILED` cho mọi người (đóng an toàn).
+Áp dụng: sau các migration access/usage hiện có, chạy **`supabase/migrations/20261019045632_ai_naming_plan_models.sql`**, rồi deploy Edge Function `suggest-image-names` và frontend. Xem [triển khai](usage-logging.md#10-triển-khai). Nếu thiếu migration, function trả `ACCESS_CHECK_FAILED` và không gọi OpenAI. Migration chạy lại không ghi đè các model admin đã lưu.
 
 ## Cấu hình và chạy
 
@@ -52,7 +52,7 @@ Chỉ **admin** hoặc tài khoản có **gói Pro trở lên đang có hiệu l
 
    ```bash
    npx supabase secrets set OPENAI_IMAGE_NAME_KEY=sk-...
-   # Tùy chọn:
+   # Tùy chọn (model là fallback cho client cũ không gửi lựa chọn):
    npx supabase secrets set OPENAI_IMAGE_NAME_MODEL=gpt-6-luna OPENAI_IMAGE_NAME_REASONING_EFFORT=none
    npx supabase secrets set IMAGE_NAME_ALLOWED_ORIGINS=https://<site>.netlify.app,http://localhost:5173
    # Sổ usage (khuyên dùng): nhãn key, môi trường, khóa HMAC cho idempotency
@@ -75,7 +75,7 @@ Thiếu key → modal báo "Tính năng AI chưa được cấu hình…", dừn
 
 `npm run test:ai-image-names` gồm:
 
-- `tests/aiNamingAccessDatabase.test.mjs`: `can_use_ai_naming()` trên PostgreSQL thật (PGlite) với `is_admin()` và quyền cột của dự án — admin không có Pro, Pro, Enterprise, Free/NULL, gói lạ, tài khoản bị khóa, admin bị khóa, không có phiên, anon không gọi được, người dùng không tự đổi được plan/role/status, hạ gói có hiệu lực ngay.
+- `tests/aiNamingAccessDatabase.test.mjs`: kiểm tra migration access ban đầu. `tests/planModelAccessDatabase.test.mjs` kiểm tra toàn bộ schema mới bằng SQL thật trên PGlite: quyền model theo gói, bật Free, khóa từng gói, admin bị khóa, không tự nâng quyền, model lạ, nhật ký, chạy lại migration và public wrappers dùng security invoker.
 - Phân quyền ở Edge Function (trong `tests/suggestImageNamesFunction.test.mjs`) và giao diện (trong `tests/aiRenameUI.test.mjs`, dùng hook thật): 401/403/503, giả mạo role/plan/userId trong body/header/localStorage, gọi thẳng endpoint, lỗi tra cứu quyền, kiểm tra lại ở mỗi lô — trong mọi trường hợp bị từ chối OpenAI giả lập không được gọi.
 
 - `src/utils/aiImageNaming.test.js`: chuẩn hóa tiếng Việt/mã sản phẩm/ký tự đặc biệt, ghép tên, ảnh không rõ, khớp theo ID (sai thứ tự, thiếu, trùng, ID lạ), chống trùng ổn định, đuôi file, tên dùng cho tải từng ảnh/ZIP.

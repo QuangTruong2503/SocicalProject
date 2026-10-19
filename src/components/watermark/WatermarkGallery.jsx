@@ -297,14 +297,19 @@ export default function WatermarkGallery({
   if (results.length === 0 && !isProcessing) return null;
 
   const showSkeletons = isProcessing && results.length === 0;
-  // A draft for a previous batch (no matching result IDs) is dropped.
-  const activeAiRenameDraft = aiRenameDraft && results.some((result) => aiRenameDraft.entries[result.id]) ? aiRenameDraft : null;
+  // Keep model/prompt settings, but only restore names for current result IDs.
+  const hasSavedAiNames = aiRenameDraft && results.some((result) => aiRenameDraft.entries[result.id]);
+  const activeAiRenameDraft = aiRenameDraft && {
+    ...aiRenameDraft,
+    entries: Object.fromEntries(results.filter((result) => aiRenameDraft.entries[result.id])
+      .map((result) => [result.id, aiRenameDraft.entries[result.id]])),
+  };
   // Accounts without access get an explanation instead of the AI dialog, unless
   // they already have suggestions to review (kept; generation is disabled).
   // Once open, the AI dialog stays open if access is later refused, so edits survive.
   const handleOpenAiRename = () => {
     if (aiStatus === 'loading') return;
-    setAiDialogMode(aiStatus === 'allowed' || activeAiRenameDraft ? 'modal' : 'access');
+    setAiDialogMode(aiStatus === 'allowed' || hasSavedAiNames ? 'modal' : 'access');
   };
   const closeAiRename = () => setAiDialogMode(null);
   if (aiDialogMode === 'access' && aiStatus === 'allowed') setAiDialogMode('modal'); // re-check succeeded
@@ -343,7 +348,6 @@ export default function WatermarkGallery({
                 {aiStatus === 'loading' ? <span className="wm-ai-button-spinner" /> : 'AI'}
               </span>
               <span>Đặt tên bằng AI</span>
-              {(aiStatus === 'denied' || aiStatus === 'signed_out') && <span className="wm-ai-pro-chip">Pro</span>}
             </button>
           )}
           <button
@@ -622,13 +626,14 @@ export default function WatermarkGallery({
           defaultProductName={productName}
           draft={activeAiRenameDraft}
           accessStatus={aiStatus}
+          allowedModels={aiAccess?.models ?? []}
           accessError={aiAccess?.error}
           onAccessRejected={aiAccess?.reportRejection}
           onRetryAccess={aiAccess?.refresh}
           onRequestLogin={onRequestAiLogin}
-          onApply={(namesById, stats) => {
+          onApply={(namesById, stats, settings) => {
             onRenameById(namesById, stats);
-            setAiRenameDraft(null);
+            setAiRenameDraft(settings);
             closeAiRename();
           }}
           onClose={(draft) => {

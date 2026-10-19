@@ -7,7 +7,9 @@ import { getUniqueFileNames, normalizeImageName } from '../hooks/useWatermarkPro
 import { createThumbnailBlob } from './imageThumbnail.js';
 
 export {
+  DEFAULT_IMAGE_NAME_MODEL,
   DEFAULT_IMAGE_NAME_PROMPT,
+  IMAGE_NAME_MODELS,
   IMAGE_NAME_LIMITS,
   slugifyFileName,
 } from '../../supabase/functions/suggest-image-names/imageNaming.js';

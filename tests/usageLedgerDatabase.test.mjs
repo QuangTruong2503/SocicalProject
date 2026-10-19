@@ -72,7 +72,7 @@ test('browsers (anon, users, admins) cannot read or write the ledger directly', 
   const requestId = await accepted(db, ids.pro);
 
   for (const [role, user] of [['anon', ''], ['authenticated', ids.pro], ['authenticated', ids.admin]]) {
-    await assert.rejects(queryAs(db, role, user, 'select * from usage_private.ai_usage_requests'), /permission denied for schema usage_private/, `${role} select`);
+    await assert.rejects(queryAs(db, role, user, 'select * from usage_private.ai_usage_requests'), /permission denied for (schema usage_private|table ai_usage_requests)/, `${role} select`);
     await assert.rejects(queryAs(db, role, user, `insert into usage_private.ai_usage_attempts (request_id, attempt_number, status, started_at, usage_status, cost_status)
       values ('${requestId}', 9, 'succeeded', now(), 'not_called', 'not_applicable')`), /permission denied/, `${role} insert`);
     await assert.rejects(queryAs(db, role, user, 'select usage_private.ai_begin($1::jsonb)', ['{}']), /permission denied/);
@@ -120,8 +120,11 @@ test('security definer functions pin search_path; only the activity RPC is open 
   assert.ok(rows.length > 25);
   for (const row of rows.filter((r) => r.prosecdef)) assert.match(row.config, /search_path=/, row.name);
   assert.deepEqual(rows.filter((r) => r.anon_exec).map((r) => r.name), ['public.usage_log_activity']);
-  assert.deepEqual(rows.filter((r) => r.name.startsWith('usage_private.') && r.auth_exec).map((r) => r.name), [],
-    'no private function is executable by browsers (schema USAGE is not granted either)');
+  assert.deepEqual(rows.filter((r) => r.name.startsWith('usage_private.') && r.auth_exec).map((r) => r.name).sort(), [
+    'usage_private.admin_config_change_with_models',
+    'usage_private.admin_config_with_models',
+    'usage_private.caller_ai_naming_models',
+  ], 'only guarded implementations behind invoker RPCs are executable; ledger internals stay private');
 });
 
 // ── Activity telemetry ─────────────────────────────────────────────────────

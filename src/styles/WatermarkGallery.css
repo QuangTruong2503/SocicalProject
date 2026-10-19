@@ -921,18 +921,6 @@
   padding: 0.6rem 0.8rem;
 }
 
-.wm-ai-prompt > summary {
-  min-height: 1.75rem;
-  color: var(--primary-color);
-  font-size: 0.85rem;
-  font-weight: 750;
-  cursor: pointer;
-}
-
-.wm-ai-prompt[open] > summary {
-  margin-bottom: 0.6rem;
-}
-
 .wm-ai-prompt-textarea {
   min-height: 160px;
   font-size: 0.85rem;

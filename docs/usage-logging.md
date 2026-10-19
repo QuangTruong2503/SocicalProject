@@ -69,7 +69,7 @@ Ví dụ: 13 ảnh → 6 + 6 + 1 = 1 run, 3 request; một lô bị 429 rồi th
 
 ### Luồng trong `handler.js`
 
-1. Xác thực JWT (`/auth/v1/user`) và `can_use_ai_naming()` **mỗi request**, trước khi đọc ảnh. Không tin user/role/plan/key alias trong body.
+1. Xác thực JWT (`/auth/v1/user`) và lấy model được cấp từ `ai_naming_models()` **mỗi request**, trước khi đọc ảnh; model trong payload phải thuộc danh sách đó. Không tin user/role/plan/key alias trong body.
 2. Đọc và kiểm tra body. Từ chối sau xác thực (403, 400, 413, `not_configured`) được ghi thành request `rejected` (không có attempt), tối đa 200 bản ghi từ chối/giờ/người. 401 và lỗi ở gateway trước handler chỉ có trong log nền tảng.
 3. `ai_usage_begin` trong **một transaction**, tuần tự hóa giữa mọi instance bằng advisory lock: dọn request treo, idempotency, công tắc dừng, giới hạn đồng thời, cửa sổ tần suất, quota ngày/tháng, rồi tạo request `running` có **lease**. Không ghi được bản ghi này → `503 usage_tracking_unavailable`, **không gọi OpenAI**.
 4. Mỗi attempt: `ai_usage_attempt_start` ngay trước khi gọi; `ai_usage_attempt_finish` ngay sau phản hồi — **trước** `parseOpenAIOutput()`, trước lúc chờ retry — với HTTP status, `x-request-id`, response `id`, `model` thực tế, `service_tier`, `status`, `usage`.
@@ -102,7 +102,7 @@ Không có usage thì token để NULL, không điền 0. HTTP 200 nhưng mọi 
   - kết quả không xác định hoặc hết bản replay → `409 REQUEST_OUTCOME_UNKNOWN` / `REQUEST_ALREADY_PROCESSED`, không tự gọi lại miễn phí;
   - cùng khóa, payload khác → `409 IDEMPOTENCY_CONFLICT`;
   - người dùng khác dùng cùng khóa → request riêng, không đọc được kết quả của nhau.
-- So sánh payload bằng HMAC-SHA256 phía server (`AI_USAGE_FINGERPRINT_SECRET`, hoặc khóa dẫn xuất từ `OPENAI_IMAGE_NAME_KEY`); chỉ lưu digest. Khóa hết hạn sau 24 giờ.
+- So sánh payload bằng HMAC-SHA256 phía server (`AI_USAGE_FINGERPRINT_SECRET`, hoặc khóa dẫn xuất từ `OPENAI_IMAGE_NAME_KEY`); chỉ lưu digest. Digest bao gồm model được chọn (nếu client gửi), prompt, tên sản phẩm và ảnh; đổi model/prompt với cùng request ID bị từ chối conflict. `requested_model` ghi model đã kiểm tra từ lựa chọn người dùng, hoặc fallback từ env cho client cũ. Khóa hết hạn sau 24 giờ.
 - Bấm “Tạo lại”/“Thử lại” là thao tác mới → `requestId` mới. Retry tự động trong wrapper OpenAI vẫn là attempt riêng. Không dựa vào header idempotency của provider.
 
 ## 4. Giá và chi phí ước tính
@@ -181,6 +181,8 @@ Mọi lọc, tổng hợp và phân trang chạy ở server; trình duyệt khô
 
 Tab: **Tổng quan** (thẻ số, biểu đồ theo ngày cho chi phí/token/request/ảnh, top 10 người dùng theo chi phí, lỗi theo request/attempt, ngân sách, sức khỏe dữ liệu), **Nhật ký hoạt động** (lọc thao tác, chi tiết operation/batch/run), **Sử dụng AI** (tra cứu theo request ID máy chủ, `requestId` trình duyệt, `x-request-id`, response ID hoặc run ID; chi tiết từng attempt), **Cấu hình & cảnh báo**.
 
+Trong **Cấu hình & cảnh báo → Model AI theo gói**, admin tích chọn model cho Free/Pro/Enterprise/Quản trị viên rồi lưu từng dòng. Bỏ chọn tất cả sẽ tắt Đặt tên AI cho gói; mỗi gói dùng đúng danh sách riêng. Hành động `plan_models.update` ghi nhật ký trước/sau. `usage_private.plan_models` bật RLS và không cấp truy cập bảng trực tiếp; public RPC là `security invoker`, gọi các hàm private kiểm tra admin. `ai_naming_models()` chỉ trả quyền của chính JWT gọi. Watermark lọc dropdown theo quyền, Edge Function kiểm tra lại trước mỗi lần gọi OpenAI.
+
 ### Truy vết một yêu cầu
 
 Response của Edge Function luôn có `requestId` (ID máy chủ); request gửi đi có `requestId` của trình duyệt. Dán một trong hai (hoặc `x-request-id` của OpenAI) vào ô tra cứu ở tab “Sử dụng AI”. Log Edge Function ghi `requestId` máy chủ khi ghi sổ lỗi. Không cần và không được log nội dung.
@@ -204,8 +206,9 @@ Không tự deploy production trong nhiệm vụ này. Thứ tự đề xuất:
 2. **Migration** (staging trước): `npx supabase db push`, hoặc chạy lần lượt trong SQL Editor:
    - `supabase/migrations/20261018090000_usage_ledger.sql`
    - `supabase/migrations/20261018091000_usage_admin.sql`
+   - `supabase/migrations/20261019045632_ai_naming_plan_models.sql`
 
-   Cả hai chạy lại được. Áp dụng migration chưa làm thay đổi hành vi của function đang chạy.
+   Cả ba chạy lại được. Migration model giữ quyền mặc định trước đây (Free chưa được dùng; Pro/Enterprise/admin có ba model). Sau khi cấu hình, quyền mới cũng áp dụng qua `can_use_ai_naming()` cho client cũ; để kiểm tra từng model, cần deploy function mới và frontend.
 3. **Secret/biến cho Edge Function** (chỉ tên, đặt bằng `npx supabase secrets set …`):
    - `SUPABASE_URL`, `SUPABASE_SECRET_KEYS` hoặc `SUPABASE_SERVICE_ROLE_KEY`: Supabase tự cung cấp cho function hosted. Secret key mới (`sb_secret_…`) được gửi trong header `apikey`; service role JWT cũ gửi thêm `Authorization`.
    - `OPENAI_IMAGE_NAME_KEY_ALIAS` (khuyên dùng, ví dụ `image-naming-prod-v1`), `AI_USAGE_ENVIRONMENT` (`production`/`staging`/`local`), `AI_USAGE_FINGERPRINT_SECRET` (tùy chọn, chuỗi ngẫu nhiên dài). Thiếu alias → `unlabeled`; thiếu environment → `unknown`.

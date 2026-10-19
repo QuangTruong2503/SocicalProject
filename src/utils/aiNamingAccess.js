@@ -19,7 +19,7 @@ export function describeAiNamingAccess(status, error) {
       };
     case 'denied':
       return {
-        title: 'Tính năng dành cho tài khoản Pro',
+        title: 'Chưa được cấp quyền Đặt tên AI',
         message: AI_NAMING_ACCESS_DENIED_MESSAGE,
         note: 'Bạn vẫn có thể đổi tên thủ công hoặc dùng “Thêm tên ảnh hàng loạt”.',
       };

@@ -7,7 +7,7 @@
 import { IMAGE_NAME_LIMITS } from './imageNaming.js';
 
 export const OPENAI_RESPONSES_URL = 'https://api.openai.com/v1/responses';
-export const DEFAULT_IMAGE_NAME_MODEL = 'gpt-6-luna';
+export { DEFAULT_IMAGE_NAME_MODEL } from './imageNaming.js';
 export const DEFAULT_REASONING_EFFORT = 'none';
 
 const ATTEMPT_TIMEOUT_MS = 45_000;
@@ -83,7 +83,8 @@ export function buildOpenAIRequest({ model, reasoningEffort, productName, userPr
     instructions: SYSTEM_INSTRUCTIONS,
     input: [{ role: 'user', content }],
     ...(reasoningEffort ? { reasoning: { effort: reasoningEffort } } : {}),
-    max_output_tokens: 120 + images.length * 60,
+    // Reasoning shares the output budget; reserve room before the JSON answer.
+    max_output_tokens: (reasoningEffort === 'none' ? 120 : 4096) + images.length * 60,
     text: {
       format: {
         type: 'json_schema',

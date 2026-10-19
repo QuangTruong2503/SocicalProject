@@ -61,6 +61,55 @@ test.beforeEach(async () => {
   root = null;
 });
 
+function configFixture() {
+  return {
+    settings: { ai_enabled: true, quota_enforced: false, window_seconds: 600, max_requests_per_window: 40, max_images_per_window: 150,
+      max_concurrent_per_user: 2, max_concurrent_total: 8, lease_ttl_seconds: 240, usd_to_vnd: null, usd_to_vnd_as_of: null },
+    plan_models: ['free', 'pro', 'enterprise', 'admin'].map((plan) => ({ plan,
+      allowed_models: plan === 'free' ? [] : ['gpt-6-luna', 'gpt-6.1-sol', 'gpt-6-astra'] })),
+    plan_quotas: [], user_quotas: [], budgets: [], budget_status: [], prices: [], audit: [],
+  };
+}
+
+test('admin edits models per plan, can disable a plan, saves persist after remount and errors keep edits', async () => {
+  const config = configFixture();
+  rpc.admin_usage_overview = () => ({ data: overviewFixture(), error: null });
+  rpc.admin_usage_config = () => ({ data: structuredClone(config), error: null });
+  rpc.admin_usage_config_change = ({ p_action, p_payload }) => {
+    assert.equal(p_action, 'plan_models.update');
+    config.plan_models.find((row) => row.plan === p_payload.plan).allowed_models = p_payload.allowed_models;
+    return { data: { ok: true }, error: null };
+  };
+  const checkbox = (model, plan) => document.querySelector(`input[aria-label="Cho phép ${model}, gói ${plan}"]`);
+  const save = (plan) => document.querySelector(`button[aria-label="Lưu model gói ${plan}"]`);
+  await render();
+  await click(button('Cấu hình & cảnh báo'));
+  assert.match(text(), /Model AI theo gói/);
+  assert.equal(save('Pro').disabled, true);
+  await click(checkbox('GPT-6.1 Sol', 'Pro'));
+  await click(checkbox('GPT-6 Astra', 'Pro'));
+  await click(save('Pro'));
+  assert.deepEqual(rpcCalls.filter(({ name }) => name === 'admin_usage_config_change').at(-1).params.p_payload,
+    { plan: 'pro', allowed_models: ['gpt-6-luna'] });
+  assert.equal(save('Pro').disabled, true, 'saved settings refresh from server');
+  await click(checkbox('GPT-6 Luna', 'Free'));
+  await click(save('Free'));
+  await click(checkbox('GPT-6 Luna', 'Pro'));
+  await click(save('Pro'));
+  assert.deepEqual(config.plan_models.find((row) => row.plan === 'pro').allowed_models, [], 'empty disables access');
+  await act(async () => { root.unmount(); }); root = null;
+  await render();
+  await click(button('Cấu hình & cảnh báo'));
+  assert.equal(checkbox('GPT-6 Luna', 'Free').checked, true);
+  assert.equal(checkbox('GPT-6 Luna', 'Pro').checked, false);
+  rpc.admin_usage_config_change = () => ({ data: null, error: { code: '42501' } });
+  await click(checkbox('GPT-6 Luna', 'Pro'));
+  await click(save('Pro'));
+  assert.equal(checkbox('GPT-6 Luna', 'Pro').checked, true, 'failed save keeps draft');
+  assert.equal(save('Pro').disabled, false);
+  assert.deepEqual(config.plan_models.find((row) => row.plan === 'pro').allowed_models, [], 'server state stays unchanged');
+});
+
 test('Vietnam day ranges do not depend on the admin computer, boundaries at 17:00 UTC', () => {
   assert.equal(vnDateKey(new Date('2026-10-18T16:59:59Z')), '2026-10-18');
   assert.equal(vnDateKey(new Date('2026-10-18T17:00:00Z')), '2026-10-19');

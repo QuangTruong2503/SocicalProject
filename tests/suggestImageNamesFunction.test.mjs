@@ -3,7 +3,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createSuggestImageNamesHandler, resolvePublicApiKey } from '../supabase/functions/suggest-image-names/handler.js';
 import { OPENAI_RESPONSES_URL } from '../supabase/functions/suggest-image-names/openai.js';
-import { IMAGE_NAME_LIMITS } from '../supabase/functions/suggest-image-names/imageNaming.js';
+import { IMAGE_NAME_LIMITS, IMAGE_NAME_MODELS } from '../supabase/functions/suggest-image-names/imageNaming.js';
+const ALL_MODELS = IMAGE_NAME_MODELS.map(({ id }) => id);
 
 const SUPABASE_URL = 'https://project.supabase.co';
 const FAKE_KEY = 'sk-test-SECRET-should-never-leak';
@@ -39,10 +40,10 @@ function openAIResponse(items, extra = {}) {
 
 /**
  * @param {{ env?: object, entitlement?: unknown, userStatus?: number, openai?: Array<Function | object> }} options
- * `entitlement`: JSON returned by can_use_ai_naming, or a function (init) => Response.
+ * `entitlement`: JSON returned by ai_naming_models, or a function (init) => Response.
  * `openai` is a queue: each entry is a JSON body (200) or a function (init) => Response.
  */
-function setup({ env = {}, entitlement = true, userStatus = 200, openai = [], ledger = memoryLedger() } = {}) {
+function setup({ env = {}, entitlement = ALL_MODELS, userStatus = 200, openai = [], ledger = memoryLedger() } = {}) {
   const calls = { openai: [], auth: 0, entitlement: [], sleeps: [], logs: [], ledger: ledger?.log };
   const queue = [...openai];
   const fetchImpl = async (url, init = {}) => {
@@ -50,7 +51,7 @@ function setup({ env = {}, entitlement = true, userStatus = 200, openai = [], le
       calls.auth += 1;
       return Response.json(userStatus === 200 ? { id: USER_ID } : { msg: 'bad jwt' }, { status: userStatus });
     }
-    if (url === `${SUPABASE_URL}/rest/v1/rpc/can_use_ai_naming`) {
+    if (url === `${SUPABASE_URL}/rest/v1/rpc/ai_naming_models`) {
       calls.entitlement.push({ headers: init.headers, body: init.body });
       return typeof entitlement === 'function' ? entitlement(init) : Response.json(entitlement);
     }
@@ -139,25 +140,25 @@ test('no session or an invalid token → 401 AUTH_REQUIRED, OpenAI never called'
   assert.equal(expired.calls.openai.length, 0);
 });
 
-test('free / below-Pro / expired / suspended (can_use_ai_naming = false) → 403, OpenAI never called', async () => {
-  const { handler, calls } = setup({ entitlement: false });
+test('free / below-Pro / expired / suspended (ai_naming_models = []) → 403, OpenAI never called', async () => {
+  const { handler, calls } = setup({ entitlement: [] });
   const response = await handler(post(validBody()));
   assert.equal(response.status, 403);
   const body = await response.json();
   assert.equal(body.error.code, 'AI_NAMING_ACCESS_DENIED');
-  assert.equal(body.error.message, 'Đặt tên AI dành cho tài khoản Pro trở lên.');
+  assert.equal(body.error.message, 'Gói tài khoản của bạn chưa được cấp quyền Đặt tên AI.');
   assert.equal(calls.openai.length, 0);
 });
 
-test('admin or Pro+ (can_use_ai_naming = true) → allowed', async () => {
-  const { handler, calls } = setup({ entitlement: true, openai: [openAIResponse([{ imageId: 'a', descriptor: 'toàn cảnh', needsReview: false }])] });
+test('admin or Pro+ (ai_naming_models is nonempty) → allowed', async () => {
+  const { handler, calls } = setup({ entitlement: ALL_MODELS, openai: [openAIResponse([{ imageId: 'a', descriptor: 'toàn cảnh', needsReview: false }])] });
   const response = await handler(post(validBody({ images: [image('a')] })));
   assert.equal(response.status, 200);
   assert.equal(calls.openai.length, 1);
 });
 
 test('entitlement is evaluated with the caller JWT; spoofed fields in the request are ignored', async () => {
-  const { handler, calls } = setup({ entitlement: false });
+  const { handler, calls } = setup({ entitlement: [] });
   const spoofed = validBody({ isAdmin: true, role: 'admin', plan: 'enterprise', userId: 'someone-else', canUseAiNaming: true });
   const response = await handler(post(spoofed, {
     token: 'free-user-jwt',
@@ -175,7 +176,7 @@ test('entitlement lookup failures deny with 503 ACCESS_CHECK_FAILED, never OpenA
     ['RPC missing (migration not applied)', { entitlement: () => Response.json({ code: 'PGRST202' }, { status: 404 }) }],
     ['RPC 500', { entitlement: () => new Response('db down', { status: 500 }) }],
     ['RPC network error', { entitlement: () => Promise.reject(new TypeError('fetch failed')) }],
-    ['RPC returns a non-boolean', { entitlement: { allowed: true } }],
+    ['RPC returns a non-array', { entitlement: { allowed: true } }],
     ['RPC returns null', { entitlement: null }],
     ['Auth service 500', { userStatus: 500 }],
     ['SUPABASE_URL missing', { env: { SUPABASE_URL: '' } }],
@@ -192,16 +193,16 @@ test('entitlement lookup failures deny with 503 ACCESS_CHECK_FAILED, never OpenA
 });
 
 test('access is checked before the key/config check and before payload validation', async () => {
-  const noKey = setup({ entitlement: false, env: { OPENAI_IMAGE_NAME_KEY: '' } });
+  const noKey = setup({ entitlement: [], env: { OPENAI_IMAGE_NAME_KEY: '' } });
   assert.equal((await noKey.handler(post(validBody()))).status, 403, 'denied users do not learn about server config');
-  const badPayload = setup({ entitlement: false });
+  const badPayload = setup({ entitlement: [] });
   assert.equal((await badPayload.handler(post('{not json'))).status, 403);
 });
 
 test('every request (each batch, each retry click) is checked again — no cached grant', async () => {
   let allowed = true;
   const { handler, calls } = setup({
-    entitlement: () => Response.json(allowed),
+    entitlement: () => Response.json(allowed ? ALL_MODELS : []),
     openai: [openAIResponse([{ imageId: 'a', descriptor: 'toàn cảnh', needsReview: false }])],
   });
   assert.equal((await handler(post(validBody({ images: [image('a')] })))).status, 200);
@@ -227,6 +228,8 @@ test('rejects invalid payloads before calling OpenAI', async () => {
     [validBody({ productName: '!!!' }), 400, /chữ cái hoặc chữ số/],
     [validBody({ productName: 'x'.repeat(151) }), 400, /tối đa 150/],
     [validBody({ prompt: 'x'.repeat(IMAGE_NAME_LIMITS.maxPromptLength + 1) }), 400, /Prompt tối đa/],
+    [validBody({ model: { id: 'gpt-6-luna' } }), 400, /Model không hợp lệ/],
+    [validBody({ model: 'unknown-model' }), 400, /Model không được hỗ trợ/],
     [validBody({ requestId: 'not-a-uuid' }), 400, /Mã yêu cầu/],
     [validBody({ images: [] }), 400, /Chưa có ảnh/],
     [validBody({ images: Array.from({ length: 7 }, (_, i) => image(`r${i}`, i + 1)) }), 400, /tối đa 6 ảnh/],
@@ -296,7 +299,7 @@ test('builds a cheap structured-output request and maps shuffled results by ID',
   assert.deepEqual(content.filter((part) => part.text?.startsWith('Ảnh ID:')).map((part) => part.text), ['Ảnh ID: res-1', 'Ảnh ID: res-2', 'Ảnh ID: res-3']);
 });
 
-test('model and reasoning effort come from server env', async () => {
+test('older clients fall back to server model and reasoning configuration', async () => {
   const { handler, calls } = setup({ env: { OPENAI_IMAGE_NAME_MODEL: 'gpt-6.1-sol', OPENAI_IMAGE_NAME_REASONING_EFFORT: 'low' } });
   await handler(post(validBody({ images: [image('a')] })));
   assert.equal(calls.openai[0].body.model, 'gpt-6.1-sol');
@@ -305,6 +308,40 @@ test('model and reasoning effort come from server env', async () => {
   const omitted = setup({ env: { OPENAI_IMAGE_NAME_REASONING_EFFORT: '' } });
   await omitted.handler(post(validBody({ images: [image('a')] })));
   assert.equal(omitted.calls.openai[0].body.reasoning, undefined);
+});
+
+test('selected models override server default, reach OpenAI and are recorded with compatible reasoning', async () => {
+  for (const model of ['gpt-6-luna', 'gpt-6.1-sol', 'gpt-6-astra']) {
+    const { handler, calls } = setup({ env: { OPENAI_IMAGE_NAME_MODEL: 'gpt-6.1-sol' } });
+    const response = await handler(post(validBody({ model, images: [image('a')], prompt: 'Chỉ mô tả góc chụp cho {{productName}}' })));
+    assert.equal(response.status, 200);
+    assert.equal((await response.json()).model, model);
+    const request = calls.openai[0].body;
+    assert.equal(request.model, model);
+    assert.equal(calls.ledger.begins[0].requested_model, model);
+    assert.equal(request.input[0].content[0].text, 'Chỉ mô tả góc chụp cho Máy khoan Bosch GSB 13 RE');
+    assert.equal(request.reasoning.effort, model === 'gpt-6-luna' ? 'none' : 'low');
+    if (model !== 'gpt-6-luna') assert.ok(request.max_output_tokens >= 4096);
+  }
+});
+
+test('allowed models come from the verified account, cannot be spoofed and are rechecked per request', async () => {
+  let models = ['gpt-6-luna', 'gpt-6.1-sol'];
+  const { handler, calls } = setup({ entitlement: () => Response.json(models) });
+  assert.equal((await handler(post(validBody({ model: 'gpt-6.1-sol' })))).status, 200);
+  models = ['gpt-6-luna'];
+  const response = await handler(post(validBody({
+    model: 'gpt-6.1-sol', plan: 'enterprise', role: 'admin', allowed_models: ALL_MODELS,
+  })));
+  assert.equal(response.status, 403);
+  assert.equal((await response.json()).error.code, 'AI_NAMING_MODEL_DENIED');
+  assert.equal(calls.openai.length, 1, 'revoked model never reaches OpenAI');
+  assert.equal(calls.ledger.rejections.at(-1).requested_model, 'gpt-6.1-sol');
+  assert.equal(calls.ledger.rejections.at(-1).user_id, USER_ID);
+  assert.equal((await handler(post(validBody({ model: 'gpt-6-luna' })))).status, 200);
+  const legacy = setup({ env: { OPENAI_IMAGE_NAME_MODEL: 'gpt-6-astra' }, entitlement: ['gpt-6-luna'] });
+  assert.equal((await legacy.handler(post(validBody()))).status, 403, 'omitting model cannot bypass permissions through server default');
+  assert.equal(legacy.calls.openai.length, 0);
 });
 
 test('editable prompt cannot change output format or IDs', async () => {

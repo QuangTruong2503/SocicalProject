@@ -1,7 +1,7 @@
 import { supabase } from '../lib/supabase.js';
 import { createServiceResult, normalizeServiceError } from './serviceHelpers.js';
 
-const MIGRATION_MISSING_MESSAGE = 'Chưa áp dụng migration theo dõi sử dụng (20261018090000_usage_ledger.sql và 20261018091000_usage_admin.sql).';
+const MIGRATION_MISSING_MESSAGE = 'Chưa áp dụng migration theo dõi sử dụng và phân quyền model (usage_ledger.sql, usage_admin.sql, ai_naming_plan_models.sql).';
 
 /**
  * PGRST202: RPC not found (migration not applied). 42501: not an admin.
@@ -61,7 +61,7 @@ export function getUsageConfig() {
   return callRpc('admin_usage_config', {}, 'Không tải được cấu hình.');
 }
 
-/** settings.update, plan_quota.upsert, user_quota.upsert/delete, budget.upsert/delete, price.add — audited server-side. */
+/** settings.update, plan_models.update, plan_quota.upsert, user_quota.upsert/delete, budget.upsert/delete, price.add — audited server-side. */
 export function changeUsageConfig(action, payload) {
   return callRpc('admin_usage_config_change', { p_action: action, p_payload: payload }, 'Không lưu được thay đổi.');
 }
