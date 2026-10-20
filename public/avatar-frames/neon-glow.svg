@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 260 260" width="260" height="260">
+<title>Neon</title>
+<defs><filter id="ng" x="-20%" y="-20%" width="140%" height="140%"><feGaussianBlur stdDeviation="3.5" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs>
+<g fill="none" stroke-linecap="round" filter="url(#ng)">
+<path d="M37.34 76.5 A107 107 0 1 1 183.5 222.66" stroke="#22d3ee" stroke-width="6"/>
+<path d="M166.6 230.55 A107 107 0 0 1 29.45 93.4" stroke="#e879f9" stroke-width="6"/>
+<path d="M170.7 18.18 A119 119 0 0 1 241.82 170.7" stroke="#e879f9" stroke-width="3"/>
+<path d="M89.3 241.82 A119 119 0 0 1 18.18 89.3" stroke="#22d3ee" stroke-width="3"/>
+</g>
+<g fill="#f0abfc"><circle cx="183.5" cy="222.66" r="4.5"/><circle cx="29.45" cy="93.4" r="4.5"/></g>
+<g fill="#a5f3fc"><circle cx="37.34" cy="76.5" r="4.5"/><circle cx="166.6" cy="230.55" r="4.5"/></g>
+</svg>

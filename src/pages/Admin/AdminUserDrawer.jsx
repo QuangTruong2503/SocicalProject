@@ -7,6 +7,8 @@ import {
 } from '../../services/profileService.js';
 import { ACCESS_LEVEL_OPTIONS } from '../../services/productLinkService.js';
 import Dialog from '../../components/dialog/Dialog.jsx';
+import { useAvatarFrames } from '../../hooks/useAvatarFrames.js';
+import { frameLayerProps, resolveAvatarFrame } from '../../utils/avatarFrames.js';
 import UserAvatar from './AdminUserAvatar.jsx';
 import { CopyButton } from './AdminTableParts.jsx';
 import { formatDateTime, formatNumber, formatRelative } from './adminUtils.js';
@@ -48,6 +50,7 @@ function InfoRow({ label, children }) {
  */
 export default function AdminUserDrawer({ summary, isSelf, onClose, onEdit, onToggleLock }) {
   const [state, setState] = useState({ loading: true, profile: null, activity: null, audit: [], error: '' });
+  const { frames: avatarFrames } = useAvatarFrames();
 
   useEffect(() => {
     let isActive = true;
@@ -79,7 +82,7 @@ export default function AdminUserDrawer({ summary, isSelf, onClose, onEdit, onTo
   return (
     <Dialog title="Chi tiết người dùng" onClose={onClose} variant="drawer">
       <div className={us.drawerIdentity}>
-        <UserAvatar profile={profile} size="large" />
+        <UserAvatar profile={profile} size="large" frameSrc={frameLayerProps(resolveAvatarFrame(profile.avatar_frame_id, avatarFrames), { still: true }).frameSrc} />
         <div>
           <strong>{getProfileName(profile)}</strong>
           <span>{profile.email || 'Chưa có email'}</span>

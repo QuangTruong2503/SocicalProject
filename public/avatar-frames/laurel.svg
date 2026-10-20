@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 260 260" width="260" height="260">
+<title>Vòng nguyệt quế</title>
+<path d="M184 36.47 A108 108 0 0 1 145.03 236.95" fill="none" stroke="#166534" stroke-width="3" stroke-linecap="round"/><path d="M114.97 236.95 A108 108 0 0 1 76 36.47" fill="none" stroke="#166534" stroke-width="3" stroke-linecap="round"/>
+<ellipse cx="171.96" cy="233.84" rx="5.5" ry="13" fill="#22c55e" stroke="#14532d" stroke-width="1" transform="rotate(276 171.96 233.84)"/>
+<ellipse cx="178.5" cy="214" rx="4" ry="9.5" fill="#4ade80" stroke="#14532d" stroke-width="1" transform="rotate(220 178.5 214)"/>
+<ellipse cx="200.48" cy="217.04" rx="5.5" ry="13" fill="#16a34a" stroke="#14532d" stroke-width="1" transform="rotate(259 200.48 217.04)"/>
+<ellipse cx="222.85" cy="192.63" rx="5.5" ry="13" fill="#22c55e" stroke="#14532d" stroke-width="1" transform="rotate(242 222.85 192.63)"/>
+<ellipse cx="217.18" cy="172.52" rx="4" ry="9.5" fill="#4ade80" stroke="#14532d" stroke-width="1" transform="rotate(186 217.18 172.52)"/>
+<ellipse cx="237.11" cy="162.75" rx="5.5" ry="13" fill="#16a34a" stroke="#14532d" stroke-width="1" transform="rotate(225 237.11 162.75)"/>
+<ellipse cx="242" cy="130" rx="5.5" ry="13" fill="#22c55e" stroke="#14532d" stroke-width="1" transform="rotate(208 242 130)"/>
+<ellipse cx="226.06" cy="116.5" rx="4" ry="9.5" fill="#4ade80" stroke="#14532d" stroke-width="1" transform="rotate(152 226.06 116.5)"/>
+<ellipse cx="237.11" cy="97.25" rx="5.5" ry="13" fill="#16a34a" stroke="#14532d" stroke-width="1" transform="rotate(191 237.11 97.25)"/>
+<ellipse cx="222.85" cy="67.37" rx="5.5" ry="13" fill="#22c55e" stroke="#14532d" stroke-width="1" transform="rotate(174 222.85 67.37)"/>
+<ellipse cx="202.09" cy="65.09" rx="4" ry="9.5" fill="#4ade80" stroke="#14532d" stroke-width="1" transform="rotate(118 202.09 65.09)"/>
+<ellipse cx="200.48" cy="42.96" rx="5.5" ry="13" fill="#16a34a" stroke="#14532d" stroke-width="1" transform="rotate(157 200.48 42.96)"/>
+<ellipse cx="171.96" cy="26.16" rx="5.5" ry="13" fill="#22c55e" stroke="#14532d" stroke-width="1" transform="rotate(140 171.96 26.16)"/>
+<ellipse cx="88.04" cy="233.84" rx="5.5" ry="13" fill="#22c55e" stroke="#14532d" stroke-width="1" transform="rotate(264 88.04 233.84)"/>
+<ellipse cx="81.5" cy="214" rx="4" ry="9.5" fill="#4ade80" stroke="#14532d" stroke-width="1" transform="rotate(320 81.5 214)"/>
+<ellipse cx="59.52" cy="217.04" rx="5.5" ry="13" fill="#16a34a" stroke="#14532d" stroke-width="1" transform="rotate(281 59.52 217.04)"/>
+<ellipse cx="37.15" cy="192.63" rx="5.5" ry="13" fill="#22c55e" stroke="#14532d" stroke-width="1" transform="rotate(298 37.15 192.63)"/>
+<ellipse cx="42.82" cy="172.52" rx="4" ry="9.5" fill="#4ade80" stroke="#14532d" stroke-width="1" transform="rotate(354 42.82 172.52)"/>
+<ellipse cx="22.89" cy="162.75" rx="5.5" ry="13" fill="#16a34a" stroke="#14532d" stroke-width="1" transform="rotate(315 22.89 162.75)"/>
+<ellipse cx="18" cy="130" rx="5.5" ry="13" fill="#22c55e" stroke="#14532d" stroke-width="1" transform="rotate(332 18 130)"/>
+<ellipse cx="33.94" cy="116.5" rx="4" ry="9.5" fill="#4ade80" stroke="#14532d" stroke-width="1" transform="rotate(388 33.94 116.5)"/>
+<ellipse cx="22.89" cy="97.25" rx="5.5" ry="13" fill="#16a34a" stroke="#14532d" stroke-width="1" transform="rotate(349 22.89 97.25)"/>
+<ellipse cx="37.15" cy="67.37" rx="5.5" ry="13" fill="#22c55e" stroke="#14532d" stroke-width="1" transform="rotate(366 37.15 67.37)"/>
+<ellipse cx="57.91" cy="65.09" rx="4" ry="9.5" fill="#4ade80" stroke="#14532d" stroke-width="1" transform="rotate(422 57.91 65.09)"/>
+<ellipse cx="59.52" cy="42.96" rx="5.5" ry="13" fill="#16a34a" stroke="#14532d" stroke-width="1" transform="rotate(383 59.52 42.96)"/>
+<ellipse cx="88.04" cy="26.16" rx="5.5" ry="13" fill="#22c55e" stroke="#14532d" stroke-width="1" transform="rotate(400 88.04 26.16)"/>
+<path d="M112 232 L100 254 L110 250 L114 258 L124 236 Z" fill="#dc2626"/><path d="M148 232 L160 254 L150 250 L146 258 L136 236 Z" fill="#b91c1c"/><circle cx="130" cy="232" r="9" fill="#ef4444" stroke="#7f1d1d" stroke-width="1.5"/>
+</svg>

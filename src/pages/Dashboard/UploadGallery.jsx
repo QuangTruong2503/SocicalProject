@@ -8,9 +8,10 @@ import styles from './Dashboard.module.css';
 
 /**
  * Grid of uploads with preview and delete. `uploads` is the object returned by useUserUploads.
- * @param {{ uploads: ReturnType<typeof import('./useUserUploads.js').useUserUploads>, limit?: number, emptyText: string, showLoadMore?: boolean }} props
+ * `variant="strip"` shows small thumbnails in one row (scrolls sideways on narrow screens).
+ * @param {{ uploads: ReturnType<typeof import('./useUserUploads.js').useUserUploads>, limit?: number, emptyText: string, showLoadMore?: boolean, variant?: 'grid' | 'strip' }} props
  */
-export default function UploadGallery({ uploads, limit, emptyText, showLoadMore = false }) {
+export default function UploadGallery({ uploads, limit, emptyText, showLoadMore = false, variant = 'grid' }) {
   const [preview, setPreview] = useState(null);
   const [pendingDelete, setPendingDelete] = useState(null);
   const [deleting, setDeleting] = useState(false);
@@ -48,7 +49,7 @@ export default function UploadGallery({ uploads, limit, emptyText, showLoadMore 
 
   return (
     <>
-      <div className={styles.gallery} aria-busy={uploads.loading}>
+      <div className={`${styles.gallery} ${variant === 'strip' ? styles.galleryStrip : ''}`} aria-busy={uploads.loading}>
         {isPending && Array.from({ length: limit || 6 }, (_, index) => (
           <div key={`skeleton-${index}`} className={`${styles.thumb} ${styles.skeleton}`} aria-hidden="true" />
         ))}

@@ -1220,6 +1220,9 @@ body.auth-modal-open {
 
 .dashboard-page-v2 {
   display: block;
+  /* Clips like `hidden` but is not a scroll container, so position: sticky inside
+     (the avatar frame bar on phones) follows the window. Older browsers keep `hidden`. */
+  overflow: clip;
   padding: 24px 16px;
   align-items: initial;
   justify-content: initial;
@@ -1317,11 +1320,12 @@ body.auth-modal-open {
   border-color: rgba(148, 163, 184, 0.12);
 }
 
+/* Not clipped: UserAvatar clips the picture itself so an avatar frame can extend past it. */
 .dashboard-sidebar-avatar {
   width: 64px;
   height: 64px;
+  margin: 8px 0;
   border-radius: 999px;
-  overflow: hidden;
   display: flex;
   align-items: center;
   justify-content: center;

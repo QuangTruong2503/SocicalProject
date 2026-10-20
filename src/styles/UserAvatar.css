@@ -16,6 +16,53 @@
   opacity: 1;
 }
 
+/* Layered avatar (UserAvatar with `frameSrc`): circular picture + decorative frame.
+   The frame is 130% of the avatar (AVATAR_FRAME_SCALE in src/utils/avatarFrames.js),
+   centred, so it may extend past the container; parents must not clip overflow. */
+.user-avatar-layers {
+  position: relative;
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.user-avatar-clip {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  overflow: hidden;
+}
+
+.user-avatar-clip > img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* Two classes, so parent rules like `.container img { object-fit: cover }` cannot resize it. */
+.user-avatar-layers > .user-avatar-frame {
+  position: absolute;
+  top: -15%;
+  left: -15%;
+  width: 130%;
+  height: 130%;
+  max-width: none;
+  border-radius: 0;
+  object-fit: contain;
+  pointer-events: none;
+  user-select: none;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.user-avatar-layers > .user-avatar-frame.is-loaded {
+  opacity: 1;
+}
+
 @keyframes user-avatar-shimmer {
   0% { background-position: 100% 0; }
   100% { background-position: -100% 0; }
@@ -26,7 +73,8 @@
     animation: none;
   }
 
-  .user-avatar-fade {
+  .user-avatar-fade,
+  .user-avatar-layers > .user-avatar-frame {
     transition: none;
   }
 }

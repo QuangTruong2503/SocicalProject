@@ -27,6 +27,7 @@ const AdminQuotationsPage = lazy(() => import('./pages/Admin/AdminQuotationsPage
 const AdminUsageRedirect = lazy(() => import('./pages/Admin/AdminUsageRedirect.jsx'));
 const AdminUsagePage = lazy(() => import('./pages/Admin/AdminUsagePage.jsx'));
 const AdminMemoryCardsPage = lazy(() => import('./pages/Admin/AdminMemoryCardsPage.jsx'));
+const AdminAvatarFramesPage = lazy(() => import('./pages/Admin/AdminAvatarFramesPage.jsx'));
 const AdminProductLinksPage = lazy(() => import('./pages/Admin/AdminProductLinksPage.jsx'));
 const AdminNotificationsPage = lazy(() => import('./pages/Admin/AdminNotificationsPage.jsx'));
 const NotificationsPage = lazy(() => import('./pages/NotificationsPage.jsx'));
@@ -231,6 +232,7 @@ export default function App() {
               <Route path="watermark" element={<AdminUsageRedirect />} />
               <Route path="usage" element={<AdminUsagePage />} />
               <Route path="memory-cards" element={<AdminMemoryCardsPage />} />
+              <Route path="avatar-frames" element={<AdminAvatarFramesPage />} />
               <Route path="product-links" element={<AdminProductLinksPage />} />
               <Route path="notifications" element={<AdminNotificationsPage />} />
             </Route>

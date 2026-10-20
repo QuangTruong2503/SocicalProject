@@ -106,6 +106,10 @@
 
 .avatarLarge { width: 56px; height: 56px; font-size: 18px; }
 
+/* Avatar frame overlay: 130% of the avatar, centred (AVATAR_FRAME_SCALE). */
+.avatarFramed { position: relative; display: inline-flex; flex-shrink: 0; margin: 6px; }
+.avatarFrame { position: absolute; top: -15%; left: -15%; width: 130%; height: 130%; pointer-events: none; user-select: none; }
+
 /* ── Edit modal ── */
 .formGrid {
   display: grid;

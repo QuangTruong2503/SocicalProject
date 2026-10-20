@@ -15,6 +15,8 @@ import {
 } from 'react-icons/fa6';
 import UserAvatar from '../../components/UserAvatar.jsx';
 import { useAuth } from '../../hooks/useAuth.js';
+import { useAvatarFrames } from '../../hooks/useAvatarFrames.js';
+import { frameLayerProps, resolveAvatarFrame } from '../../utils/avatarFrames.js';
 import { getPlanLabel, getUserAvatarUrl, getUserDisplayName, getUserInitials } from '../../utils/userProfile.js';
 import AvatarSection from './AvatarSection.jsx';
 import OverviewSection from './OverviewSection.jsx';
@@ -67,6 +69,7 @@ export default function DashboardPage() {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [dismissed, setDismissed] = useState([]);
   const [logoutError, setLogoutError] = useState('');
+  const { frames: avatarFrames } = useAvatarFrames(Boolean(user));
 
   const activeSection = SECTIONS.find((item) => item.id === (section || 'overview'));
 
@@ -122,6 +125,7 @@ export default function DashboardPage() {
                   alt={displayName}
                   initials={getUserInitials(user, profile)}
                   isReady={isAvatarReady}
+                  {...frameLayerProps(resolveAvatarFrame(profile?.avatar_frame_id, avatarFrames))}
                 />
               </div>
               <div className="dashboard-sidebar-identity">

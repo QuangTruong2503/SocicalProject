@@ -172,12 +172,6 @@ const PrintInvoice = forwardRef(function PrintInvoice({
 
     <div className={styles.invoiceSignatureRow} ref={footerRef}>
       <div className={styles.invoiceSignatureBlock}>
-        <b>NGƯỜI LẬP BÁO GIÁ</b>
-        <div className={styles.invoiceSignatureName}>{quotation.prepared_by_name}</div>
-        <div className={styles.signatureLine}/>
-        <span className={styles.signatureCaption}>(Ký, ghi rõ họ tên)</span>
-      </div>
-      <div className={styles.invoiceSignatureBlock}>
         <b>{quotationCompany.name}</b>
         {stamp?.url && (
           <img

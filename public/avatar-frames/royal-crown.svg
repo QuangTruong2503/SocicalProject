@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 260 260" width="260" height="260">
+<title>Vương miện</title>
+<defs><linearGradient id="rg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fef08a"/><stop offset=".5" stop-color="#eab308"/><stop offset="1" stop-color="#a16207"/></linearGradient></defs>
+<circle cx="130" cy="130" r="106" fill="none" stroke="url(#rg)" stroke-width="10"/>
+<circle cx="130" cy="130" r="118" fill="none" stroke="#ca8a04" stroke-opacity=".7" stroke-width="2"/>
+<circle cx="130" cy="130" r="100.5" fill="none" stroke="#713f12" stroke-opacity=".45" stroke-width="1.5"/>
+<path d="M96 42 L90 10 L113 27 L130 5 L147 27 L170 10 L164 42 Q130 33 96 42 Z" fill="url(#rg)" stroke="#713f12" stroke-width="2" stroke-linejoin="round"/>
+<circle cx="90" cy="10" r="4" fill="#fef3c7" stroke="#713f12" stroke-width="1.5"/><circle cx="130" cy="6" r="4.5" fill="#fef3c7" stroke="#713f12" stroke-width="1.5"/><circle cx="170" cy="10" r="4" fill="#fef3c7" stroke="#713f12" stroke-width="1.5"/>
+<circle cx="130" cy="30" r="5" fill="#dc2626" stroke="#fef3c7" stroke-width="1.5"/>
+<circle cx="236" cy="130" r="6" fill="#2563eb" stroke="#fef3c7" stroke-width="2"/><circle cx="130" cy="236" r="6" fill="#dc2626" stroke="#fef3c7" stroke-width="2"/><circle cx="24" cy="130" r="6" fill="#2563eb" stroke="#fef3c7" stroke-width="2"/><circle cx="204.95" cy="204.95" r="6" fill="#16a34a" stroke="#fef3c7" stroke-width="2"/><circle cx="55.05" cy="204.95" r="6" fill="#16a34a" stroke="#fef3c7" stroke-width="2"/>
+</svg>

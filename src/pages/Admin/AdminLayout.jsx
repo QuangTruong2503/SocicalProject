@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { NavLink, Outlet, useLocation } from 'react-router-dom';
-import { FaBell, FaChartLine, FaChartPie, FaFileInvoiceDollar, FaImages, FaLink, FaUsers } from 'react-icons/fa6';
+import { FaBell, FaChartLine, FaChartPie, FaCircleUser, FaFileInvoiceDollar, FaImages, FaLink, FaUsers } from 'react-icons/fa6';
 import styles from './Admin.module.css';
 
 const NAV_ITEMS = [
@@ -9,6 +9,7 @@ const NAV_ITEMS = [
   { to: '/admin/quotations', label: 'Báo giá', icon: <FaFileInvoiceDollar /> },
   { to: '/admin/usage', label: 'Thống kê & sử dụng', icon: <FaChartLine /> },
   { to: '/admin/memory-cards', label: 'Memory Game', icon: <FaImages /> },
+  { to: '/admin/avatar-frames', label: 'Khung Avatar', icon: <FaCircleUser /> },
   { to: '/admin/product-links', label: 'Link ảnh SP', icon: <FaLink /> },
   { to: '/admin/notifications', label: 'Thông báo', icon: <FaBell /> },
 ];

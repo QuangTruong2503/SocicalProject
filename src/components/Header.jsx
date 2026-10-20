@@ -2,6 +2,8 @@ import React, { useState, useEffect, useRef } from 'react';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { useTheme } from '../hooks/useTheme';
 import { useAuth } from '../hooks/useAuth';
+import { useAvatarFrames } from '../hooks/useAvatarFrames.js';
+import { frameLayerProps, resolveAvatarFrame } from '../utils/avatarFrames.js';
 import { getUserAvatarUrl, getUserDisplayName, getUserInitials } from '../utils/userProfile.js';
 import UserAvatar from './UserAvatar.jsx';
 import NotificationBell from './notifications/NotificationBell.jsx';
@@ -18,6 +20,8 @@ export default function Header() {
   const userDisplayName = getUserDisplayName(user, profile);
   const userAvatarUrl = getUserAvatarUrl(user, profile, latestUpload);
   const userInitials = getUserInitials(user, profile);
+  const { frames: avatarFrames } = useAvatarFrames(Boolean(user));
+  const userFrame = resolveAvatarFrame(profile?.avatar_frame_id, avatarFrames);
 
   useEffect(() => {
     const handleEscape = (e) => {
@@ -44,15 +48,20 @@ export default function Header() {
         setUserMenuOpen(false);
       }
     };
+    const handleKeyDown = (event) => {
+      if (event.key === 'Escape') setUserMenuOpen(false);
+    };
 
     if (userMenuOpen) {
       document.addEventListener('mousedown', handlePointerDown);
       document.addEventListener('touchstart', handlePointerDown, { passive: true });
+      document.addEventListener('keydown', handleKeyDown);
     }
 
     return () => {
       document.removeEventListener('mousedown', handlePointerDown);
       document.removeEventListener('touchstart', handlePointerDown);
+      document.removeEventListener('keydown', handleKeyDown);
     };
   }, [userMenuOpen]);
 
@@ -167,17 +176,17 @@ export default function Header() {
                       isReady={isAvatarReady}
                       imageClassName="user-avatar-image"
                       fallbackClassName="user-avatar-fallback"
+                      {...frameLayerProps(userFrame)}
                     />
                   </span>
-                  <span className="user-menu-meta">
-                    <strong>{userDisplayName}</strong>
-                    <span>{profile?.email || user.email || 'Account'}</span>
-                  </span>
-                  <span className={`user-menu-caret ${userMenuOpen ? 'open' : ''}`}>⌄</span>
                 </button>
 
                 {userMenuOpen && (
                   <div className="user-menu-dropdown" role="menu" aria-label="Account menu">
+                    <div className="user-menu-meta" role="presentation">
+                      <strong>{userDisplayName}</strong>
+                      <span>{profile?.email || user.email || 'Account'}</span>
+                    </div>
                     <button type="button" className="user-menu-item" onClick={handleDashboardClick} role="menuitem">
                       <span className="user-menu-item-icon">📊</span>
                       <span>

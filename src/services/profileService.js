@@ -1,7 +1,7 @@
 import { supabase } from '../lib/supabase.js';
 import { createServiceResult, normalizeServiceError } from './serviceHelpers.js';
 
-const PROFILE_SELECT = [
+const PROFILE_BASE_SELECT = [
   'id',
   'username',
   'email',
@@ -25,6 +25,10 @@ const PROFILE_SELECT = [
   'created_at',
   'updated_at',
 ].join(', ');
+// avatar_frame_id comes from the avatar_frames migration. Until it is applied the
+// column is missing, so profile queries fall back to the base list instead of failing.
+let hasAvatarFrameColumn = true;
+// avatar_frame_id is not listed: users change it through set_my_avatar_frame().
 const SAFE_PROFILE_UPDATE_FIELDS = new Set([
   'username',
   'email',
@@ -40,6 +44,32 @@ const SAFE_PROFILE_UPDATE_FIELDS = new Set([
   'preferences',
   'social_links',
 ]);
+
+function getProfileSelect() {
+  return hasAvatarFrameColumn ? `${PROFILE_BASE_SELECT}, avatar_frame_id` : PROFILE_BASE_SELECT;
+}
+
+function isMissingAvatarFrameColumn(error) {
+  return ['42703', 'PGRST204'].includes(error?.code) && String(error?.message ?? '').includes('avatar_frame_id');
+}
+
+/**
+ * Runs a profiles query with the current select list, retrying once without
+ * avatar_frame_id when that column does not exist yet. Postgres rejects such a
+ * statement before running it, so retrying an insert/update is safe.
+ * @param {(select: string) => PromiseLike<{ data: any, error: any }>} run
+ */
+async function withProfileSelect(run) {
+  const result = await run(getProfileSelect());
+
+  if (hasAvatarFrameColumn && isMissingAvatarFrameColumn(result.error)) {
+    console.warn('[profileService] profiles.avatar_frame_id is missing; apply the avatar_frames migration.');
+    hasAvatarFrameColumn = false;
+    return run(getProfileSelect());
+  }
+
+  return result;
+}
 
 function cleanString(value) {
   return typeof value === 'string' && value.trim() ? value.trim() : null;
@@ -107,11 +137,11 @@ export async function getProfile(userId) {
   try {
     console.debug('[profileService] getProfile start', { userId });
 
-    const { data, error } = await supabase
+    const { data, error } = await withProfileSelect((select) => supabase
       .from('profiles')
-      .select(PROFILE_SELECT)
+      .select(select)
       .eq('id', userId)
-      .maybeSingle();
+      .maybeSingle());
 
     if (error) {
       console.error('[profileService] getProfile failed', error);
@@ -141,11 +171,11 @@ export async function createProfile(user, overrides = {}) {
       email: payload.email,
     });
 
-    const { data, error } = await supabase
+    const { data, error } = await withProfileSelect((select) => supabase
       .from('profiles')
       .insert(payload)
-      .select(PROFILE_SELECT)
-      .single();
+      .select(select)
+      .single());
 
     if (error) {
       if (error.code === '23505') {
@@ -160,11 +190,11 @@ export async function createProfile(user, overrides = {}) {
           username: getFallbackUsername(user, { unique: true }),
         };
 
-        const { data: retryData, error: retryError } = await supabase
+        const { data: retryData, error: retryError } = await withProfileSelect((select) => supabase
           .from('profiles')
           .insert(retryPayload)
-          .select(PROFILE_SELECT)
-          .single();
+          .select(select)
+          .single());
 
         if (!retryError) {
           return createServiceResult(retryData);
@@ -324,11 +354,11 @@ export function adminBulkUpdateStatus(userIds, status) {
  */
 export async function getAdminProfileDetail(userId) {
   try {
-    const { data, error } = await supabase
+    const { data, error } = await withProfileSelect((select) => supabase
       .from('profiles')
-      .select(PROFILE_SELECT)
+      .select(select)
       .eq('id', userId)
-      .maybeSingle();
+      .maybeSingle());
 
     if (error) {
       console.error('[profileService] getAdminProfileDetail failed', error);
@@ -418,12 +448,12 @@ export async function updateProfile(userId, updates) {
       fields: Object.keys(safeUpdates),
     });
 
-    const { data, error } = await supabase
+    const { data, error } = await withProfileSelect((select) => supabase
       .from('profiles')
       .update(safeUpdates)
       .eq('id', userId)
-      .select(PROFILE_SELECT)
-      .single();
+      .select(select)
+      .single());
 
     if (error) {
       console.error('[profileService] updateProfile failed', error);

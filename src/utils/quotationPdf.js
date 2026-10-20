@@ -319,19 +319,14 @@ export async function exportQuotationToPdf(quotation, summary, stamp, stampPosit
   y = ensureSpace(pdf, y, 6);
   y += drawWrappedText(pdf, 'Trân trọng kính chào Quý khách hàng!', MARGIN, y, CONTENT_WIDTH, { size: 8, color: COLOR_TEXT_BODY }) + 8;
 
-  // Signature blocks
+  // Company signature
   y = ensureSpace(pdf, y, 46);
   const signatureTop = y;
   const signatureColWidth = 80;
-  const leftColCenter = MARGIN + signatureColWidth / 2;
   const rightColX = PAGE_WIDTH - MARGIN - signatureColWidth;
   const rightColCenter = rightColX + signatureColWidth / 2;
-  drawWrappedText(pdf, 'NGƯỜI LẬP BÁO GIÁ', leftColCenter, signatureTop, signatureColWidth, { font: 'bold', size: 8, align: 'center', color: COLOR_TEXT_DARK });
-  drawWrappedText(pdf, quotation.prepared_by_name || '', leftColCenter, signatureTop + 5, signatureColWidth, { font: 'bold', size: 8, align: 'center', color: COLOR_TEXT_DARK });
   pdf.setDrawColor(156, 163, 175);
   pdf.setLineWidth(0.2);
-  pdf.line(MARGIN + 12, signatureTop + 34, MARGIN + 68, signatureTop + 34);
-  drawWrappedText(pdf, '(Ký, ghi rõ họ tên)', leftColCenter, signatureTop + 36, signatureColWidth, { size: 7, align: 'center', color: COLOR_TEXT_MUTED });
 
   drawWrappedText(pdf, quotationCompany.name, rightColCenter, signatureTop, signatureColWidth, { font: 'bold', size: 8, align: 'center', color: COLOR_TEXT_DARK });
   if (stampData) {

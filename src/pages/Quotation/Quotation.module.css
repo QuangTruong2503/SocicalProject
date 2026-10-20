@@ -382,10 +382,9 @@ button.collapsibleHeader { display: flex; align-items: center; justify-content: 
 
 .invoiceClosing { margin: 18px 0 26px; font-size: 11.5px; color: #374151; }
 
-.invoiceSignatureRow { position: relative; display: flex; justify-content: space-around; text-align: center; gap: 20px; }
-.invoiceSignatureBlock { display: flex; flex-direction: column; align-items: center; min-height: 150px; flex: 1; }
+.invoiceSignatureRow { position: relative; display: flex; justify-content: flex-end; text-align: center; gap: 20px; }
+.invoiceSignatureBlock { display: flex; flex-direction: column; align-items: center; min-height: 150px; flex: 0 1 calc((100% - 20px) / 2); }
 .invoiceSignatureBlock > b { font-size: 11.5px; font-weight: 800; text-transform: uppercase; color: #111827; }
-.invoiceSignatureName { margin-top: 3px; font-weight: 800; font-size: 11.5px; color: #111827; }
 .signatureLine { width: 60%; border-top: 1px solid #9ca3af; margin-top: auto; margin-bottom: 6px; }
 .signatureCaption { font-size: 10px; color: #6b7280; font-style: italic; }
 

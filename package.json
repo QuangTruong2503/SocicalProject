@@ -16,6 +16,7 @@
     "test:file-convert": "node --test src/utils/fileConvert.test.js",
     "test:ai-image-names": "node --test src/utils/aiImageNaming.test.js tests/suggestImageNamesFunction.test.mjs tests/aiNamingAccessDatabase.test.mjs && node --import ./tests/aiRenameLoader.mjs --test tests/aiRenameUI.test.mjs",
     "test:usage": "node --test tests/usageLedgerDatabase.test.mjs tests/usageLedgerFunction.test.mjs tests/planModelAccessDatabase.test.mjs && node --import ./tests/aiRenameLoader.mjs --test tests/usageTelemetry.test.mjs tests/adminUsageUI.test.mjs",
+    "test:avatar-frames": "node --test src/utils/avatarFrames.test.js src/utils/avatarUpload.test.js tests/avatarFramesDatabase.test.mjs tests/avatarFramesAnimatedDatabase.test.mjs tests/avatarFrameInspectFunction.test.mjs && node --import ./tests/avatarFramesLoader.mjs --test tests/avatarFramesUI.test.mjs tests/adminAvatarFramesUI.test.mjs",
     "test:admin-memory": "node --test src/utils/memoryCardAdmin.test.js tests/adminMemoryCardsDatabase.test.mjs && node --import ./tests/adminMemoryCardsLoader.mjs --test tests/adminMemoryCardsUI.test.mjs"
   },
   "dependencies": {

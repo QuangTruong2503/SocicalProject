@@ -19,6 +19,7 @@ import {
   updateProfile as updateProfileService,
 } from '../services/profileService.js';
 import { fetchLatestUserUpload } from '../services/uploadService.js';
+import { setMyAvatarFrame } from '../services/avatarFrameService.js';
 import { createServiceResult } from '../services/serviceHelpers.js';
 import { AuthContext } from './authContext.js';
 
@@ -360,6 +361,22 @@ export function AuthProvider({ children }) {
     return result;
   }
 
+  /** Saves the avatar frame (null = none) and updates the shared profile, so every avatar changes at once. */
+  async function updateAvatarFrame(frameId) {
+    if (!user?.id) {
+      return createServiceResult(null, 'Bạn cần đăng nhập để đổi khung avatar.');
+    }
+
+    const userId = user.id;
+    const result = await setMyAvatarFrame(frameId);
+
+    if (!result.error) {
+      setProfile((current) => (current?.id === userId ? { ...current, avatar_frame_id: result.data.avatar_frame_id } : current));
+    }
+
+    return result;
+  }
+
   async function updatePassword(payload) {
     if (!user?.id) {
       const result = createServiceResult(null, 'Bạn cần đăng nhập để đổi mật khẩu.');
@@ -403,6 +420,7 @@ export function AuthProvider({ children }) {
         refreshProfile,
         refreshAvatar,
         updateProfile,
+        updateAvatarFrame,
         updatePassword,
       }}
     >

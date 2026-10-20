@@ -294,6 +294,310 @@
 .fieldHint { color: #64748b; font-size: 0.8rem; font-weight: 500; line-height: 1.45; }
 [data-theme="dark"] .fieldHint { color: rgba(226, 232, 240, 0.6); }
 
+/* ── Avatar page (Dashboard → Avatar): "Avatar của bạn", frame picker, upload strip ── */
+.avatarPage { display: flex; flex-direction: column; gap: 22px; min-width: 0; }
+
+.avatarHero {
+  position: relative;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 20px 36px;
+  padding: 26px 32px;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.avatarHeroDragging { border-color: #2563eb !important; box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.15) !important; }
+
+/* Room around the avatar for a frame 1.3× its size. Explicit cells: the dropzone's
+   hidden input is also a child of the grid. */
+.heroAvatarWrap { position: relative; grid-column: 1; grid-row: 1; padding: 24px; }
+
+.heroAvatar {
+  width: 148px;
+  height: 148px;
+  border-radius: 50%;
+  background: rgba(37, 99, 235, 0.1);
+  color: #2563eb;
+  font-size: 3rem;
+  font-weight: 800;
+}
+
+[data-theme="dark"] .heroAvatar { background: rgba(76, 201, 240, 0.12); color: #9fdfff; }
+
+.heroPreviewBadge {
+  position: absolute;
+  bottom: -8px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: #2563eb;
+  color: #ffffff;
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.heroBody { grid-column: 2; grid-row: 1; display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+
+.heroFacts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin: 0; }
+.heroFacts > div { min-width: 0; padding: 10px 14px; border: 1px solid rgba(148, 163, 184, 0.2); border-radius: 12px; }
+.heroFacts dt { color: #64748b; font-size: 0.72rem; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; }
+.heroFacts dd { margin: 4px 0 0; color: #0f172a; font-weight: 700; overflow-wrap: anywhere; }
+[data-theme="dark"] .heroFacts > div { border-color: rgba(148, 163, 184, 0.16); }
+[data-theme="dark"] .heroFacts dt { color: rgba(226, 232, 240, 0.6); }
+[data-theme="dark"] .heroFacts dd { color: #f8fbff; }
+
+.heroActions { display: flex; flex-wrap: wrap; gap: 10px; }
+.heroHint { margin: 0; color: #64748b; font-size: 0.85rem; line-height: 1.5; }
+[data-theme="dark"] .heroHint { color: rgba(226, 232, 240, 0.65); }
+
+.heroFile { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; margin: 0; }
+.heroFile strong { color: #0f172a; overflow-wrap: anywhere; }
+.heroFile span { color: #64748b; font-size: 0.85rem; white-space: nowrap; }
+[data-theme="dark"] .heroFile strong { color: #f8fbff; }
+[data-theme="dark"] .heroFile span { color: rgba(226, 232, 240, 0.65); }
+
+.heroDropOverlay {
+  position: absolute;
+  inset: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  border: 2px dashed #2563eb;
+  border-radius: 12px;
+  background: rgba(239, 246, 255, 0.94);
+  color: #1d4ed8;
+  font-weight: 800;
+  text-align: center;
+  pointer-events: none;
+}
+
+[data-theme="dark"] .heroDropOverlay { background: rgba(15, 23, 42, 0.94); color: #9fdfff; border-color: #4cc9f0; }
+
+.historyLink { color: #2563eb; font-size: 0.9rem; font-weight: 700; text-decoration: none; white-space: nowrap; }
+.historyLink:hover { text-decoration: underline; }
+[data-theme="dark"] .historyLink { color: #9fdfff; }
+
+/* One row of small thumbnails; scrolls sideways when it does not fit. */
+.galleryStrip {
+  grid-template-columns: none;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(88px, 112px);
+  overflow-x: auto;
+  padding-bottom: 6px;
+  scroll-snap-type: x proximity;
+}
+
+.galleryStrip > * { scroll-snap-align: start; }
+.galleryStrip:has(.emptyState) { display: block; }
+
+@media (max-width: 768px) {
+  .avatarHero { grid-template-columns: 1fr; justify-items: center; gap: 16px; padding: 18px 18px 22px; }
+  .heroBody { grid-column: 1; grid-row: 2; width: 100%; text-align: center; }
+  .heroFacts { text-align: left; }
+  .heroActions, .heroFile { justify-content: center; }
+  .heroAvatar { width: 116px; height: 116px; font-size: 2.4rem; }
+  .galleryStrip { grid-auto-columns: 84px; }
+}
+
+@media (max-width: 480px) {
+  .heroFacts { grid-template-columns: 1fr; }
+}
+
+/* ── Avatar frame picker ── */
+.framePanel { min-width: 0; scroll-margin-top: calc(var(--header-height, 70px) + 16px); }
+
+.frameLayout {
+  display: grid;
+  grid-template-columns: minmax(180px, 220px) minmax(0, 1fr);
+  gap: 24px;
+  align-items: start;
+}
+
+.framePreview {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 28px 16px 18px;
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  border-radius: 16px;
+  background: rgba(37, 99, 235, 0.04);
+  text-align: center;
+}
+
+[data-theme="dark"] .framePreview { background: rgba(255, 255, 255, 0.03); border-color: rgba(148, 163, 184, 0.14); }
+
+/* Room around the avatar for a frame 1.3× its size. */
+.framePreviewAvatar,
+.frameThumb {
+  display: block;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: rgba(37, 99, 235, 0.1);
+  color: #2563eb;
+  font-weight: 800;
+}
+
+[data-theme="dark"] .framePreviewAvatar,
+[data-theme="dark"] .frameThumb { background: rgba(76, 201, 240, 0.12); color: #9fdfff; }
+
+.framePreviewAvatar { width: 120px; height: 120px; margin: 0 0 24px; font-size: 2.2rem; }
+.frameThumb { width: 60px; height: 60px; margin: 12px auto; font-size: 1.05rem; }
+
+.framePreview p { display: flex; flex-direction: column; gap: 2px; margin: 0; }
+.framePreview p span { color: #64748b; font-size: 0.75rem; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; }
+.framePreview p strong { color: #0f172a; font-size: 1rem; overflow-wrap: anywhere; }
+.framePreview small { color: #64748b; font-size: 0.8rem; line-height: 1.4; }
+[data-theme="dark"] .framePreview p strong { color: #f8fbff; }
+[data-theme="dark"] .framePreview p span,
+[data-theme="dark"] .framePreview small { color: rgba(226, 232, 240, 0.65); }
+
+.frameChooser { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+.frameFieldset { min-width: 0; margin: 0; padding: 0; border: 0; }
+
+.frameGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(112px, 1fr));
+  gap: 12px;
+}
+
+.frameOption {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  padding: 8px 8px 12px;
+  border: 2px solid rgba(148, 163, 184, 0.22);
+  border-radius: 14px;
+  background: #ffffff;
+  text-align: center;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease, box-shadow 0.15s ease;
+}
+
+[data-theme="dark"] .frameOption { background: rgba(255, 255, 255, 0.03); border-color: rgba(148, 163, 184, 0.18); }
+
+.frameOption:hover { border-color: rgba(37, 99, 235, 0.45); }
+.frameOption:focus-within { outline: 3px solid rgba(37, 99, 235, 0.45); outline-offset: 2px; }
+.frameFieldset:disabled .frameOption { cursor: progress; opacity: 0.7; }
+
+.frameOptionSelected,
+.frameOptionSelected:hover {
+  border-color: #2563eb;
+  background: rgba(37, 99, 235, 0.06);
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+}
+
+[data-theme="dark"] .frameOptionSelected { border-color: #4cc9f0; background: rgba(76, 201, 240, 0.08); }
+
+.frameName {
+  color: #0f172a;
+  font-size: 0.85rem;
+  font-weight: 700;
+  line-height: 1.3;
+  overflow-wrap: anywhere;
+}
+
+[data-theme="dark"] .frameName { color: #eff6ff; }
+
+.frameBadge {
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: rgba(22, 163, 74, 0.12);
+  color: #15803d;
+  font-size: 0.7rem;
+  font-weight: 800;
+}
+
+[data-theme="dark"] .frameBadge { color: #86efac; }
+
+.frameCheck {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  padding: 4px;
+  border-radius: 999px;
+  background: #2563eb;
+  color: #ffffff;
+  font-size: 0.65rem;
+  box-sizing: content-box;
+}
+
+.frameSkeleton { height: 128px; border-radius: 14px; }
+
+.frameMotionBadge {
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: rgba(124, 58, 237, 0.12);
+  color: #6d28d9;
+  font-size: 0.66rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+}
+
+[data-theme="dark"] .frameMotionBadge { background: rgba(167, 139, 250, 0.18); color: #ddd6fe; }
+
+.motionControl { display: flex; flex-direction: column; align-items: center; gap: 6px; margin-top: 4px; }
+.motionControl button { min-height: 38px; padding: 0 14px; font-size: 0.85rem; }
+
+/* The mini preview only shows in the sticky phone bar. */
+.frameActionsPreview { display: none; }
+
+@media (max-width: 768px) {
+  .frameLayout { grid-template-columns: 1fr; }
+  .framePreview { flex-direction: row; flex-wrap: wrap; justify-content: center; gap: 8px 20px; padding: 20px 14px 14px; text-align: left; }
+  .framePreviewAvatar { width: 84px; height: 84px; margin: 12px; font-size: 1.6rem; }
+  .framePreview small, .motionControl { flex-basis: 100%; text-align: center; }
+
+  /* Sticky action bar; right padding keeps clear of the scroll-to-top button. */
+  .frameChooser .frameActions {
+    position: sticky;
+    bottom: 0;
+    z-index: 5;
+    flex-direction: row;
+    align-items: center;
+    gap: 8px;
+    margin: 4px -20px -20px;
+    padding: 10px 64px 10px 14px;
+    border-top: 1px solid rgba(148, 163, 184, 0.2);
+    border-radius: 0 0 16px 16px;
+    background: rgba(255, 255, 255, 0.96);
+    box-shadow: 0 -8px 20px rgba(15, 23, 42, 0.08);
+  }
+
+  [data-theme="dark"] .frameChooser .frameActions { background: rgba(15, 23, 42, 0.96); border-color: rgba(148, 163, 184, 0.14); }
+
+  .frameActionsPreview { display: flex; flex: 1; align-items: center; gap: 8px; min-width: 0; text-align: left; }
+  .frameActionsPreview > span:last-child { display: flex; flex-direction: column; min-width: 0; }
+  .frameActionsPreview small { color: #64748b; font-size: 0.7rem; font-weight: 700; }
+  .frameActionsPreview strong { overflow: hidden; color: #0f172a; font-size: 0.85rem; text-overflow: ellipsis; white-space: nowrap; }
+  [data-theme="dark"] .frameActionsPreview small { color: rgba(226, 232, 240, 0.6); }
+  [data-theme="dark"] .frameActionsPreview strong { color: #f8fbff; }
+
+  .frameMiniAvatar { flex-shrink: 0; width: 32px; height: 32px; margin: 5px; border-radius: 50%; background: rgba(37, 99, 235, 0.1); color: #2563eb; font-size: 0.65rem; font-weight: 800; }
+  [data-theme="dark"] .frameMiniAvatar { background: rgba(76, 201, 240, 0.12); color: #9fdfff; }
+
+  .frameChooser .frameActions button { flex-shrink: 0; width: auto; min-height: 44px; padding: 0 14px; }
+  /* "Hoàn tác" becomes an icon button (its aria-label keeps the name). */
+  .frameChooser .frameActions .frameUndo { justify-content: center; width: 44px; padding: 0; }
+  .frameUndo span { display: none; }
+}
+
+@media (max-width: 480px) {
+  .frameGrid { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+  .frameOption { padding: 4px 4px 10px; }
+  .frameThumb { width: 52px; height: 52px; margin: 10px auto; }
+  .frameName { font-size: 0.78rem; }
+}
+
 /* ── Skeletons ── */
 .skeleton {
   display: block;
@@ -324,5 +628,5 @@
 
 @media (prefers-reduced-motion: reduce) {
   .spin, .skeleton { animation: none; }
-  .progress span, .thumbActions { transition: none; }
+  .progress span, .thumbActions, .frameOption { transition: none; }
 }
