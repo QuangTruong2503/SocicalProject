@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { toast } from 'react-toastify';
+import { useReactToPrint } from 'react-to-print';
 import {
   FaCopy, FaEye, FaFilePdf, FaFloppyDisk, FaList, FaLock, FaPlus, FaSpinner, FaTableColumns,
 } from 'react-icons/fa6';
@@ -21,7 +22,6 @@ import {
   calculateKnmTotals, copyKnmQuotationForNew, createDraftKnmQuotation, KNM_DEFAULT_COMPANY, knmEditableSnapshot,
   normalizeKnmQuotation, validateKnmQuotation,
 } from '../../utils/knmQuotation.js';
-import { exportKnmQuotationToPdf } from '../../utils/knmQuotationPdf.js';
 import { clearLocalKnmAsset, loadCompanyInfo, loadLocalKnmAsset, loadTerms, saveCompanyInfo, saveTerms } from '../../utils/knmStorage.js';
 import {
   clearKnmCompanyAsset, getKnmQuotation, KNM_ASSET_KINDS, loadKnmCompanyAssets, saveKnmQuotation, uploadKnmCompanyAsset,
@@ -343,22 +343,34 @@ export default function QuotationKnm() {
     return () => document.removeEventListener('keydown', onKeyDown);
   }, []);
 
-  // Direct PDF download, including the legacy ?in=1 entry point from the list.
-  const pdfExporting = useRef(false);
-  const runPrint = useCallback(async () => {
-    if (pdfExporting.current) return;
-    pdfExporting.current = true;
+  // Open the browser print dialog for both the button and ?in=1 links.
+  const printRef = useRef(null);
+  const printing = useRef(false);
+  const finishPrint = () => {
+    printing.current = false;
+    setBusy('');
+  };
+  const print = useReactToPrint({
+    contentRef: printRef,
+    documentTitle: `Bao-gia-${quotation.quotationNo || 'KNM'}`,
+    onAfterPrint: finishPrint,
+    onPrintError: () => {
+      finishPrint();
+      toast.error('Không thể mở hộp thoại in báo giá. Vui lòng thử lại.');
+    },
+  });
+  const runPrint = useCallback(() => {
+    if (printing.current) return;
+    printing.current = true;
     setBusy('pdf');
     try {
-      await exportKnmQuotationToPdf(previewCompany, quotation);
-      toast.success('Đã xuất file PDF báo giá.');
+      print();
     } catch (error) {
-      toast.error(error.message || 'Không thể xuất PDF báo giá.');
-    } finally {
-      pdfExporting.current = false;
+      printing.current = false;
       setBusy('');
+      toast.error(error.message || 'Không thể mở hộp thoại in báo giá.');
     }
-  }, [previewCompany, quotation]);
+  }, [print]);
 
   const requestPrint = () => {
     if (!ready || !assetsState.ready || busy) return;
@@ -374,7 +386,7 @@ export default function QuotationKnm() {
     runPrint();
   };
 
-  // ?in=1 is retained for existing links; export only after company assets load.
+  // ?in=1 is retained for existing links; print only after company assets load.
   const autoPrint = searchParams.get('in') === '1';
   useEffect(() => {
     if (!ready || !autoPrint || !quotation.quotationNo || !assetsState.ready) return;
@@ -520,7 +532,7 @@ export default function QuotationKnm() {
               <FaTableColumns /> Xem bên cạnh
             </button>
             <button type="button" className={styles.iconOnlyMobile} onClick={requestPrint} disabled={!ready || !assetsState.ready || !!busy} aria-label="Xuất PDF">
-              {busy === 'pdf' ? <FaSpinner className={styles.spin} /> : <FaFilePdf />} <span className={styles.btnLabel}>{busy === 'pdf' ? 'Đang xuất…' : 'Xuất PDF'}</span>
+              {busy === 'pdf' ? <FaSpinner className={styles.spin} /> : <FaFilePdf />} <span className={styles.btnLabel}>{busy === 'pdf' ? 'Đang mở bản in…' : 'Xuất PDF'}</span>
             </button>
             {!isNew && (
               <button type="button" className={styles.iconOnlyMobile} onClick={handleDuplicate} disabled={!ready} aria-label="Sao chép thành báo giá mới">
@@ -640,7 +652,7 @@ export default function QuotationKnm() {
 
       <QuotePreviewModal open={previewOpen} onClose={() => setPreviewOpen(false)} company={previewCompany} quotation={fullQuotation} />
 
-      <div className={styles.printHost}>
+      <div ref={printRef} className={styles.printHost}>
         <QuotePreview company={previewCompany} quotation={fullQuotation} />
       </div>
 
@@ -688,7 +700,7 @@ export default function QuotationKnm() {
       {saveBeforePrint && (
         <ConfirmDialog
           title="Lưu báo giá trước khi xuất PDF?"
-          message="Báo giá mới chưa có số. Lưu để được cấp số, sau đó file PDF sẽ được tải xuống."
+          message="Báo giá mới chưa có số. Lưu để được cấp số, sau đó hộp thoại in sẽ mở để bạn in hoặc chọn lưu PDF."
           confirmLabel="Lưu & xuất PDF"
           busy={busy === 'save'}
           onConfirm={async () => {
