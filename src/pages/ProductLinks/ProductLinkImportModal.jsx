@@ -39,7 +39,7 @@ function previewStatus(parsed, existing, mode) {
   return added > 0 ? { tone: 'update', label: `+${added} link mới` } : { tone: 'skip', label: 'Đã đủ link' };
 }
 
-export default function ProductLinkImportModal({ existingByKey, saving, onSubmit, onClose }) {
+export default function ProductLinkImportModal({ companyName, existingByKey, saving, onSubmit, onClose }) {
   const [text, setText] = useState('');
   const [mode, setMode] = useState('merge');
   const [fileName, setFileName] = useState('');
@@ -79,7 +79,7 @@ export default function ProductLinkImportModal({ existingByKey, saving, onSubmit
       wide
       busy={saving}
       onClose={onClose}
-      title="Nhập dữ liệu link ảnh"
+      title={`Nhập dữ liệu link ảnh · ${companyName}`}
       description={<>Dán danh sách hoặc kéo thả file. Dòng không phải link là <strong>mã sản phẩm</strong>, các link bên dưới thuộc về sản phẩm đó.</>}
       footer={(
         <>

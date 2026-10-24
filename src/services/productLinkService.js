@@ -4,8 +4,8 @@ import { createServiceResult, normalizeServiceError } from './serviceHelpers.js'
 // Tables/RPCs are defined in supabase_product_links.sql.
 const ITEMS = 'product_link_items';
 const LOGS = 'product_link_logs';
-const ITEM_SELECT = 'id, seq, code, links, note, is_done, done_by, done_by_name, done_at, is_pinned, pinned_by, pinned_by_name, pinned_at, created_by, created_at, updated_at';
-const LOG_SELECT = 'id, user_id, actor_name, action, item_id, item_code, details, created_at';
+const ITEM_SELECT = 'id, company_id, seq, code, links, note, is_done, done_by, done_by_name, done_at, is_pinned, pinned_by, pinned_by_name, pinned_at, created_by, created_at, updated_at';
+const LOG_SELECT = 'id, company_id, user_id, actor_name, action, item_id, item_code, details, created_at';
 const PAGE_SIZE = 1000;
 
 export const ACCESS_LEVELS = {
@@ -25,6 +25,9 @@ export const ACCESS_LEVEL_OPTIONS = [
 function failure(error, fallback, scope) {
   console.error(`[productLinkService] ${scope} failed`, error);
 
+  if (scope === 'listCompanies' && ['PGRST205', '42P01', '42703'].includes(error?.code)) {
+    return createServiceResult(null, 'Chưa cập nhật dữ liệu công ty. Vui lòng liên hệ quản trị viên.');
+  }
   if (error?.code === '23505') {
     return createServiceResult(null, 'Mã sản phẩm này đã tồn tại.');
   }
@@ -36,6 +39,7 @@ function failure(error, fallback, scope) {
     return createServiceResult(null, error.message);
   }
   if (error?.code === 'PGRST202') {
+    if (scope === 'import') return createServiceResult(null, 'Chưa cập nhật chức năng nhập dữ liệu theo công ty. Vui lòng liên hệ quản trị viên.');
     return createServiceResult(null, 'Chưa tạo RPC quản trị Link ảnh trên Supabase. Hãy chạy supabase_product_links_admin.sql.');
   }
 
@@ -57,7 +61,22 @@ export function getMyProductLinkLevel() {
   return run('getMyLevel', 'Không thể kiểm tra quyền truy cập.', () => supabase.rpc('product_links_level'));
 }
 
-export async function listProductLinkItems() {
+export function listProductLinkCompanies() {
+  return run('listCompanies', 'Không thể tải danh sách công ty.', () => supabase
+    .from('product_link_companies').select('id, name, created_at').order('created_at').order('id'));
+}
+
+export function createProductLinkCompany(name) {
+  return run('createCompany', 'Không thể thêm công ty.', async () => {
+    const result = await supabase.from('product_link_companies')
+      .insert({ name: name.trim().replace(/\s+/g, ' ') }).select('id, name, created_at').single();
+    if (result.error?.code === '23505') return { data: null, error: { code: '22023', message: 'Tên công ty này đã tồn tại.' } };
+    return result;
+  });
+}
+
+export async function listProductLinkItems(companyId) {
+  if (!companyId) return createServiceResult(null, 'Vui lòng chọn công ty.');
   try {
     const rows = [];
 
@@ -65,6 +84,7 @@ export async function listProductLinkItems() {
       const { data, error } = await supabase
         .from(ITEMS)
         .select(ITEM_SELECT)
+        .eq('company_id', companyId)
         .order('seq', { ascending: true })
         .range(from, from + PAGE_SIZE - 1);
 
@@ -94,9 +114,9 @@ export function updateProductLinkNote(id, note) {
     .from(ITEMS).update({ note: note?.trim() || null }).eq('id', id).select(ITEM_SELECT).single());
 }
 
-export function createProductLinkItem({ code, links, note }) {
+export function createProductLinkItem({ code, links, note, companyId }) {
   return run('createItem', 'Không thể thêm sản phẩm.', () => supabase
-    .from(ITEMS).insert({ code, links, note: note?.trim() || null }).select(ITEM_SELECT).single());
+    .from(ITEMS).insert({ company_id: companyId, code, links, note: note?.trim() || null }).select(ITEM_SELECT).single());
 }
 
 export function updateProductLinkItem(id, { code, links, note }) {
@@ -112,10 +132,11 @@ export function deleteProductLinkItem(id) {
  * @param {Array<{ code: string, links: string[] }>} items
  * @param {'merge' | 'replace' | 'skip'} mode
  */
-export function importProductLinks(items, mode) {
+export function importProductLinks(items, mode, companyId) {
   return run('import', 'Không thể nhập dữ liệu.', () => supabase.rpc('product_links_import', {
     p_items: items,
     p_mode: mode,
+    p_company_id: companyId,
   }));
 }
 
@@ -123,9 +144,10 @@ export function importProductLinks(items, mode) {
  * Activity feed for the product links page. Admin search/filters use adminListProductLinkLogs.
  * @param {{ limit?: number, beforeId?: number, action?: string, userId?: string }} [options]
  */
-export function listProductLinkLogs({ limit = 50, beforeId, action, userId } = {}) {
+export function listProductLinkLogs({ companyId, limit = 50, beforeId, action, userId } = {}) {
+  if (!companyId) return Promise.resolve(createServiceResult(null, 'Vui lòng chọn công ty.'));
   return run('listLogs', 'Không thể tải nhật ký.', () => {
-    let query = supabase.from(LOGS).select(LOG_SELECT).order('id', { ascending: false }).limit(limit);
+    let query = supabase.from(LOGS).select(LOG_SELECT).eq('company_id', companyId).order('id', { ascending: false }).limit(limit);
     if (beforeId) query = query.lt('id', beforeId);
     if (action) query = query.eq('action', action);
     if (userId) query = query.eq('user_id', userId);
@@ -141,6 +163,7 @@ export async function logProductLinkCopy({ userId, actorName, item, details }) {
     actor_name: actorName,
     action: 'copy',
     item_id: item.id,
+    company_id: item.company_id,
     item_code: item.code,
     details,
   });
@@ -151,14 +174,15 @@ export async function logProductLinkCopy({ userId, actorName, item, details }) {
  * Live changes from other users. Returns an unsubscribe function.
  * @param {{ onItem: (event: string, row: Object) => void, onLog: (row: Object) => void }} handlers
  */
-export function subscribeProductLinks({ onItem, onLog }) {
+export function subscribeProductLinks({ companyId, onItem, onLog }) {
   const channel = supabase
     .channel(`product-links-${Math.random().toString(36).slice(2)}`)
     .on('postgres_changes', { event: '*', schema: 'public', table: ITEMS }, (payload) => {
-      onItem(payload.eventType, payload.eventType === 'DELETE' ? payload.old : payload.new);
+      const row = payload.eventType === 'DELETE' ? payload.old : payload.new;
+      if (payload.eventType === 'DELETE' || row.company_id === companyId) onItem(payload.eventType, row);
     })
     .on('postgres_changes', { event: 'INSERT', schema: 'public', table: LOGS }, (payload) => {
-      onLog(payload.new);
+      if (payload.new.company_id === companyId) onLog(payload.new);
     })
     .subscribe();
 

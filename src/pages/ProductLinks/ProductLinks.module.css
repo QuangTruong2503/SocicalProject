@@ -35,6 +35,36 @@
   --pl-pin-soft: rgba(251, 146, 60, 0.14);
 }
 
+.companyBar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 14px;
+  padding: 16px 18px;
+  margin-bottom: 20px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--pl-radius);
+}
+.companySelect { display: flex; align-items: center; gap: 12px; font-weight: 600; }
+.companySelect select {
+  max-width: 100%;
+  min-height: 40px;
+  padding: 8px 32px 8px 12px;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  background: var(--color-surface);
+  color: var(--color-text);
+  font: inherit;
+}
+.companySelect select:focus-visible { outline: 2px solid var(--pl-primary); outline-offset: 2px; }
+.companyBar p { flex: 1; margin: 0; color: var(--color-text-secondary); font-size: 13px; }
+@media (max-width: 600px) {
+  .companySelect { width: 100%; }
+  .companySelect select { flex: 1; min-width: 0; }
+  .companyBar p { flex-basis: 100%; }
+}
+
 /* ── Buttons ─────────────────────────────────────────────────────── */
 .btnPrimary,
 .btnGhost,

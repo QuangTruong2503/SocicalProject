@@ -1,6 +1,6 @@
 import { Fragment, useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
 import { Helmet } from 'react-helmet-async';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import {
   FaClockRotateLeft,
@@ -15,6 +15,8 @@ import { useAuth } from '../../hooks/useAuth.js';
 import AccessGateModal from '../../components/auth/AccessGateModal.jsx';
 import {
   ACCESS_LEVEL_OPTIONS,
+  createProductLinkCompany,
+  listProductLinkCompanies,
   createProductLinkItem,
   deleteProductLinkItem,
   getMyProductLinkLevel,
@@ -82,12 +84,10 @@ function upsertById(list, row) {
   return next;
 }
 
-export default function ProductLinks() {
-  const navigate = useNavigate();
+function ProductLinkWorkspace({ company, level, companySelector, companyModal }) {
   const { user, profile } = useAuth();
   const actorName = getUserDisplayName(user, profile);
 
-  const [level, setLevel] = useState(null);
   const [items, setItems] = useState([]);
   const [itemsLoading, setItemsLoading] = useState(true);
   const [loadError, setLoadError] = useState('');
@@ -136,17 +136,6 @@ export default function ProductLinks() {
     activityOpenRef.current = activityOpen;
   });
 
-  // ── Access level ────────────────────────────────────────────────────
-  useEffect(() => {
-    let active = true;
-    getMyProductLinkLevel().then((result) => {
-      if (!active) return;
-      if (result.error) toast.error(result.error);
-      setLevel(Number(result.data) || 0);
-    });
-    return () => { active = false; };
-  }, [user?.id, profile?.role, profile?.status]);
-
   // ── Data + realtime ─────────────────────────────────────────────────
   const applyItemsResult = useCallback((result) => {
     setItemsLoading(false);
@@ -160,8 +149,8 @@ export default function ProductLinks() {
 
   const reloadItems = useCallback(() => {
     setItemsLoading(true);
-    listProductLinkItems().then(applyItemsResult);
-  }, [applyItemsResult]);
+    listProductLinkItems(company.id).then(applyItemsResult);
+  }, [applyItemsResult, company.id]);
 
   const flash = useCallback((id) => {
     setFlashIds((current) => new Set(current).add(id));
@@ -177,17 +166,20 @@ export default function ProductLinks() {
   useEffect(() => {
     if (!level) return undefined;
 
-    listProductLinkItems().then(applyItemsResult);
-    listProductLinkLogs({ limit: LOG_PAGE_SIZE }).then((result) => {
+    let active = true;
+    listProductLinkItems(company.id).then((result) => { if (active) applyItemsResult(result); });
+    listProductLinkLogs({ companyId: company.id, limit: LOG_PAGE_SIZE }).then((result) => {
+      if (!active) return;
       setLogsLoading(false);
       if (result.error) return;
       setLogs(result.data);
       setLogsHasMore(result.data.length === LOG_PAGE_SIZE);
     });
 
-    return subscribeProductLinks({
+    const unsubscribe = subscribeProductLinks({
+      companyId: company.id,
       onItem: (event, row) => {
-        if (!row?.id) return;
+        if (!active || !row?.id) return;
         if (event === 'DELETE') {
           setItems((current) => current.filter((item) => item.id !== row.id));
           return;
@@ -199,17 +191,19 @@ export default function ProductLinks() {
         if (changedElsewhere) flash(row.id);
       },
       onLog: (row) => {
+        if (!active) return;
         setLogs((current) => (current.some((log) => log.id === row.id) ? current : [row, ...current]));
         if (row.user_id !== user?.id && !activityOpenRef.current) setUnread((count) => count + 1);
       },
     });
-  }, [level, applyItemsResult, flash, user?.id]);
+    return () => { active = false; unsubscribe(); };
+  }, [level, applyItemsResult, flash, user?.id, company.id]);
 
   async function loadMoreLogs() {
     const last = logs[logs.length - 1];
     if (!last) return;
     setLogsLoadingMore(true);
-    const result = await listProductLinkLogs({ limit: LOG_PAGE_SIZE, beforeId: last.id });
+    const result = await listProductLinkLogs({ companyId: company.id, limit: LOG_PAGE_SIZE, beforeId: last.id });
     setLogsLoadingMore(false);
     if (result.error) {
       toast.error(result.error);
@@ -395,7 +389,7 @@ export default function ProductLinks() {
 
   async function submitImport(parsedItems, mode) {
     setSaving(true);
-    const result = await importProductLinks(parsedItems, mode);
+    const result = await importProductLinks(parsedItems, mode, company.id);
     setSaving(false);
     if (result.error) {
       toast.error(result.error);
@@ -414,7 +408,7 @@ export default function ProductLinks() {
     const result = mode === 'note'
       ? await updateProductLinkNote(item.id, values.note)
       : mode === 'create'
-        ? await createProductLinkItem(values)
+        ? await createProductLinkItem({ ...values, companyId: company.id })
         : await updateProductLinkItem(item.id, values);
     setSaving(false);
 
@@ -458,40 +452,17 @@ export default function ProductLinks() {
   }
 
   // ── Render ──────────────────────────────────────────────────────────
-  if (level === null) {
-    return (
-      <div className="auth-loading-screen">
-        <div className="auth-loading-ring"></div>
-        <p>Đang kiểm tra quyền truy cập...</p>
-      </div>
-    );
-  }
-
-  if (level === 0) {
-    return (
-      <AccessGateModal
-        title="Bạn chưa được cấp quyền vào trang này."
-        description="Trang Link ảnh sản phẩm chỉ mở cho tài khoản được quản trị viên cấp quyền. Hãy liên hệ quản trị viên để được thêm vào."
-        details={[]}
-        primaryActionLabel="Quay về trang chủ"
-        secondaryActionLabel="Về Dashboard"
-        onPrimaryAction={() => navigate('/', { replace: true })}
-        onSecondaryAction={() => navigate('/dashboard/overview', { replace: true })}
-      />
-    );
-  }
-
   const levelLabel = ACCESS_LEVEL_OPTIONS.find((option) => option.value === LEVEL_KEYS[level])?.label;
   const filterCounts = { todo: stats.todo, done: stats.done, all: stats.total };
 
   return (
     <div className={styles.page}>
-      <Helmet><title>Link ảnh sản phẩm</title></Helmet>
+      <Helmet><title>{company.name} · Link ảnh sản phẩm</title></Helmet>
 
       <header className={styles.hero}>
         <div className={styles.heroText}>
           <span className={styles.overline}>Công cụ nội bộ</span>
-          <h1>Link ảnh sản phẩm</h1>
+          <h1>Link ảnh sản phẩm · {company.name}</h1>
           <p>Bấm vào một link để copy. Tick vào ô tròn khi đã làm xong, ghim <FaThumbtack aria-label="ghim" /> sản phẩm quan trọng để luôn nằm trên đầu — mọi người thấy ngay theo thời gian thực.</p>
         </div>
         <div className={styles.heroActions}>
@@ -510,6 +481,8 @@ export default function ProductLinks() {
           )}
         </div>
       </header>
+
+      {companySelector}
 
       <section className={styles.stats} aria-label="Tiến độ">
         <div className={styles.progressBlock}>
@@ -675,8 +648,11 @@ export default function ProductLinks() {
         </div>
       </div>
 
+      {companyModal}
+
       {importOpen && (
         <ProductLinkImportModal
+          companyName={company.name}
           existingByKey={existingByKey}
           saving={saving}
           onSubmit={submitImport}
@@ -686,6 +662,7 @@ export default function ProductLinks() {
 
       {editing && (
         <ProductLinkEditModal
+          companyName={company.name}
           mode={editing.mode}
           item={editing.item}
           saving={saving}
@@ -712,4 +689,136 @@ export default function ProductLinks() {
       )}
     </div>
   );
+}
+
+export default function ProductLinks() {
+  const navigate = useNavigate();
+  const { user, profile } = useAuth();
+  const [params, setParams] = useSearchParams();
+  const [level, setLevel] = useState(null);
+  const [companies, setCompanies] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [companyOpen, setCompanyOpen] = useState(false);
+  const [name, setName] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState('');
+
+  useEffect(() => {
+    let active = true;
+    getMyProductLinkLevel().then((result) => {
+      if (!active) return;
+      if (result.error) toast.error(result.error);
+      setLevel(Number(result.data) || 0);
+    });
+    return () => { active = false; };
+  }, [user?.id, profile?.role, profile?.status]);
+
+  const applyCompaniesResult = useCallback((result) => {
+    setLoading(false);
+    setError(result.error || '');
+    if (!result.error) setCompanies(result.data || []);
+  }, []);
+
+  function reloadCompanies() {
+    setLoading(true);
+    listProductLinkCompanies().then(applyCompaniesResult);
+  }
+
+  useEffect(() => {
+    if (!level) return;
+    let active = true;
+    listProductLinkCompanies().then((result) => { if (active) applyCompaniesResult(result); });
+    return () => { active = false; };
+  }, [level, applyCompaniesResult]);
+
+  function selectCompany(id) {
+    setParams((current) => {
+      const next = new URLSearchParams(current);
+      next.set('company', id);
+      return next;
+    });
+  }
+
+  async function submitCompany(event) {
+    event.preventDefault();
+    if (saving) return;
+    setSaving(true);
+    setSaveError('');
+    const result = await createProductLinkCompany(name);
+    setSaving(false);
+    if (result.error) { setSaveError(result.error); return; }
+    setCompanies((current) => [...current, result.data]);
+    selectCompany(result.data.id);
+    setCompanyOpen(false);
+    setName('');
+    toast.success(`Đã thêm công ty ${result.data.name}.`);
+  }
+
+  if (level === null) {
+    return (
+      <div className="auth-loading-screen">
+        <div className="auth-loading-ring"></div>
+        <p>Đang kiểm tra quyền truy cập...</p>
+      </div>
+    );
+  }
+
+  if (level === 0) {
+    return (
+      <AccessGateModal
+        title="Bạn chưa được cấp quyền vào trang này."
+        description="Trang Link ảnh sản phẩm chỉ mở cho tài khoản được quản trị viên cấp quyền. Hãy liên hệ quản trị viên để được thêm vào."
+        details={[]}
+        primaryActionLabel="Quay về trang chủ"
+        secondaryActionLabel="Về Dashboard"
+        onPrimaryAction={() => navigate('/', { replace: true })}
+        onSecondaryAction={() => navigate('/dashboard/overview', { replace: true })}
+      />
+    );
+  }
+
+
+  if (loading || error || companies.length === 0) {
+    return <div className={styles.page}>
+      <Helmet><title>Link ảnh sản phẩm</title></Helmet>
+      <h1>Link ảnh sản phẩm</h1>
+      {loading ? <p role="status">Đang tải danh sách công ty…</p> :
+        <div className={styles.errorBox} role="alert">
+          {error || 'Chưa có công ty nào. Vui lòng kiểm tra cấu hình dữ liệu.'}
+          <button type="button" className={styles.linkBtn} onClick={reloadCompanies}>Thử lại</button>
+        </div>}
+    </div>;
+  }
+
+  const requestedCompany = params.get('company');
+  const company = companies.find((entry) => entry.id === requestedCompany) || companies[0];
+  const selector = <section className={styles.companyBar} aria-label="Công ty">
+    <label className={styles.companySelect}>
+      <span>Công ty</span>
+      <select aria-label="Chọn công ty" value={company.id} onChange={(event) => selectCompany(event.target.value)}>
+        {companies.map((entry) => <option key={entry.id} value={entry.id}>{entry.name}</option>)}
+      </select>
+    </label>
+    <p>Sản phẩm, tiến độ và nhật ký riêng cho từng công ty.</p>
+    {profile?.role === 'admin' && <button type="button" className={styles.btnGhost} onClick={() => { setSaveError(''); setCompanyOpen(true); }}>
+      <FaPlus /> Thêm công ty
+    </button>}
+  </section>;
+
+  const companyModal = companyOpen && <ModalShell title="Thêm công ty" description="Tạo danh sách link ảnh riêng cho công ty mới." busy={saving} onClose={() => setCompanyOpen(false)}>
+      <form className={styles.form} onSubmit={submitCompany}>
+        <label className={styles.field}>
+          <span>Tên công ty</span>
+          <input data-dialog-initial required maxLength={100} value={name} onChange={(event) => setName(event.target.value)} placeholder="Ví dụ: Minh Tâm" disabled={saving} />
+        </label>
+        {saveError && <p className={styles.formError} role="alert">{saveError}</p>}
+        <div className={styles.modalActions}>
+          <button type="button" className={styles.btnGhost} onClick={() => setCompanyOpen(false)} disabled={saving}>Hủy</button>
+          <button type="submit" className={styles.btnPrimary} disabled={saving || !name.trim()}>{saving ? 'Đang lưu…' : 'Tạo công ty'}</button>
+        </div>
+      </form>
+    </ModalShell>;
+
+  return <ProductLinkWorkspace key={`${user?.id}:${company.id}`} company={company} level={level} companySelector={selector} companyModal={companyModal} />;
 }

@@ -13,7 +13,7 @@ function extractLinks(text) {
  * mode 'create' | 'edit' → code, links, note (editor)
  * mode 'note'            → note only (checker)
  */
-export default function ProductLinkEditModal({ mode, item, saving, onSubmit, onClose }) {
+export default function ProductLinkEditModal({ companyName, mode, item, saving, onSubmit, onClose }) {
   const [code, setCode] = useState(item?.code ?? '');
   const [linksText, setLinksText] = useState((item?.links ?? []).join('\n'));
   const [note, setNote] = useState(item?.note ?? '');
@@ -43,7 +43,7 @@ export default function ProductLinkEditModal({ mode, item, saving, onSubmit, onC
   return (
     <ModalShell
       title={title}
-      description={noteOnly ? 'Ghi chú hiển thị cho mọi người, ví dụ: thiếu ảnh, ảnh lỗi, cần chụp lại…' : null}
+      description={`${companyName} · ${noteOnly ? 'Ghi chú hiển thị cho mọi người trong công ty.' : 'Lưu sản phẩm vào công ty đang chọn.'}`}
       busy={saving}
       onClose={onClose}
     >
