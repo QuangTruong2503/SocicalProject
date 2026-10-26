@@ -149,25 +149,28 @@ function PositionModal({ position, margin, onPositionChange, onMarginChange, onC
   );
 }
 
-export default function WatermarkControls({ options, onChange }) {
+/** `showFileName={false}` hides the export-name field (/watermark/auto names files from folders + AI). */
+export default function WatermarkControls({ options, onChange, showFileName = true }) {
   const { size, opacity, margin, tiled, logoPosition, productName } = options;
   const [isPositionOpen, setIsPositionOpen] = useState(false);
   const update = (key, value) => onChange((current) => ({ ...current, [key]: value }));
 
   return (
     <div className="wm-controls">
-      <label className="wm-control-group wm-block-text">
-        <span className="wm-section-label">Tên ảnh xuất</span>
-        <input
-          className="wm-input"
-          type="text"
-          value={productName}
-          onChange={(event) => update('productName', event.target.value)}
-          placeholder="Ví dụ: ao-so-mi"
-          maxLength={180}
-        />
-        <small className="wm-muted-text wm-block-text">Tự thêm số thứ tự và đuôi .jpg. Để trống sẽ dùng tên “image”.</small>
-      </label>
+      {showFileName && (
+        <label className="wm-control-group wm-block-text">
+          <span className="wm-section-label">Tên ảnh xuất</span>
+          <input
+            className="wm-input"
+            type="text"
+            value={productName}
+            onChange={(event) => update('productName', event.target.value)}
+            placeholder="Ví dụ: ao-so-mi"
+            maxLength={180}
+          />
+          <small className="wm-muted-text wm-block-text">Tự thêm số thứ tự và đuôi .jpg. Để trống sẽ dùng tên “image”.</small>
+        </label>
+      )}
 
       <RangeControl
         icon="▭"

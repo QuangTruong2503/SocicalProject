@@ -1,4 +1,5 @@
 import {
+  DEFAULT_IMAGE_NAME_PROMPT as DEFAULT_PROMPT,
   IMAGE_NAME_LIMITS,
   matchItemsById,
   slugifyFileName,
@@ -22,6 +23,26 @@ export const AI_IMAGE_MAX_DIMENSION = 512;
 const AI_IMAGE_QUALITY = 0.8;
 
 const EXTENSIONS = { 'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp' };
+const PROMPT_STORAGE_KEY = 'watermark_ai_naming_prompt';
+
+/** Prompt saved on this browser (shared by /watermark and /watermark/auto), or the default. */
+export function loadSavedImageNamePrompt() {
+  try {
+    const saved = localStorage.getItem(PROMPT_STORAGE_KEY);
+    if (saved !== null && saved.length <= IMAGE_NAME_LIMITS.maxPromptLength) return saved;
+  } catch {
+    // Storage may be disabled; editing and generating names still work.
+  }
+  return DEFAULT_PROMPT;
+}
+
+export function saveImageNamePrompt(prompt) {
+  try {
+    localStorage.setItem(PROMPT_STORAGE_KEY, prompt);
+  } catch {
+    // A full or unavailable store must not interrupt naming.
+  }
+}
 
 /** Extension of an exported result; the watermark engine writes JPEG. */
 export function extensionForMimeType(type) {

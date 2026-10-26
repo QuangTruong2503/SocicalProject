@@ -10,8 +10,10 @@ import {
   buildFinalFileNames,
   chunkArray,
   createAiImageDataUrl,
+  loadSavedImageNamePrompt,
   parseSuggestionResponse,
   runWithConcurrency,
+  saveImageNamePrompt,
   slugifyFileName,
   summarizeAppliedNames,
 } from '../../utils/aiImageNaming.js';
@@ -21,17 +23,6 @@ import { describeAiNamingAccess } from '../../utils/aiNamingAccess.js';
 const ACCESS_REJECTIONS = new Set([AI_NAMING_ERRORS.authRequired, AI_NAMING_ERRORS.accessDenied, AI_NAMING_ERRORS.modelDenied]);
 
 const hasName = (entry) => Boolean(entry?.name?.trim());
-const PROMPT_STORAGE_KEY = 'watermark_ai_naming_prompt';
-
-function loadSavedPrompt() {
-  try {
-    const saved = localStorage.getItem(PROMPT_STORAGE_KEY);
-    if (saved !== null && saved.length <= IMAGE_NAME_LIMITS.maxPromptLength) return saved;
-  } catch {
-    // Storage may be disabled; editing and generating names still work.
-  }
-  return DEFAULT_IMAGE_NAME_PROMPT;
-}
 
 /**
  * "Đặt tên bằng AI": suggests a file name per result from its content. Names
@@ -62,7 +53,7 @@ export default function AiRenameModal({
   const canGenerate = accessStatus === 'allowed';
   const accessCopy = canGenerate ? null : describeAiNamingAccess(accessStatus, accessError);
   const [productName, setProductName] = useState(() => draft?.productName ?? defaultProductName ?? '');
-  const [prompt, setPrompt] = useState(() => draft?.prompt ?? loadSavedPrompt());
+  const [prompt, setPrompt] = useState(() => draft?.prompt ?? loadSavedImageNamePrompt());
   const [model, setModel] = useState(() => draft?.model ?? DEFAULT_IMAGE_NAME_MODEL);
   const availableModels = IMAGE_NAME_MODELS.filter(({ id }) => allowedModels.includes(id));
   const selectedModel = availableModels.some(({ id }) => id === model) ? model : availableModels[0]?.id ?? '';
@@ -81,13 +72,7 @@ export default function AiRenameModal({
   const abortRef = useRef(null);
   const productInputRef = useRef(null);
 
-  useEffect(() => {
-    try {
-      localStorage.setItem(PROMPT_STORAGE_KEY, prompt);
-    } catch {
-      // A full or unavailable store must not interrupt the dialog.
-    }
-  }, [prompt]);
+  useEffect(() => { saveImageNamePrompt(prompt); }, [prompt]);
 
   useEffect(() => () => {
     runIdRef.current += 1;

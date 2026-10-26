@@ -15,6 +15,8 @@ export const supabase = {
       data: { session: globalThis.__aiRenameSession === undefined ? { access_token: 'user-jwt' } : globalThis.__aiRenameSession },
     }),
   },
+  // watermark_image_counts inserts (globalThis.__watermarkCountRows collects them when set).
+  from: () => ({ insert: async (rows) => { globalThis.__watermarkCountRows?.push(...rows); return { error: null }; } }),
   rpc: async (name, params) => {
     globalThis.__aiRpcCalls?.push({ name, params });
     return globalThis.__aiAccessRpc ? globalThis.__aiAccessRpc(name, params) : { data: ['gpt-6-luna', 'gpt-6.1-sol', 'gpt-6-astra'], error: null };

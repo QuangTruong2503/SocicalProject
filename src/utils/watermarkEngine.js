@@ -153,7 +153,8 @@ export function createWatermarkEngine() {
     /**
      * @param {File | Blob} file
      * @param {Record<string, unknown>} options watermark options (size, opacity, tiled, logoPosition, margin)
-     * @param {{ maxDimension?: number }} [overrides] e.g. a smaller size for previews
+     * @param {{ maxDimension?: number }} [overrides] e.g. a smaller size for previews. Omitted → MAX_OUTPUT_DIMENSION;
+     *   KEEP_ORIGINAL_SIZE (0) → no downscaling at all, in the worker and in the fallback alike.
      * @returns {Promise<{ blob: Blob, thumbBlob: Blob, engine: 'worker' | 'main' }>}
      */
     async render(file, options, overrides = {}) {

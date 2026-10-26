@@ -22,7 +22,8 @@ export function createSubject(userId, visitorId) {
   return userId ? { userId, visitorId: null } : { userId: null, visitorId: visitorId || null };
 }
 
-function baseEvent({ subject, action, feature = 'watermark', operationId = newUsageId(), imageBatchId = null, aiRunId = null, status }) {
+// `sourcePage` is optional on every builder: /watermark keeps the default, /watermark/auto passes 'watermark/auto'.
+function baseEvent({ subject, action, feature = 'watermark', operationId = newUsageId(), imageBatchId = null, aiRunId = null, status, sourcePage = SOURCE_PAGE }) {
   return {
     schemaVersion: USAGE_EVENT_SCHEMA_VERSION,
     eventId: newUsageId(),
@@ -33,7 +34,7 @@ function baseEvent({ subject, action, feature = 'watermark', operationId = newUs
     visitorId: subject.visitorId,
     feature,
     action,
-    sourcePage: SOURCE_PAGE,
+    sourcePage,
     status,
     occurredAt: new Date().toISOString(),
   };
@@ -42,10 +43,10 @@ function baseEvent({ subject, action, feature = 'watermark', operationId = newUs
 const roundMs = (value) => (Number.isFinite(value) && value >= 0 ? Math.round(value) : null);
 
 /** One "Tạo ảnh watermark" run. `aborted`: the user pressed "Dừng lại" (or left the page). */
-export function buildCreateEvent({ subject, imageBatchId, requested, succeeded, failed, skipped, cancelled, aborted, durationMs, errorCode = null }) {
+export function buildCreateEvent({ subject, imageBatchId, requested, succeeded, failed, skipped, cancelled, aborted, durationMs, errorCode = null, sourcePage }) {
   const status = aborted ? 'cancelled' : !succeeded ? 'failed' : failed || skipped || cancelled ? 'partial' : 'succeeded';
   return {
-    ...baseEvent({ subject, action: 'image.create', imageBatchId, status }),
+    ...baseEvent({ subject, action: 'image.create', imageBatchId, status, sourcePage }),
     requestedCount: requested,
     succeededCount: succeeded,
     failedCount: failed,
@@ -61,7 +62,7 @@ export function buildCreateEvent({ subject, imageBatchId, requested, succeeded, 
  * what was actually handed to the browser (anchor download) or written to the
  * chosen file — never images merely prepared or added to an unfinished ZIP.
  */
-export function buildDownloadEvent({ subject, imageBatchId, method, imageSize, requested, outcome, durationMs, errorCode = null }) {
+export function buildDownloadEvent({ subject, imageBatchId, method, imageSize, requested, outcome, durationMs, errorCode = null, sourcePage }) {
   const delivered = outcome.delivered;
   let status = 'succeeded';
   let failed = 0;
@@ -74,7 +75,7 @@ export function buildDownloadEvent({ subject, imageBatchId, method, imageSize, r
     cancelled = requested - delivered;
   }
   return {
-    ...baseEvent({ subject, action: 'image.download', imageBatchId, status }),
+    ...baseEvent({ subject, action: 'image.download', imageBatchId, status, sourcePage }),
     requestedCount: requested,
     preparedCount: outcome.prepared,
     succeededCount: delivered,
@@ -107,10 +108,10 @@ export function buildSingleDownloadEvent({ subject, imageBatchId }) {
  * run involved (names typed without AI form a group without run ID), sharing
  * one operation ID. Applying never calls the API, so it creates no AI usage.
  */
-export function buildApplyEvents({ subject, imageBatchId, groups }) {
+export function buildApplyEvents({ subject, imageBatchId, groups, sourcePage }) {
   const operationId = newUsageId();
   return groups.filter((group) => group.applied > 0).map((group) => ({
-    ...baseEvent({ subject, action: 'ai.naming.apply', feature: 'ai_image_naming', operationId, imageBatchId, aiRunId: group.aiRunId, status: 'succeeded' }),
+    ...baseEvent({ subject, action: 'ai.naming.apply', feature: 'ai_image_naming', operationId, imageBatchId, aiRunId: group.aiRunId, status: 'succeeded', sourcePage }),
     requestedCount: group.applied,
     succeededCount: group.applied,
     metadata: { ai_unchanged_count: group.aiUnchanged, edited_count: group.edited },

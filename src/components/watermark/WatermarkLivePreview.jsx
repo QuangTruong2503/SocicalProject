@@ -9,12 +9,16 @@ const PREVIEW_OUTPUT_DIMENSION = 720;
  * The full-size source is decoded once into a small copy (cached per image), so
  * moving a slider only re-renders that small copy.
  *
+ * `outputSize="800x600"` letterboxes the preview exactly like the export (render, then engine.resize).
+ * An image may carry `getFile()` instead of `file` (folder handles read on demand).
+ *
  * @param {{
- *   images: Array<{ id: string, file: File, name: string }>, engine: ReturnType<typeof import('../../utils/watermarkEngine.js').createWatermarkEngine>,
- *   options: Record<string, unknown>, logoVersion: number, paused: boolean,
+ *   images: Array<{ id: string, file?: File, getFile?: () => Promise<File>, name: string }>,
+ *   engine: ReturnType<typeof import('../../utils/watermarkEngine.js').createWatermarkEngine>,
+ *   options: Record<string, unknown>, logoVersion: number, paused: boolean, outputSize?: 'original' | '800x600',
  * }} props
  */
-export default function WatermarkLivePreview({ images, engine, options, logoVersion, paused }) {
+export default function WatermarkLivePreview({ images, engine, options, logoVersion, paused, outputSize = 'original' }) {
   const [selectedId, setSelectedId] = useState(null);
   const [preview, setPreview] = useState(null);
   const sourceCacheRef = useRef(new Map());
@@ -22,7 +26,7 @@ export default function WatermarkLivePreview({ images, engine, options, logoVers
 
   const selectedIndex = Math.max(0, images.findIndex((image) => image.id === selectedId));
   const selected = images[selectedIndex];
-  const renderKey = selected ? JSON.stringify([selected.id, size, opacity, tiled, logoPosition, margin, logoVersion]) : '';
+  const renderKey = selected ? JSON.stringify([selected.id, size, opacity, tiled, logoPosition, margin, logoVersion, outputSize]) : '';
 
   // Forget cached small copies of images that were removed.
   useEffect(() => {
@@ -41,14 +45,17 @@ export default function WatermarkLivePreview({ images, engine, options, logoVers
       try {
         let source = sourceCacheRef.current.get(selected.id);
         if (!source) {
-          source = await createThumbnailBlob(selected.file, PREVIEW_SOURCE_DIMENSION, 0.9);
+          const file = selected.file ?? await selected.getFile();
+          source = await createThumbnailBlob(file, PREVIEW_SOURCE_DIMENSION, 0.9);
           sourceCacheRef.current.set(selected.id, source);
         }
-        const { blob } = await engine.render(
+        let { blob } = await engine.render(
           source,
           { size, opacity, tiled, logoPosition, margin },
           { maxDimension: PREVIEW_OUTPUT_DIMENSION },
         );
+        // Same order as the export: the logo belongs to the photo, the white bars come after.
+        if (outputSize === '800x600' && active) blob = await engine.resize(blob, 800, 600);
         if (!active) return;
         url = URL.createObjectURL(blob);
         setPreview({ key: renderKey, url });
@@ -99,7 +106,7 @@ export default function WatermarkLivePreview({ images, engine, options, logoVers
             </button>
           </div>
         ) : (
-          <small>Bản thu nhỏ</small>
+          <small>{outputSize === '800x600' ? 'Khung 800 × 600 px' : 'Bản thu nhỏ'}</small>
         )}
       </div>
       <div className="wm-live-preview-frame">

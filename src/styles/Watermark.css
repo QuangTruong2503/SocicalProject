@@ -2340,3 +2340,15 @@ body.wm-watermark-theme .wm-download-choice-close {
   .wm-page .wm-stats-strip { flex: 1; }
   .wm-page .wm-stat { flex: 1; padding: 8px 10px; }
 }
+
+/* Entry to /watermark/auto from the heading. */
+.wm-page .wma-entry-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 10px;
+  color: var(--wm-primary);
+  font-weight: 700;
+  text-decoration: none;
+}
+.wm-page .wma-entry-link:hover { text-decoration: underline; }

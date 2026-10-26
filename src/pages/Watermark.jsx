@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Helmet } from 'react-helmet-async';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import LogoUploader from '../components/watermark/LogoUploader';
 import ImageUploader from '../components/watermark/ImageUploader';
@@ -767,6 +767,9 @@ export default function Watermark() {
             <div className="wm-heading-main">
               <h1>Thêm logo vào ảnh</h1>
               <p>Chọn ảnh → chỉnh logo → tạo và tải xuống. Ảnh được xử lý ngay trên thiết bị của bạn.</p>
+              <Link to="/watermark/auto" className="wma-entry-link">
+                Watermark tự động theo thư mục sản phẩm <span aria-hidden="true">→</span>
+              </Link>
             </div>
             <div className="wm-heading-side">
               <WatermarkStatsStrip

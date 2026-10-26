@@ -3,6 +3,8 @@
 
 /** Longest edge of an exported image. 4096² is also iOS Safari's canvas area limit. */
 export const MAX_OUTPUT_DIMENSION = 4096;
+/** maxDimension value that keeps the decoded (EXIF-oriented) size: fitWithin() never scales for 0. */
+export const KEEP_ORIGINAL_SIZE = 0;
 
 export const LOGO_POSITIONS = [
   'top-left', 'top-center', 'top-right',

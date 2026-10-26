@@ -5,6 +5,7 @@ import { FiArrowRight, FiFileText, FiImage, FiLink2, FiPlayCircle, FiRepeat, FiU
 import { useTheme } from './hooks/useTheme';
 import './styles/auth.css';
 const Watermark = lazy(() => import('./pages/Watermark.jsx'));
+const WatermarkAuto = lazy(() => import('./pages/WatermarkAuto.jsx'));
 const Quotation = lazy(() => import('./pages/Quotation/Quotation.jsx'));
 const QuotationList = lazy(() => import('./pages/Quotation/QuotationList.jsx'));
 const QuotationKnm = lazy(() => import('./pages/QuotationKnm/QuotationKnm.jsx'));
@@ -187,6 +188,18 @@ const protectedRouteConfigs = [
       'Giữ phiên làm việc ổn định',
     ],
     loginLabel: 'Đăng nhập để mở Watermark',
+  },
+  {
+    path: '/watermark/auto',
+    element: <WatermarkAuto />,
+    title: 'Watermark tự động cần đăng nhập.',
+    description: 'Trang này đặt tên ảnh bằng AI theo quyền của tài khoản và lưu kết quả vào thư mục trên máy bạn.',
+    details: [
+      'Chèn logo cho cả thư mục sản phẩm',
+      'Đặt tên ảnh bằng AI theo tên thư mục',
+      'Lưu thẳng vào thư mục Named',
+    ],
+    loginLabel: 'Đăng nhập để mở Watermark tự động',
   },
   {
     path: '/memory-game',

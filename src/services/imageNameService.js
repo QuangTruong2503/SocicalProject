@@ -74,11 +74,13 @@ const waitUnlessAborted = (ms, signal) => new Promise((resolve) => {
  *
  * @param {{ productName: string, prompt: string, model?: string, images: Array<{ id: string, position: number, dataUrl: string }>,
  *   signal?: AbortSignal, requestId?: string, aiRunId?: string }} input
- * @returns {Promise<{ data: { items: unknown[], failed: unknown[] } | null, error: string | null, code: string | null, requestId?: string }>}
+ * @returns {Promise<{ data: { items: unknown[], failed: unknown[] } | null, error: string | null, code: string | null, requestId?: string, retryAfterSeconds?: number }>}
  */
 export async function requestImageNameSuggestions({ productName, prompt, model, images, signal, requestId = newOperationId(), aiRunId }) {
+  // retryAfterSeconds is passed on for callers that wait before sending again (e.g. /watermark/auto).
   const fail = (code, serverMessage, retryAfterSeconds) => ({
     data: null, code, error: describeImageNameError(code, serverMessage, retryAfterSeconds),
+    ...(retryAfterSeconds ? { retryAfterSeconds } : {}),
   });
 
   const { data: sessionData } = await supabase.auth.getSession();
