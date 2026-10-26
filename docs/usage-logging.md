@@ -140,6 +140,8 @@ Thay limiter trong bộ nhớ từng isolate bằng kiểm tra trong `ai_usage_b
 | Lease (coi là treo) | 240 s |
 | Quota ảnh theo ngày/tháng | **Tắt** (`quota_enforced = false`) |
 
+- Cửa sổ tần suất (3 dòng đầu) **chỉ áp dụng cho tài khoản Free**. Admin và gói Pro/Enterprise đang hoạt động được miễn (`usage_private.rate_window_exempt`, migration `20261026090000_ai_rate_window_exempt.sql`) để chạy [Watermark tự động](watermark-auto.md) cả thư mục. Giới hạn đồng thời, quota (khi bật) và công tắc dừng vẫn áp dụng cho mọi người — muốn chặn chi phí của tài khoản trả phí, hãy bật quota theo gói.
+
 - Quota theo gói (`plan_quotas`: free/pro/enterprise/admin; trống = không giới hạn) và ngoại lệ từng người (`user_quota_overrides`, có “không giới hạn”) chỉ áp dụng khi admin bật. Admin vẫn được ghi usage đầy đủ.
 - Đơn vị quota: **số ảnh đã gửi tới OpenAI**, tính một lần cho mỗi logical request (retry nội bộ và gửi lại cùng `requestId` không tính thêm); token/chi phí vẫn theo từng attempt. Ngày/tháng cắt theo giờ Việt Nam.
 - Không hoàn quota: request đã nhận (kể cả lỗi, timeout, `unknown`) vẫn tính vì có thể đã chạm OpenAI. Request bị từ chối trước khi gọi không tính.

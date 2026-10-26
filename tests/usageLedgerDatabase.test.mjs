@@ -422,3 +422,40 @@ test('query plans use the time / user indexes on a large fixture', async (t) => 
   t.diagnostic(`7-day overview over 60k requests + 60k attempts + 60k events: ${Math.round(elapsed)} ms (PGlite, single process)`);
   t.diagnostic(`filtered_requests plan:\n${requestsPlan}`);
 });
+
+test('request window: admins and Pro+ plans are exempt, free accounts keep it; quota and concurrency still apply', async (t) => {
+  const db = await createUsageDb(t);
+  const exempt = async (user) => (await db.query('select usage_private.rate_window_exempt($1) as r', [user])).rows[0].r;
+  await db.exec(`insert into auth.users(id) values ('40000000-0000-4000-8000-000000000001');
+    insert into public.profiles(id, role, status, plan) values ('40000000-0000-4000-8000-000000000001', 'user', 'active', 'enterprise');`);
+  assert.equal(await exempt(ids.admin), true, 'admin on the free plan');
+  assert.equal(await exempt(ids.pro), true);
+  assert.equal(await exempt('40000000-0000-4000-8000-000000000001'), true, 'enterprise');
+  assert.equal(await exempt(ids.free), false);
+  assert.equal(await exempt(ids.suspended), false, 'suspended Pro');
+  assert.equal(await exempt(randomUUID()), false, 'no profile');
+  await assert.rejects(queryAs(db, 'authenticated', ids.pro, 'select usage_private.rate_window_exempt($1)', [ids.pro]), /permission denied/);
+
+  // A full window (40 requests in the last minute) for each user.
+  for (const user of [ids.pro, ids.free, ids.admin]) {
+    await db.exec(`insert into usage_private.ai_usage_requests (user_id, feature, environment, status, images_requested, created_at, finished_at)
+      select '${user}', 'ai_image_naming', 'test', 'succeeded', 6, now() - interval '1 minute', now() from generate_series(1, 40)`);
+  }
+  const begin = (user, images = 6) => serviceRpc(db, 'ai_usage_begin', { user_id: user, images_requested: images, environment: 'test' });
+  assert.equal((await begin(ids.free)).code, 'rate_limited');
+  const proBegin = await begin(ids.pro);
+  assert.equal(proBegin.decision, 'accepted', 'Pro is not windowed');
+  assert.equal((await begin(ids.admin)).decision, 'accepted', 'admin is not windowed');
+
+  // Concurrency: the accepted request is still running; max 2 per user.
+  assert.equal((await begin(ids.pro)).decision, 'accepted');
+  assert.equal((await begin(ids.pro)).code, 'too_many_concurrent');
+  await db.exec(`update usage_private.ai_usage_requests set status = 'succeeded', finished_at = now() where user_id = '${ids.pro}' and status = 'running'`);
+
+  // Quota still enforced when enabled.
+  await db.exec(`insert into usage_private.plan_quotas (plan, daily_image_limit) values ('pro', 250) on conflict (plan) do update set daily_image_limit = 250;
+    update usage_private.settings set quota_enforced = true`);
+  const over = await begin(ids.pro);
+  assert.equal(over.code, 'AI_QUOTA_EXCEEDED');
+  assert.equal(over.quota.used, 252);
+});

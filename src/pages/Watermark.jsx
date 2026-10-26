@@ -15,7 +15,7 @@ import { buildFileName, getUniqueFileNames } from '../hooks/useWatermarkProcesso
 import { useAuth } from '../hooks/useAuth.js';
 import { useAiNamingAccess } from '../hooks/useAiNamingAccess.js';
 import { useTheme } from '../hooks/useTheme.js';
-import { getUserDisplayName } from '../utils/userProfile.js';
+import { getUserDisplayName, hasProAccess } from '../utils/userProfile.js';
 import { loadWatermarkOptions, saveWatermarkOptions } from '../hooks/useIndexedDB.js';
 import { buildThemeAccentVars } from '../utils/colorTools.js';
 import {
@@ -294,7 +294,7 @@ async function streamZipToFile(zip, fileHandle, isCancelled) {
 }
 
 export default function Watermark() {
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const { isDark } = useTheme();
   const navigate = useNavigate();
   const aiNamingAccess = useAiNamingAccess();
@@ -767,9 +767,11 @@ export default function Watermark() {
             <div className="wm-heading-main">
               <h1>Thêm logo vào ảnh</h1>
               <p>Chọn ảnh → chỉnh logo → tạo và tải xuống. Ảnh được xử lý ngay trên thiết bị của bạn.</p>
-              <Link to="/watermark/auto" className="wma-entry-link">
-                Watermark tự động theo thư mục sản phẩm <span aria-hidden="true">→</span>
-              </Link>
+              {hasProAccess(profile) && (
+                <Link to="/watermark/auto" className="wma-entry-link">
+                  Watermark tự động theo thư mục sản phẩm <span aria-hidden="true">→</span>
+                </Link>
+              )}
             </div>
             <div className="wm-heading-side">
               <WatermarkStatsStrip

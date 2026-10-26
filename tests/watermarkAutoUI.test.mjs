@@ -246,3 +246,38 @@ test('a missing logo blocks the run', async () => {
   assert.match(document.querySelector('.wma-blockers').textContent, /Chọn logo/);
   assert.equal(button('Bắt đầu xử lý').disabled, true);
 });
+
+test('only admins and Pro+ plans pass the /watermark/auto gate', async () => {
+  const { default: ProPlanRoute } = await import('../src/components/ProPlanRoute.jsx');
+  const { hasProAccess } = await import('../src/utils/userProfile.js');
+  const id = USER.user.id;
+  const cases = [
+    [{ role: 'user', plan: 'free', status: 'active' }, false],
+    [{ role: 'user', plan: null, status: 'active' }, false],
+    [{ role: 'user', plan: 'pro', status: 'active' }, true],
+    [{ role: 'user', plan: 'enterprise', status: 'active' }, true],
+    [{ role: 'admin', plan: 'free', status: 'active' }, true],
+    [{ role: 'user', plan: 'pro', status: 'suspended' }, false],
+    [{ role: 'admin', plan: 'pro', status: 'suspended' }, false],
+  ];
+  for (const [profile, allowed] of cases) {
+    assert.equal(hasProAccess({ id, ...profile }), allowed, JSON.stringify(profile));
+    root = createRoot(document.querySelector('#root'));
+    await act(async () => {
+      root.render(React.createElement(AuthContext.Provider, { value: { ...USER, profile: { id, ...profile }, isProfileLoading: false } },
+        React.createElement(MemoryRouter, { initialEntries: ['/watermark/auto'] },
+          React.createElement(Routes, null,
+            React.createElement(Route, { path: '/watermark/auto', element: React.createElement(ProPlanRoute, { title: 'Cần gói Pro.', description: 'x', backTo: '/watermark', backLabel: 'Quay lại Watermark' }, React.createElement('h1', null, 'Trang tự động')) }),
+            React.createElement(Route, { path: '/watermark', element: React.createElement('h1', null, 'Trang watermark') }),
+          ))));
+    });
+    assert.equal(/Trang tự động/.test(text()), allowed, JSON.stringify(profile));
+    if (!allowed) {
+      assert.match(text(), /Cần gói Pro/);
+      await click(button('Quay lại Watermark'));
+      assert.match(text(), /Trang watermark/);
+    }
+    await act(async () => { root.unmount(); });
+    root = null;
+  }
+});

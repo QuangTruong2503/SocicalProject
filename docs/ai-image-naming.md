@@ -26,7 +26,7 @@ Mẫu dành riêng cho website: [prompt-ai-image-naming.md](prompt-ai-image-nami
 | Ảnh mỗi request | 6 |
 | Data URL mỗi ảnh / body | 450.000 / 3.000.000 ký tự |
 | Tên sản phẩm / prompt | 150 / 10.000 ký tự |
-| Mỗi người dùng trong 10 phút | 40 request, 150 ảnh (mặc định, chỉnh ở /admin/usage) |
+| Mỗi người dùng trong 10 phút | 40 request, 150 ảnh (mặc định, chỉnh ở /admin/usage) — chỉ tài khoản Free; admin và gói Pro trở lên được miễn |
 | Request đồng thời | 2 mỗi người dùng, 8 toàn hệ thống (dùng chung mọi instance) |
 | Timeout OpenAI | 45 giây mỗi lần, tối đa 3 lần |
 

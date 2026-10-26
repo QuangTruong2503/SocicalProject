@@ -16,8 +16,8 @@ const PLAN_ROWS = [
 
 const LIMIT_FIELDS = [
   { key: 'window_seconds', label: 'Cửa sổ tần suất (giây)', min: 60, max: 86400 },
-  { key: 'max_requests_per_window', label: 'Request tối đa / cửa sổ / người', min: 1, max: 10000 },
-  { key: 'max_images_per_window', label: 'Ảnh tối đa / cửa sổ / người', min: 1, max: 100000 },
+  { key: 'max_requests_per_window', label: 'Request tối đa / cửa sổ / người (chỉ gói Free)', min: 1, max: 10000 },
+  { key: 'max_images_per_window', label: 'Ảnh tối đa / cửa sổ / người (chỉ gói Free)', min: 1, max: 100000 },
   { key: 'max_concurrent_per_user', label: 'Request đồng thời / người', min: 1, max: 50 },
   { key: 'max_concurrent_total', label: 'Request đồng thời toàn hệ thống', min: 1, max: 1000 },
   { key: 'lease_ttl_seconds', label: 'Coi là treo sau (giây)', min: 60, max: 3600 },

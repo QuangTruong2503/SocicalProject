@@ -4,7 +4,7 @@
 
 ## Cách dùng
 
-1. Mở từ `/watermark` (liên kết “Watermark tự động theo thư mục sản phẩm”) hoặc vào thẳng `/watermark/auto`. Cần đăng nhập và có quyền Đặt tên AI.
+1. Mở từ `/watermark` (liên kết “Watermark tự động theo thư mục sản phẩm”) hoặc vào thẳng `/watermark/auto`. **Chỉ admin và tài khoản gói Pro/Enterprise đang hoạt động** được vào (`ProPlanRoute`, `hasProAccess`); tài khoản khác không thấy liên kết và gặp màn hình “Cần gói Pro”. Vẫn cần quyền Đặt tên AI (model theo gói).
 2. **Thêm thư mục sản phẩm** (mỗi lần một thư mục) hoặc **Chọn thư mục cha** (mỗi thư mục con trực tiếp là một sản phẩm). Tên thư mục là tên sản phẩm gửi cho AI.
 3. Chọn logo (bắt buộc), chỉnh logo như trang Watermark, chọn **Kích thước ảnh xuất** (800 × 600 px hoặc Kích thước gốc) và model. Prompt nằm trong **Nâng cao**, dùng chung với trang Watermark.
 4. **Bắt đầu xử lý**. Có **Dừng**, **Tiếp tục phần còn lại**, **Thử lại ảnh lỗi**; kết thúc có báo cáo sao chép / CSV / JSON (chỉ tạo trên máy).
@@ -17,7 +17,7 @@ Ví dụ: `SanPham/Máy khoan Bosch GSB 13 RE/IMG_001.jpg` → `SanPham/Máy kho
 - Ảnh nguồn không bị đổi tên, di chuyển, ghi đè hay xóa. `Named` chỉ được tạo khi lưu ảnh đầu tiên; nếu đã có `named`/`NAMED` thì dùng lại. Một file tên `Named` chặn sản phẩm đó với thông báo rõ.
 - Tên file: `slug-ten-san-pham-mo-ta.jpg`. Trùng (kể cả với file đã có, khác hoa/thường) → `-2`, `-3`… theo thứ tự ảnh nguồn; kiểm tra lại ngay trước khi tạo file, không bao giờ ghi lên file có sẵn. Ảnh AI không nhận diện rõ → `slug-ten-san-pham-001.jpg`, gắn **Cần kiểm tra**, vẫn lưu.
 - 800 × 600: chèn logo trên ảnh gốc rồi letterbox nền trắng (logo không nằm trên lề trắng). Kích thước gốc: không thu nhỏ (bỏ giới hạn 4096 px chỉ cho chế độ này, cả worker lẫn fallback), đúng hướng EXIF; ảnh vượt khả năng canvas của máy báo lỗi và gợi ý dùng 800 × 600. Ảnh xuất luôn là JPEG, nền trắng cho ảnh trong suốt.
-- Hàng đợi: từng sản phẩm một, mỗi request ≤ giới hạn endpoint (6 ảnh) và chỉ một sản phẩm, một request AI tại một thời điểm. Không có giới hạn 60 ảnh/lượt như hộp thoại thủ công; quota/rate limit vẫn do server quyết định.
+- Hàng đợi: từng sản phẩm một, mỗi request ≤ giới hạn endpoint (6 ảnh) và chỉ một sản phẩm, một request AI tại một thời điểm. Không có giới hạn 60 ảnh/lượt như hộp thoại thủ công, và người dùng của trang (admin, Pro trở lên) được server miễn cửa sổ tần suất 40 request / 150 ảnh mỗi 10 phút. Giới hạn đồng thời, quota ngày/tháng (khi admin bật) và công tắc dừng AI vẫn áp dụng; trang vẫn tạm dừng đúng cách nếu server trả `rate_limited`.
 - AI nhận bản thu nhỏ ≤ 512 px **của ảnh gốc chưa có logo**. Kết quả ghép theo ID, không theo thứ tự.
 
 ## Lỗi, dừng, thử lại

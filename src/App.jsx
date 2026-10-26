@@ -20,6 +20,7 @@ const AuthCallbackPage = lazy(() => import('./pages/AuthCallbackPage.jsx'));
 const DashboardPage = lazy(() => import('./pages/Dashboard/DashboardPage.jsx'));
 import ProtectedRoute from './components/ProtectedRoute.jsx';
 import AdminRoute from './components/AdminRoute.jsx';
+import ProPlanRoute from './components/ProPlanRoute.jsx';
 import PublicRoute from './components/PublicRoute.jsx';
 const AdminLayout = lazy(() => import('./pages/Admin/AdminLayout.jsx'));
 const AdminDashboardPage = lazy(() => import('./pages/Admin/AdminDashboardPage.jsx'));
@@ -191,9 +192,18 @@ const protectedRouteConfigs = [
   },
   {
     path: '/watermark/auto',
-    element: <WatermarkAuto />,
+    element: (
+      <ProPlanRoute
+        title="Watermark tự động dành cho gói Pro trở lên."
+        description="Trang này chỉ mở cho quản trị viên và tài khoản gói Pro hoặc Enterprise. Bạn vẫn dùng được trang Watermark thông thường."
+        backTo="/watermark"
+        backLabel="Quay lại Watermark"
+      >
+        <WatermarkAuto />
+      </ProPlanRoute>
+    ),
     title: 'Watermark tự động cần đăng nhập.',
-    description: 'Trang này đặt tên ảnh bằng AI theo quyền của tài khoản và lưu kết quả vào thư mục trên máy bạn.',
+    description: 'Dành cho quản trị viên và tài khoản gói Pro trở lên: đặt tên ảnh bằng AI và lưu kết quả vào thư mục trên máy bạn.',
     details: [
       'Chèn logo cho cả thư mục sản phẩm',
       'Đặt tên ảnh bằng AI theo tên thư mục',

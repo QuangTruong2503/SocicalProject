@@ -6,6 +6,7 @@ export default function AccessGateModal({
   details = [],
   primaryActionLabel = 'Đăng nhập ngay',
   secondaryActionLabel = 'Quay về trang chủ',
+  badge = 'Cần đăng nhập',
   onPrimaryAction,
   onSecondaryAction,
 }) {
@@ -20,7 +21,7 @@ export default function AccessGateModal({
   return (
     <div className="auth-access-backdrop" role="presentation">
       <section className="auth-access-modal" role="dialog" aria-modal="true" aria-labelledby="auth-access-title">
-        <div className="auth-access-badge">Cần đăng nhập</div>
+        <div className="auth-access-badge">{badge}</div>
         <h1 id="auth-access-title">{title}</h1>
         <p>{description}</p>
 

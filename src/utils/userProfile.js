@@ -75,6 +75,18 @@ export const PLAN_OPTIONS = [
 
 const PLAN_LABELS = Object.fromEntries(PLAN_OPTIONS.map((option) => [option.value, option.label]));
 
+// Same order as public.plan_rank(); unknown plans rank below Free.
+const PLAN_RANK = { free: 0, pro: 1, enterprise: 2 };
+
+/**
+ * Admin, or an active account on Pro or higher. Same rule as
+ * usage_private.rate_window_exempt (the server decides on every AI request).
+ */
+export function hasProAccess(profile) {
+  if (!profile || profile.status === 'suspended') return false;
+  return profile.role === 'admin' || (PLAN_RANK[profile.plan || 'free'] ?? -1) >= PLAN_RANK.pro;
+}
+
 export function getPlanLabel(plan) {
   return PLAN_LABELS[plan || 'free'] || plan;
 }
