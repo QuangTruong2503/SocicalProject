@@ -183,7 +183,7 @@ export default function WatermarkAuto() {
     onSegmentEnd: handleSegmentEnd,
     onAccessRejected: aiAccess.reportRejection,
   });
-  const { products, run, notices, picking, support } = snapshot;
+  const { products, run, notices, picking, granting, support } = snapshot;
   const locked = run?.state === 'running' || run?.state === 'stopping';
   const now = useTicker(Boolean(run?.pause?.until));
 
@@ -279,7 +279,7 @@ export default function WatermarkAuto() {
   else if (!selectedModel) blockers.push('Chưa có model AI được cấp quyền.');
   if (prompt.length > IMAGE_NAME_LIMITS.maxPromptLength) blockers.push(`Prompt tối đa ${IMAGE_NAME_LIMITS.maxPromptLength} ký tự.`);
   if (!engine || !optionsHydrated) blockers.push('Đang chuẩn bị bộ xử lý ảnh…');
-  const canStart = blockers.length === 0 && !locked && !picking && !starting;
+  const canStart = blockers.length === 0 && !locked && !picking && !granting && !starting;
 
   const handleStart = async () => {
     if (!canStart) return;
@@ -376,15 +376,18 @@ export default function WatermarkAuto() {
               products={products}
               notices={notices}
               picking={picking}
+              granting={granting}
               locked={locked}
               supported={support.supported}
               onAddProduct={() => runner.addProductFolder()}
+              onDropFolders={(dataTransfer) => runner.addDroppedFolders(dataTransfer)}
               onAddParent={() => runner.addParentFolder()}
               onClear={() => runner.clearProducts()}
               onRemove={(id) => runner.removeProduct(id)}
               onToggle={(id, selected) => runner.setSelected(id, selected)}
               onToggleAll={(selected) => runner.setAllSelected(selected)}
               onRequestPermission={(id) => runner.requestPermission(id)}
+              onRequestAllPermissions={() => runner.requestAllPermissions()}
               onRescan={(id) => runner.rescanProduct(id)}
               onDismissNotice={(id) => runner.dismissNotice(id)}
             />
@@ -504,6 +507,7 @@ export default function WatermarkAuto() {
 
             <AutoProcessingProgress
               run={run}
+              busy={picking || granting}
               runProducts={runProducts}
               canStart={canStart}
               blockers={blockers}

@@ -409,6 +409,38 @@ test('start re-checks permission and session and refuses folder names over the b
   assert.deepEqual(await noSession.start(CONFIG), { ok: false, reason: 'auth' });
 });
 
+test('bulk requests begin within the same click and block concurrent picking, processing, or another grant', async () => {
+  const folders = ['A', 'B'].map((name) => makeTree(name, imagesSpec(1)));
+  const gate = deferred();
+  let activeClick = true;
+  const requests = [];
+  const { runner, snap } = setup({ picks: [...folders] });
+  for (const folder of folders) {
+    folder.fs.permission = 'prompt';
+    folder.requestPermission = async () => {
+      assert.equal(activeClick, true, 'request before awaiting any other permission prompt');
+      requests.push(folder.name);
+      await gate.promise;
+      folder.permission = 'granted';
+      return 'granted';
+    };
+    await runner.addProductFolder();
+  }
+  const pending = runner.requestAllPermissions();
+  activeClick = false;
+  assert.deepEqual(requests, ['A', 'B']);
+  assert.equal(snap().granting, true);
+  assert.equal(await runner.requestAllPermissions(), null);
+  assert.equal(await runner.addProductFolder(), null);
+  assert.deepEqual(await runner.start(CONFIG), { ok: false, reason: 'busy' });
+  gate.resolve();
+  assert.deepEqual(await pending, { requested: 2, granted: 2, remaining: 0 });
+  assert.equal(snap().granting, false);
+  assert.ok(snap().products.every((product) => product.permission === 'granted'));
+  assert.deepEqual(await runner.requestAllPermissions(), { requested: 0, granted: 0, remaining: 0 });
+  assert.deepEqual(requests, ['A', 'B']);
+});
+
 test('choosing Named itself, an empty folder or cancelling the dialog', async () => {
   const root = makeTree('P', { Named: { 'x.jpg': JPEG }, Empty: { 'a.txt': [65] } });
   const { runner, snap } = setup({ picks: [root.file('Named').handle, root.file('Empty').handle] });

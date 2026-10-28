@@ -1,6 +1,6 @@
 /**
  * Folder access for /watermark/auto (File System Access API, Chrome/Edge desktop).
- * Every handle comes from a directory picker the user opened; nothing here
+ * Every handle comes from a picker or folders the user dropped; nothing here
  * walks the disk on its own. Product folders are read one level deep, results
  * go to "<product>/Named". Source files are only read, never renamed or written.
  */
@@ -59,6 +59,32 @@ export async function pickDirectory(win = globalThis.window) {
   }
 }
 
+/** Capture every handle during the drop event, before its data store expires. */
+export async function getDroppedDirectories(dataTransfer) {
+  const items = Array.from(dataTransfer?.items ?? []).filter((item) => item.kind === 'file');
+  if (!items.length || items.some((item) => typeof item.getAsFileSystemHandle !== 'function')) {
+    throw new FolderAccessError('drop_unsupported', 'Không đọc được thư mục kéo thả trên trình duyệt này. Hãy dùng “Chọn thư mục cha” hoặc “Thêm thư mục sản phẩm”.');
+  }
+  const pending = items.map((item) => {
+    try {
+      return item.getAsFileSystemHandle();
+    } catch (error) {
+      return Promise.reject(error);
+    }
+  });
+  const results = await Promise.allSettled(pending);
+  const handles = [];
+  let ignoredFiles = 0;
+  let failed = 0;
+  for (const result of results) {
+    if (result.status === 'rejected' || !result.value) failed += 1;
+    else if (result.value.kind === 'directory') handles.push(result.value);
+    else ignoredFiles += 1;
+  }
+  handles.sort((a, b) => naturalCompare(a.name, b.name));
+  return { handles, ignoredFiles, failed };
+}
+
 /**
  * 'granted' | 'prompt' | 'denied'. `request: true` may show the browser's
  * permission prompt, so it is only used from a button the user pressed.
@@ -72,6 +98,18 @@ export async function getWritePermission(handle, { request = false } = {}) {
     if (state === 'granted' || !request) return state;
     if (typeof handle.requestPermission !== 'function') return state;
     return await handle.requestPermission(descriptor);
+  } catch {
+    return 'denied';
+  }
+}
+
+/** Request directly during the click, so a batch starts before user activation expires. */
+export async function requestWritePermission(handle) {
+  try {
+    if (typeof handle?.requestPermission === 'function') {
+      return await handle.requestPermission({ mode: 'readwrite' });
+    }
+    return await getWritePermission(handle);
   } catch {
     return 'denied';
   }

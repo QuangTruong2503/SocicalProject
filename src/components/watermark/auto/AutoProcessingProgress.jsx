@@ -69,6 +69,7 @@ function ProductDetails({ product }) {
  */
 export default function AutoProcessingProgress({
   run,
+  busy = false,
   runProducts,
   canStart,
   blockers,
@@ -111,12 +112,12 @@ export default function AutoProcessingProgress({
         ) : (
           <>
             {run?.state === 'paused' && run.pending > 0 && (
-              <button type="button" className="wm-btn-primary" onClick={onResume} disabled={waitMs > 0}>
+              <button type="button" className="wm-btn-primary" onClick={onResume} disabled={busy || waitMs > 0}>
                 Tiếp tục phần còn lại ({run.pending})
               </button>
             )}
             {finishedOrPaused && run.retryableErrors > 0 && (
-              <button type="button" className="wm-btn-outline" onClick={onRetry} disabled={waitMs > 0}>
+              <button type="button" className="wm-btn-outline" onClick={onRetry} disabled={busy || waitMs > 0}>
                 Thử lại ảnh lỗi ({run.retryableErrors})
               </button>
             )}

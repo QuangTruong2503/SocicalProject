@@ -27,6 +27,16 @@ async function settle(ms = 30) { await act(async () => { await new Promise((reso
 const text = () => document.body.textContent;
 const button = (label) => [...document.querySelectorAll('button')].find((item) => item.textContent.trim().startsWith(label));
 async function click(element) { assert.ok(element, 'control exists'); await act(async () => { element.click(); }); await settle(); }
+async function dropFolders(items) {
+  const event = new dom.window.Event('drop', { bubbles: true, cancelable: true });
+  Object.defineProperty(event, 'dataTransfer', { value: { items } });
+  await act(async () => {
+    document.querySelector('.wma-folder-drop').dispatchEvent(event);
+  });
+  assert.equal(event.defaultPrevented, true, 'prevent the browser from opening dropped files');
+  await settle();
+}
+const droppedItem = (handle) => ({ kind: 'file', getAsFileSystemHandle: async () => handle });
 async function waitFor(predicate, message, timeout = 3000) {
   const started = Date.now();
   while (!predicate()) {
@@ -172,6 +182,54 @@ test('parent folder → AI names per folder → files in each Named, with summar
   for (const secret of ['Máy', 'IMG_', 'may-khoan', 'SanPham', 'Prompt']) assert.ok(!serialized.includes(secret), `no ${secret} in telemetry`);
 });
 
+test('drop multiple folders: deduplicate by handle, retain equal names, grant write access and save each Named', async () => {
+  const first = makeTree('Máy khoan', imagesSpec(1));
+  const second = makeTree('Máy khoan', imagesSpec(1));
+  second.fs.permission = 'prompt';
+  const unreadable = makeTree('Không đọc được', {});
+  unreadable.values = async function* () { throw new DOMException('lost', 'NotFoundError'); };
+  picks.push(first);
+  await render();
+  await click(button('Thêm thư mục sản phẩm'));
+  await dropFolders([
+    droppedItem(first), droppedItem(second), droppedItem(second),
+    droppedItem(makeTree('Named', imagesSpec(1))),
+    droppedItem(first.file('IMG_1.jpg').handle), droppedItem(unreadable),
+    { kind: 'file', getAsFileSystemHandle: async () => { throw new Error('unreadable'); } },
+  ]);
+  await waitFor(() => /2 sản phẩm · 2 ảnh đã chọn/.test(text()), 'both distinct folders selected');
+  assert.equal(document.querySelectorAll('.wma-product').length, 2);
+  assert.match(text(), /2 thư mục đã có trong danh sách/);
+  assert.match(text(), /Bỏ qua 1 thư mục kết quả/);
+  assert.match(text(), /Bỏ qua 1 file được thả riêng/);
+  assert.match(text(), /Không đọc được thư mục “Không đọc được”/);
+  assert.match(text(), /Không đọc được 1 mục kéo thả/);
+  assert.equal(button('Bắt đầu xử lý').disabled, true, 'dropped read-only handle must be granted');
+  assert.deepEqual(second.fs.requests, [], 'never prompt from a background scan');
+  second.fs.grantOnRequest = true;
+  await click(button('Cấp quyền'));
+  await waitFor(() => !button('Bắt đầu xử lý').disabled, 'granted');
+  await click(button('Bắt đầu xử lý'));
+  await waitFor(() => /Hoàn tất/.test(document.querySelector('.wma-summary')?.textContent || ''), 'finished');
+  assert.equal(first.file('Named').handle.children.size, 1);
+  assert.equal(second.file('Named').handle.children.size, 1);
+  assert.equal(fetchCalls.length, 2);
+});
+
+test('unsupported or file-only drops keep existing folders and leave the picker usable', async () => {
+  const folder = makeTree('Máy khoan', imagesSpec(1));
+  picks.push(folder);
+  await render();
+  await click(button('Thêm thư mục sản phẩm'));
+  await dropFolders([{ kind: 'file' }]);
+  assert.match(text(), /Không đọc được thư mục kéo thả trên trình duyệt này/);
+  assert.equal(document.querySelectorAll('.wma-product').length, 1);
+  assert.equal(button('Thêm thư mục sản phẩm').disabled, false);
+  await dropFolders([droppedItem(folder.file('IMG_1.jpg').handle)]);
+  assert.match(text(), /Bỏ qua 1 file được thả riêng/);
+  assert.equal(document.querySelectorAll('.wma-product').length, 1);
+});
+
 test('missing permission blocks start until the folder is granted from its button', async () => {
   const folder = makeTree('Máy khoan', imagesSpec(1));
   folder.fs.permission = 'prompt';
@@ -185,6 +243,94 @@ test('missing permission blocks start until the folder is granted from its butto
   await click(button('Cấp quyền'));
   await waitFor(() => /Quyền ghi: đã cấp/.test(text()), 'granted');
   assert.deepEqual(folder.fs.requests, ['Máy khoan']);
+  assert.equal(button('Bắt đầu xử lý').disabled, false);
+});
+
+test('entry and folder selection never show an app permission modal, including with an old declined decision', async () => {
+  localStorage.setItem('watermark_auto_write_consent', 'denied');
+  const folder = makeTree('Máy khoan', imagesSpec(1));
+  picks.push(folder);
+  await render();
+  assert.equal(document.querySelector('[role="dialog"]'), null);
+  assert.equal(picks.length, 1, 'no native picker opens on entry');
+  await click(button('Thêm thư mục sản phẩm'));
+  assert.equal(document.querySelector('[role="dialog"]'), null);
+  assert.equal(button('Bắt đầu xử lý').disabled, false, 'old consent storage cannot block actual directory access');
+  assert.deepEqual(folder.fs.requests, []);
+});
+
+test('bulk permission replaces individual buttons, skips granted or ineligible folders, and enables processing', async () => {
+  const folders = ['Máy khoan', 'Máy mài', 'Đã cấp quyền', 'Trống'].map((name) => makeTree(name, name === 'Trống' ? {} : imagesSpec(1)));
+  for (const folder of folders) {
+    folder.fs.permission = folder.name === 'Đã cấp quyền' ? 'granted' : 'prompt';
+    folder.fs.grantOnRequest = true;
+  }
+  await render();
+  assert.equal(button('Cấp quyền toàn bộ'), undefined);
+  await dropFolders(folders.map(droppedItem));
+  assert.equal(document.querySelector('[role="dialog"]'), null);
+  assert.ok(button('Cấp quyền toàn bộ'));
+  assert.equal([...document.querySelectorAll('.wma-product-actions button')].filter((item) => item.textContent.trim() === 'Cấp quyền').length, 0);
+  assert.ok(folders.every((folder) => folder.fs.requests.length === 0), 'scanning never requests write access');
+  assert.equal(button('Bắt đầu xử lý').disabled, true);
+  await click(button('Cấp quyền toàn bộ'));
+  assert.equal(button('Cấp quyền toàn bộ'), undefined);
+  assert.equal(button('Bắt đầu xử lý').disabled, false);
+  assert.match(text(), /Đã cấp quyền ghi cho 2\/2 thư mục/);
+  assert.deepEqual(folders.map((folder) => folder.fs.requests.length), [1, 1, 0, 0]);
+});
+
+test('bulk permission isolates refusals and errors, retries only missing grants, then falls back to one folder button', async () => {
+  const folders = ['A', 'B', 'C'].map((name) => makeTree(name, imagesSpec(1)));
+  for (const folder of folders) folder.fs.permission = 'prompt';
+  folders[0].fs.grantOnRequest = true;
+  const originalRequest = folders[2].requestPermission;
+  folders[2].requestPermission = async () => { throw new DOMException('blocked', 'SecurityError'); };
+  await render();
+  await dropFolders(folders.map(droppedItem));
+  await click(button('Cấp quyền toàn bộ'));
+  assert.match(text(), /Đã cấp quyền ghi cho 1\/3 thư mục/);
+  assert.match(text(), /Còn 2 thư mục chưa được cấp quyền ghi/);
+  assert.ok(button('Cấp quyền toàn bộ'));
+  assert.equal(button('Bắt đầu xử lý').disabled, true);
+  folders[1].fs.grantOnRequest = true;
+  await click(button('Cấp quyền toàn bộ'));
+  assert.equal(button('Cấp quyền toàn bộ'), undefined, 'only one folder remains');
+  assert.equal(button('Bắt đầu xử lý').disabled, true);
+  assert.deepEqual(folders[0].fs.requests, ['A'], 'granted folders are not requested again');
+  folders[2].requestPermission = originalRequest;
+  folders[2].fs.grantOnRequest = true;
+  await click(button('Cấp quyền'));
+  assert.equal(button('Bắt đầu xử lý').disabled, false);
+  assert.equal(document.querySelector('[role="dialog"]'), null);
+});
+
+test('bulk permission shows progress and locks folder actions until native prompts finish', async () => {
+  const folders = ['A', 'B'].map((name) => makeTree(name, imagesSpec(1)));
+  let release;
+  const gate = new Promise((resolve) => { release = resolve; });
+  for (const folder of folders) {
+    folder.fs.permission = 'prompt';
+    folder.requestPermission = async () => {
+      await gate;
+      folder.permission = 'granted';
+      return 'granted';
+    };
+  }
+  await render();
+  await dropFolders(folders.map(droppedItem));
+  await click(button('Cấp quyền toàn bộ'));
+  try {
+    assert.equal(button('Đang cấp quyền…').disabled, true);
+    assert.equal(button('Thêm thư mục sản phẩm').disabled, true);
+    assert.equal(button('Xóa danh sách').disabled, true);
+    assert.equal(button('Bắt đầu xử lý').disabled, true);
+    assert.equal(document.querySelector('.wma-folder-drop').getAttribute('aria-disabled'), 'true');
+  } finally {
+    await act(async () => release());
+    await settle();
+  }
+  assert.equal(button('Thêm thư mục sản phẩm').disabled, false);
   assert.equal(button('Bắt đầu xử lý').disabled, false);
 });
 
@@ -210,6 +356,9 @@ test('stop while AI is working, then resume with the captured configuration; con
   await waitFor(() => fetchCalls.length === 2, 'second batch in flight');
   assert.ok(document.querySelector('.wma-config').hasAttribute('inert'), 'configuration locked');
   assert.equal(button('Thêm thư mục sản phẩm').disabled, true);
+  assert.equal(document.querySelector('.wma-folder-drop').getAttribute('aria-disabled'), 'true');
+  await dropFolders([droppedItem(makeTree('Không thêm khi đang chạy', imagesSpec(1)))]);
+  assert.equal(document.querySelectorAll('.wma-product').length, 1);
   await click(button('Dừng'));
   await waitFor(() => /Đã dừng/.test(text()), 'stopped');
   release();

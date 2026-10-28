@@ -38,6 +38,18 @@
 .wma-page .wma-btn-quiet { margin-left: auto; }
 .wma-page .wm-btn-outline:disabled { cursor: not-allowed; opacity: 0.5; transform: none; }
 
+.wma-page .wma-folder-drop {
+  padding: 20px;
+  border: 2px dashed var(--wm-border-strong);
+  border-radius: var(--wm-radius-sm);
+  background: var(--wm-bg-soft);
+  color: var(--wm-text);
+  text-align: center;
+}
+.wma-page .wma-folder-drop p { margin: 8px 0 0; color: var(--wm-text-muted); font-size: 0.88rem; line-height: 1.55; }
+.wma-page .wma-folder-drop.is-dragging { border-color: var(--wm-primary); background: var(--wm-primary-soft); }
+.wma-page .wma-folder-drop[aria-disabled="true"] { opacity: 0.5; }
+
 .wma-page .wma-hint { margin: 0; color: var(--wm-text-muted); font-size: 0.88rem; line-height: 1.55; }
 .wma-page .wma-hint code {
   padding: 0.05rem 0.35rem;

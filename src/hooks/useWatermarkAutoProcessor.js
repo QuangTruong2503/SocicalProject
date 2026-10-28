@@ -9,12 +9,14 @@ import {
 import {
   classifyFileError,
   createNamedFolderWriter,
+  getDroppedDirectories,
   getFolderAccessSupport,
   getWritePermission,
   isResultFolderName,
   isSameFolder,
   pickDirectory,
   readSourceFile,
+  requestWritePermission,
   scanParentFolder,
   scanProductFolder,
 } from '../utils/productFolderAccess.js';
@@ -76,6 +78,7 @@ function renderErrorCode(error, outputSize) {
 const defaultDeps = {
   pickDirectory: () => pickDirectory(),
   getWritePermission,
+  requestWritePermission,
   scanProductFolder,
   scanParentFolder,
   readSourceFile,
@@ -106,6 +109,7 @@ export function createAutoRunner(overrides = {}) {
   let notices = [];
   let noticeSeq = 0;
   let picking = false;
+  let granting = false;
   let disposed = false;
   let snapshot = null;
   let emitTimer = null;
@@ -201,7 +205,7 @@ export function createAutoRunner(overrides = {}) {
       };
     }
 
-    return { version, products: productList, run: runView, notices, picking, support: deps.getSupport() };
+    return { version, products: productList, run: runView, notices, picking, granting, support: deps.getSupport() };
   }
 
   // ── folders ────────────────────────────────────────────────────────
@@ -264,7 +268,7 @@ export function createAutoRunner(overrides = {}) {
   }
 
   async function withPicker(task) {
-    if (picking || isLocked() || disposed) return null;
+    if (picking || granting || isLocked() || disposed) return null;
     picking = true;
     emitNow();
     try {
@@ -301,6 +305,51 @@ export function createAutoRunner(overrides = {}) {
       ]);
       return { added: 1 };
     });
+  }
+
+  /** Multiple folders dropped together, retaining writable directory handles. */
+  function addDroppedFolders(dataTransfer) {
+    return withPicker(() => importProductFolders(getDroppedDirectories(dataTransfer)));
+  }
+
+  async function importProductFolders(folderResult) {
+      const { handles, ignoredFiles, failed } = await folderResult;
+      let added = 0;
+      let duplicates = 0;
+      let resultFolders = 0;
+      const warnings = [];
+      for (const handle of handles) {
+        if (disposed) break;
+        if (isResultFolderName(handle.name)) {
+          resultFolders += 1;
+          continue;
+        }
+        if (await findDuplicate(handle)) {
+          duplicates += 1;
+          continue;
+        }
+        try {
+          const permission = await deps.getWritePermission(handle);
+          const scan = await deps.scanProductFolder(handle, { relativePath: handle.name });
+          if (disposed) break;
+          const product = await addScanned(scan, { permission });
+          added += 1;
+          if (!product.imageIds.length) warnings.push({ tone: 'warning', text: `“${product.name}” không có ảnh JPG, PNG hoặc WebP hợp lệ nằm trực tiếp trong thư mục.` });
+          if (scan.nestedFolders > 0) warnings.push({ tone: 'info', text: `Bỏ qua ${scan.nestedFolders} thư mục con trong “${product.name}”. Chỉ xử lý ảnh nằm trực tiếp trong thư mục sản phẩm.` });
+        } catch {
+          warnings.push({ tone: 'error', text: `Không đọc được thư mục “${handle.name}”. Hãy thử thêm lại thư mục này.` });
+        }
+      }
+      if (disposed) return null;
+      setNotices([
+        { tone: added ? 'success' : 'warning', text: added ? `Đã thêm ${added} sản phẩm.` : 'Chưa thêm được thư mục sản phẩm mới. Hãy kéo thả thư mục chứa ảnh sản phẩm.' },
+        duplicates > 0 && { tone: 'info', text: `${duplicates} thư mục đã có trong danh sách nên không thêm lại.` },
+        resultFolders > 0 && { tone: 'info', text: `Bỏ qua ${resultFolders} thư mục kết quả “Named”. Hãy chọn thư mục sản phẩm chứa nó.` },
+        ignoredFiles > 0 && { tone: 'info', text: `Bỏ qua ${ignoredFiles} file được thả riêng. Hãy chọn thư mục chứa ảnh sản phẩm.` },
+        failed > 0 && { tone: 'error', text: `Không đọc được ${failed} mục kéo thả. Hãy thử thêm lại các thư mục này.` },
+        ...warnings,
+      ]);
+      return { added };
   }
 
   /** "Chọn thư mục cha": each direct sub-folder is a product. */
@@ -379,18 +428,60 @@ export function createAutoRunner(overrides = {}) {
 
   /** From a button: may show the browser's permission prompt for this one folder. */
   async function requestPermission(id) {
+    if (granting || picking || isLocked() || disposed) return 'denied';
     const product = products.get(id);
     if (!product) return 'denied';
-    const permission = await deps.getWritePermission(product.handle, { request: true });
-    const current = products.get(id);
-    if (!current) return permission;
-    products.set(id, {
-      ...current,
-      permission,
-      blocked: permission === 'granted' && current.blocked?.code === 'permission' ? null : current.blocked,
-    });
+    granting = true;
     emitNow();
-    return permission;
+    try {
+      const permission = await deps.getWritePermission(product.handle, { request: true });
+      if (!disposed) await refreshPermissions();
+      return permission;
+    } finally {
+      granting = false;
+      emitNow();
+    }
+  }
+
+  /** All missing grants start in the same click; native browser prompts may remain separate. */
+  async function requestAllPermissions() {
+    if (granting || picking || isLocked() || disposed) return null;
+    const pending = [...products.values()].filter((product) => product.permission !== 'granted' && product.imageIds.length > 0 && !product.nameError && !product.namedIsFile);
+    if (!pending.length) return { requested: 0, granted: 0, remaining: 0 };
+    granting = true;
+    emitNow();
+    try {
+      // Do not await one prompt before launching the next request: activation can expire.
+      await Promise.allSettled(pending.map(async (product) => deps.requestWritePermission(product.handle)));
+      if (disposed) return null;
+      await refreshPermissions();
+      if (disposed) return null;
+      const granted = pending.filter((product) => products.get(product.id)?.permission === 'granted').length;
+      const remaining = pending.length - granted;
+      setNotices([
+        { tone: remaining ? 'warning' : 'success', text: `Đã cấp quyền ghi cho ${granted}/${pending.length} thư mục.` },
+        remaining > 0 && { tone: 'warning', text: `Còn ${remaining} thư mục chưa được cấp quyền ghi. Bạn có thể thử cấp quyền lại.` },
+      ]);
+      return { requested: pending.length, granted, remaining };
+    } finally {
+      granting = false;
+      emitNow();
+    }
+  }
+
+  /** Recheck inherited grants without opening any browser permission prompts. */
+  async function refreshPermissions() {
+    for (const product of products.values()) {
+      const permission = await deps.getWritePermission(product.handle);
+      if (disposed) return;
+      const current = products.get(product.id);
+      if (current) products.set(product.id, {
+        ...current,
+        permission,
+        blocked: permission === 'granted' && current.blocked?.code === 'permission' ? null : current.blocked,
+      });
+    }
+    emitNow();
   }
 
   /** Reads the folder again (after files changed); its results in this session start over. */
@@ -702,7 +793,7 @@ export function createAutoRunner(overrides = {}) {
    * @param {{ renderOptions: object, outputSize: 'original' | '800x600', model: string, prompt: string }} config
    */
   async function start(config) {
-    if (isLocked() || picking || disposed) return { ok: false, reason: 'busy' };
+    if (isLocked() || picking || granting || disposed) return { ok: false, reason: 'busy' };
     if (!deps.engine) return { ok: false, reason: 'engine' };
     const ready = [...products.values()].filter((product) => product.selected && product.imageIds.length && !product.nameError && !product.namedIsFile);
     if (!ready.length) return { ok: false, reason: 'no_images' };
@@ -755,7 +846,7 @@ export function createAutoRunner(overrides = {}) {
 
   /** "Tiếp tục phần còn lại": same configuration, only unfinished images. */
   function resume() {
-    if (!run || isLocked() || disposed) return { ok: false, reason: 'busy' };
+    if (!run || isLocked() || picking || granting || disposed) return { ok: false, reason: 'busy' };
     if (run.pause?.until && run.pause.until > deps.now()) return { ok: false, reason: 'wait', until: run.pause.until };
     // Folders blocked by permission/drive problems are checked again by the loop.
     for (const id of run.productIds) {
@@ -768,7 +859,7 @@ export function createAutoRunner(overrides = {}) {
 
   /** "Thử lại ảnh lỗi": AI names already received are reused; files are rendered again from the originals. */
   function retryErrors() {
-    if (!run || isLocked()) return { ok: false, reason: 'busy' };
+    if (!run || isLocked() || picking || granting || disposed) return { ok: false, reason: 'busy' };
     for (const id of run.productIds) {
       const product = products.get(id);
       if (!product) continue;
@@ -813,12 +904,15 @@ export function createAutoRunner(overrides = {}) {
     /** Resolves when the current loop has ended (tests, unmount). */
     idle: () => run?.loop ?? Promise.resolve(),
     addProductFolder,
+    addDroppedFolders,
     addParentFolder,
     removeProduct,
     clearProducts,
     setSelected,
     setAllSelected,
     requestPermission,
+    requestAllPermissions,
+    refreshPermissions,
     rescanProduct,
     start,
     stop,

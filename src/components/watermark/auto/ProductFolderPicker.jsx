@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { PRODUCT_BLOCK_MESSAGES } from '../../../hooks/useWatermarkAutoProcessor.js';
 
 const PRODUCT_STATUS_LABELS = {
@@ -23,7 +24,7 @@ function PermissionBadge({ permission }) {
   return <span className="wma-perm is-prompt">Quyền ghi: chưa cấp</span>;
 }
 
-function ProductRow({ product, locked, onToggle, onRemove, onRequestPermission, onRescan }) {
+function ProductRow({ product, locked, bulkPermission, onToggle, onRemove, onRequestPermission, onRescan }) {
   const eligible = isEligible(product);
   const skipped = product.unsupported + product.invalid;
   const checkboxId = `wma-select-${product.id}`;
@@ -60,8 +61,8 @@ function ProductRow({ product, locked, onToggle, onRemove, onRequestPermission, 
         {product.blocked && !product.namedIsFile && <p className="wma-row-error">{product.blocked.message}</p>}
       </div>
       <div className="wma-product-actions">
-        {product.permission !== 'granted' && eligible && (
-          <button type="button" className="wm-btn-outline wm-btn-small" onClick={() => onRequestPermission(product.id)}>
+        {product.permission !== 'granted' && eligible && !bulkPermission && (
+          <button type="button" className="wm-btn-outline wm-btn-small" onClick={() => onRequestPermission(product.id)} disabled={locked}>
             Cấp quyền
           </button>
         )}
@@ -86,30 +87,36 @@ function ProductRow({ product, locked, onToggle, onRemove, onRequestPermission, 
 }
 
 /**
- * Step 1: product folders. "Thêm thư mục sản phẩm" adds one product per
- * dialog; "Chọn thư mục cha" adds its direct sub-folders.
+ * Step 1: add one folder, drop multiple folders, or import a parent folder.
  */
 export default function ProductFolderPicker({
   products,
   notices,
   picking,
+  granting,
   locked,
   supported,
   onAddProduct,
+  onDropFolders,
   onAddParent,
   onClear,
   onRemove,
   onToggle,
   onToggleAll,
   onRequestPermission,
+  onRequestAllPermissions,
   onRescan,
   onDismissNotice,
 }) {
+  const [dragging, setDragging] = useState(false);
   const selected = products.filter((product) => product.selected);
   const selectedImages = selected.reduce((sum, product) => sum + product.imageIds.length, 0);
   const eligible = products.filter(isEligible);
+  const missingPermission = eligible.filter((product) => product.permission !== 'granted');
+  const bulkPermission = missingPermission.length > 1;
   const allSelected = eligible.length > 0 && eligible.every((product) => product.selected);
-  const pickDisabled = !supported || locked || picking;
+  const listLocked = locked || picking || granting;
+  const pickDisabled = !supported || listLocked;
 
   return (
     <section className="wm-card wma-step" aria-labelledby="wma-step-folders">
@@ -128,11 +135,40 @@ export default function ProductFolderPicker({
         <button type="button" className="wm-btn-outline" onClick={onAddParent} disabled={pickDisabled}>
           Chọn thư mục cha
         </button>
+        {bulkPermission && (
+          <button type="button" className="wm-btn-outline" onClick={onRequestAllPermissions} disabled={pickDisabled}>
+            {granting ? 'Đang cấp quyền…' : 'Cấp quyền toàn bộ'}
+          </button>
+        )}
         {products.length > 0 && (
-          <button type="button" className="wm-btn-outline wma-btn-quiet" onClick={onClear} disabled={locked || picking}>
+          <button type="button" className="wm-btn-outline wma-btn-quiet" onClick={onClear} disabled={listLocked}>
             Xóa danh sách
           </button>
         )}
+      </div>
+      <div
+        className={`wma-folder-drop${dragging && !pickDisabled ? ' is-dragging' : ''}`}
+        role="region"
+        aria-label="Thêm nhiều thư mục sản phẩm"
+        aria-disabled={pickDisabled}
+        aria-busy={picking}
+        onDragOver={(event) => {
+          event.preventDefault();
+          event.dataTransfer.dropEffect = pickDisabled ? 'none' : 'copy';
+          if (!pickDisabled) setDragging(true);
+        }}
+        onDragLeave={(event) => {
+          if (!event.currentTarget.contains(event.relatedTarget)) setDragging(false);
+        }}
+        onDrop={(event) => {
+          event.preventDefault();
+          setDragging(false);
+          if (!pickDisabled) onDropFolders(event.dataTransfer);
+        }}
+      >
+        <strong>{picking ? 'Đang đọc thư mục…' : 'Kéo thả nhiều thư mục sản phẩm vào đây'}</strong>
+        <p>Giữ Ctrl hoặc Shift để chọn nhiều thư mục trong File Explorer, rồi kéo thả vào vùng này.</p>
+        <p>Hoặc dùng “Chọn thư mục cha” để thêm các thư mục con cùng lúc. Nếu nhiều thư mục chưa có quyền ghi, bấm “Cấp quyền toàn bộ”.</p>
       </div>
       <p className="wma-hint">
         Chỉ xử lý ảnh nằm trực tiếp trong thư mục sản phẩm (JPG, PNG, WebP). Thư mục “Named” luôn được bỏ qua khi đọc ảnh.
@@ -156,7 +192,7 @@ export default function ProductFolderPicker({
               <input
                 type="checkbox"
                 checked={allSelected}
-                disabled={locked || eligible.length === 0}
+                disabled={listLocked || eligible.length === 0}
                 onChange={(event) => onToggleAll(event.target.checked)}
               />
               Chọn tất cả
@@ -170,7 +206,8 @@ export default function ProductFolderPicker({
               <ProductRow
                 key={product.id}
                 product={product}
-                locked={locked}
+                locked={listLocked}
+                bulkPermission={bulkPermission}
                 onToggle={onToggle}
                 onRemove={onRemove}
                 onRequestPermission={onRequestPermission}

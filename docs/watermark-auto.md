@@ -5,7 +5,7 @@
 ## Cách dùng
 
 1. Mở từ `/watermark` (liên kết “Watermark tự động theo thư mục sản phẩm”) hoặc vào thẳng `/watermark/auto`. **Chỉ admin và tài khoản gói Pro/Enterprise đang hoạt động** được vào (`ProPlanRoute`, `hasProAccess`); tài khoản khác không thấy liên kết và gặp màn hình “Cần gói Pro”. Vẫn cần quyền Đặt tên AI (model theo gói).
-2. **Thêm thư mục sản phẩm** (mỗi lần một thư mục) hoặc **Chọn thư mục cha** (mỗi thư mục con trực tiếp là một sản phẩm). Tên thư mục là tên sản phẩm gửi cho AI.
+2. Để thêm **nhiều thư mục cùng lúc**, giữ Ctrl/Shift chọn các thư mục trong File Explorer rồi kéo thả vào vùng **Kéo thả nhiều thư mục sản phẩm vào đây**. Có thể dùng **Thêm thư mục sản phẩm** (hộp thoại trình duyệt chỉ hỗ trợ một thư mục mỗi lần) hoặc **Chọn thư mục cha** (mỗi thư mục con trực tiếp là một sản phẩm). Tên thư mục là tên sản phẩm gửi cho AI. Các thư mục trùng được bỏ qua. Trang không có modal hỏi quyền khi vào hoặc thêm thư mục. Khi từ hai thư mục sản phẩm hợp lệ chưa có quyền ghi, bấm **Cấp quyền toàn bộ** thay cho nút riêng từng thư mục; nếu chỉ còn một thư mục thì dùng **Cấp quyền** ở thư mục đó. Thư mục đã có quyền, thư mục trống hoặc có lỗi đầu vào không được yêu cầu lại.
 3. Chọn logo (bắt buộc), chỉnh logo như trang Watermark, chọn **Kích thước ảnh xuất** (800 × 600 px hoặc Kích thước gốc) và model. Prompt nằm trong **Nâng cao**, dùng chung với trang Watermark.
 4. **Bắt đầu xử lý**. Có **Dừng**, **Tiếp tục phần còn lại**, **Thử lại ảnh lỗi**; kết thúc có báo cáo sao chép / CSV / JSON (chỉ tạo trên máy).
 
@@ -39,6 +39,7 @@ Tiếp tục/thử lại dùng cấu hình chụp lúc bấm Bắt đầu. **B�
 ## Giới hạn nền tảng
 
 - Cần Chrome/Edge desktop có File System Access API, chạy qua HTTPS hoặc localhost. Trình duyệt khác thấy thông báo và không chạy được; **không có** phương án ZIP thay thế ở bản này.
+- **Cấp quyền toàn bộ** khởi tạo yêu cầu cho các thư mục còn thiếu trong một lần bấm trên trang. Thông báo xác nhận của trình duyệt vẫn có thể xuất hiện riêng cho từng thư mục; đây là [giới hạn của File System Access API](https://github.com/WICG/file-system-access/issues/349). Từ chối hoặc lỗi một yêu cầu không chặn việc cập nhật quyền của thư mục khác; các thư mục chưa có quyền vẫn chặn xử lý đến khi được cấp hoặc bỏ chọn.
 - File System Access không khóa thư mục với ứng dụng khác: không chỉnh `Named` bằng ứng dụng khác khi đang chạy.
 - Hủy request trên trình duyệt không bảo đảm hủy chi phí của request đã tới server.
 

@@ -5,6 +5,7 @@ import { JPEG, PNG, WEBP, makeTree } from './fixtures/fakeFileSystem.mjs';
 import {
   classifyFileError,
   createNamedFolderWriter,
+  getDroppedDirectories,
   getFolderAccessSupport,
   getWritePermission,
   isSameFolder,
@@ -22,6 +23,36 @@ import {
 } from '../src/utils/watermarkAutoNaming.js';
 
 const blob = (text = 'jpeg') => new Blob([text], { type: 'image/jpeg' });
+
+test('multi-folder drop captures all handles before the event expires and isolates failures', async () => {
+  const folder2 = makeTree('Sản phẩm 2', {});
+  const folder10 = makeTree('Sản phẩm 10', {});
+  let active = true;
+  let calls = 0;
+  const item = (handle) => ({
+    kind: 'file',
+    getAsFileSystemHandle() {
+      assert.equal(active, true, 'must capture during the drop event');
+      calls += 1;
+      return Promise.resolve(handle);
+    },
+  });
+  const pending = getDroppedDirectories({ items: [
+    item(folder10), item(folder2), item({ kind: 'file', name: 'a.jpg' }), item(null),
+    { kind: 'file', getAsFileSystemHandle: () => Promise.reject(new Error('unreadable')) },
+    { kind: 'file', getAsFileSystemHandle() { throw new Error('blocked'); } },
+    { kind: 'string', getAsFileSystemHandle() { assert.fail('ignore text'); } },
+  ] });
+  active = false;
+  assert.equal(calls, 4);
+  assert.deepEqual(await pending, { handles: [folder2, folder10], ignoredFiles: 1, failed: 3 });
+});
+
+test('folder drop explains unavailable handle API without substituting read-only file entries', async () => {
+  for (const data of [null, { items: [] }, { items: [{ kind: 'file' }] }]) {
+    await assert.rejects(getDroppedDirectories(data), (error) => error.code === 'drop_unsupported');
+  }
+});
 
 test('product scan: direct images only, natural order, Named and nested folders skipped, broken files counted', async () => {
   const root = makeTree('SanPham', {
