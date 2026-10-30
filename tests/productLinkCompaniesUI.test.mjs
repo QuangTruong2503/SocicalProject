@@ -120,6 +120,28 @@ test('editor cannot see company creation; missing schema shows an error and retr
   assert.equal(button('Thêm công ty'), undefined);
 });
 
+test('viewer can export the selected company even when search hides every product', async () => {
+  globalThis.__productRpc = () => ({ data: 1, error: null });
+  await render('/link-anh-san-pham?company=tam', 'user');
+  assert.equal(button('Tải Excel').disabled, false);
+  assert.match(button('Tải Excel').title, /Minh Tâm/);
+  await fill(document.querySelector('input[type="search"]'), 'No match');
+  assert.equal(button('Tải Excel').disabled, false);
+  await fill(selector(), 'triet');
+  assert.match(button('Tải Excel').title, /Minh Triết/);
+});
+
+test('export is disabled for an empty company or failed product request', async () => {
+  const transport = globalThis.__productTable;
+  globalThis.__productTable = (query) => query.table === 'product_link_items'
+    ? query.filters.company_id === 'triet' ? { data: [], error: null } : { data: null, error: { message: 'Load failed' } }
+    : transport(query);
+  await render();
+  assert.equal(button('Tải Excel').disabled, true);
+  await fill(selector(), 'tam');
+  assert.equal(button('Tải Excel').disabled, true);
+});
+
 test('creating and importing products pass the selected company to the database', async () => {
   let query;
   globalThis.__productTable = (value) => { query = value; return { data: item('tam'), error: null }; };

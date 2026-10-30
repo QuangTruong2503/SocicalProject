@@ -8,7 +8,7 @@
     "build": "vite build",
     "lint": "eslint .",
     "preview": "vite preview",
-    "test:product-links": "node --test src/utils/productLinkParser.test.js tests/productLinkCompaniesDatabase.test.mjs && node --import ./tests/productLinkCompaniesLoader.mjs --test tests/productLinkCompaniesUI.test.mjs",
+    "test:product-links": "node --test src/utils/productLinkParser.test.js tests/productLinkExcel.test.mjs tests/productLinkCompaniesDatabase.test.mjs && node --import ./tests/productLinkCompaniesLoader.mjs --test tests/productLinkCompaniesUI.test.mjs",
     "test:memory": "node --test src/utils/memoryGame.test.js tests/memoryGameDatabase.test.mjs",
     "test:memory:ui": "node --import ./tests/memoryGameLoader.mjs --test tests/memoryGameUI.test.mjs",
     "test:notifications": "node --test tests/notificationsDatabase.test.mjs && node --import ./tests/notificationsLoader.mjs --test tests/notificationsUI.test.mjs",

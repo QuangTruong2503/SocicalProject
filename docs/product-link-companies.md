@@ -6,6 +6,8 @@ Admin dùng **Thêm công ty** ngay trên trang. Tên không được để tr�
 
 Quyền viewer/checker/editor hiện tại tiếp tục áp dụng cho mọi công ty; tính năng này không tạo quyền truy cập riêng theo công ty. Chỉ admin đang hoạt động được tạo công ty, được kiểm tra bằng RLS trong database.
 
+Nút **Tải Excel** xuất toàn bộ sản phẩm của công ty đang chọn, bao gồm sản phẩm đã làm và các sản phẩm ngoài kết quả tìm kiếm/bộ lọc hoặc chưa hiển thị do phân trang. Mỗi sản phẩm một dòng với mã sản phẩm dạng văn bản và các cột `Link ảnh 1`, `Link ảnh 2`, …; link ảnh có thể bấm để mở. Tên file chứa tên công ty. Nút bị vô hiệu hóa khi đang tải, tải lỗi hoặc công ty chưa có sản phẩm. Mọi người có quyền xem trang đều có thể tải Excel.
+
 ## Áp dụng database
 
 Nếu dự án đã có Link ảnh sản phẩm, chạy toàn bộ [`20261024084036_product_link_companies.sql`](../supabase/migrations/20261024084036_product_link_companies.sql) trong Supabase SQL Editor trước khi triển khai frontend. Với dự án mới, chạy `supabase_product_links.sql`, `supabase_product_links_admin.sql`, rồi migration này. Không chạy lại hai SQL gốc sau migration vì chúng chứa index và RPC dành cho danh sách dùng chung.

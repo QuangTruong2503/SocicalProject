@@ -4,6 +4,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import {
   FaClockRotateLeft,
+  FaFileExcel,
   FaFileImport,
   FaMagnifyingGlass,
   FaPlus,
@@ -119,6 +120,7 @@ function ProductLinkWorkspace({ company, level, companySelector, companyModal })
   const [editing, setEditing] = useState(null); // { mode, item }
   const [deleting, setDeleting] = useState(null);
   const [saving, setSaving] = useState(false);
+  const [exporting, setExporting] = useState(false);
 
   const searchRef = useRef(null);
   const sentinelRef = useRef(null);
@@ -284,6 +286,20 @@ function ProductLinkWorkspace({ company, level, companySelector, companyModal })
   }, []);
 
   // ── Actions ─────────────────────────────────────────────────────────
+  async function downloadExcel() {
+    if (exporting || itemsLoading || loadError || !items.length) return;
+    setExporting(true);
+    try {
+      const { exportProductLinksToExcel } = await import('../../utils/productLinkExcel.js');
+      exportProductLinksToExcel(items, company.name);
+      toast.success(`Đã xuất ${items.length} sản phẩm của ${company.name}.`);
+    } catch {
+      toast.error('Không thể tải Excel. Vui lòng thử lại.');
+    } finally {
+      setExporting(false);
+    }
+  }
+
   const toggleExpand = useCallback((item) => {
     setExpandedIds((current) => {
       const next = new Set(current);
@@ -469,6 +485,15 @@ function ProductLinkWorkspace({ company, level, companySelector, companyModal })
           <span className={styles.levelBadge} title="Quyền của bạn trên trang này">
             {profile?.role === 'admin' ? 'Quản trị viên' : levelLabel}
           </span>
+          <button
+            type="button"
+            className={styles.btnGhost}
+            onClick={downloadExcel}
+            disabled={exporting || itemsLoading || Boolean(loadError) || !items.length}
+            title={`Tải toàn bộ sản phẩm và link ảnh của ${company.name}, bao gồm cả sản phẩm đã làm`}
+          >
+            <FaFileExcel /> {exporting ? 'Đang xuất…' : 'Tải Excel'}
+          </button>
           {level >= 3 && (
             <>
               <button type="button" className={styles.btnGhost} onClick={() => setEditing({ mode: 'create', item: null })}>
