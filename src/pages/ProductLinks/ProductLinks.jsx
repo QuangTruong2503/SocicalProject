@@ -44,6 +44,7 @@ const PAGE_SIZE = 30;
 const LOG_PAGE_SIZE = 40;
 const COPY_LOG_THROTTLE_MS = 2 * 60 * 1000;
 const LEVEL_KEYS = ['', 'viewer', 'checker', 'editor'];
+const COMPANY_STORAGE_KEY = 'productLinks.selectedCompany.v1';
 
 const FILTERS = [
   { value: 'todo', label: 'Chưa làm' },
@@ -720,6 +721,13 @@ export default function ProductLinks() {
   const navigate = useNavigate();
   const { user, profile } = useAuth();
   const [params, setParams] = useSearchParams();
+  const [savedCompanyId, setSavedCompanyId] = useState(() => {
+    try {
+      return window.localStorage.getItem(COMPANY_STORAGE_KEY) || '';
+    } catch {
+      return '';
+    }
+  });
   const [level, setLevel] = useState(null);
   const [companies, setCompanies] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -728,6 +736,20 @@ export default function ProductLinks() {
   const [name, setName] = useState('');
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState('');
+
+  const requestedCompany = params.get('company');
+  const company = companies.find((entry) => entry.id === requestedCompany)
+    || companies.find((entry) => entry.id === savedCompanyId)
+    || companies[0];
+
+  useEffect(() => {
+    if (!company || loading || error || !level) return;
+    try {
+      window.localStorage.setItem(COMPANY_STORAGE_KEY, company.id);
+    } catch {
+      // Company selection still works when browser storage is unavailable.
+    }
+  }, [company, loading, error, level]);
 
   useEffect(() => {
     let active = true;
@@ -758,6 +780,7 @@ export default function ProductLinks() {
   }, [level, applyCompaniesResult]);
 
   function selectCompany(id) {
+    setSavedCompanyId(id);
     setParams((current) => {
       const next = new URLSearchParams(current);
       next.set('company', id);
@@ -816,8 +839,6 @@ export default function ProductLinks() {
     </div>;
   }
 
-  const requestedCompany = params.get('company');
-  const company = companies.find((entry) => entry.id === requestedCompany) || companies[0];
   const selector = <section className={styles.companyBar} aria-label="Công ty">
     <label className={styles.companySelect}>
       <span>Công ty</span>

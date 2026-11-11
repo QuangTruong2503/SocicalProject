@@ -42,6 +42,7 @@ async function fill(element, value) {
 const selector = () => document.querySelector('select[aria-label="Chọn công ty"]');
 
 test.beforeEach(() => {
+  window.localStorage.clear();
   requests = [];
   globalThis.__productChannels = [];
   globalThis.__productRpc = () => ({ data: 3, error: null });
