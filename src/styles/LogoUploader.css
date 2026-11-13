@@ -87,7 +87,7 @@
 .logo-uploader-btn-outline:hover {
   border-color: var(--primary-color);
   color: var(--primary-color);
-  background: rgba(102, 126, 234, 0.1);
+  background: rgba(99, 102, 241, 0.1);
 }
 
 .logo-uploader-btn-danger {
@@ -115,7 +115,7 @@
 
 .logo-uploader-upload-area:hover {
   border-color: var(--primary-color);
-  background: rgba(102, 126, 234, 0.05);
+  background: rgba(99, 102, 241, 0.05);
 }
 
 .logo-uploader-upload-icon {

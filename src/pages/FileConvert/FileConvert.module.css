@@ -156,7 +156,7 @@
   background: var(--color-surface);
 }
 .fileRow[draggable='true'] { cursor: grab; }
-.fileRowDrop { border-color: var(--color-primary); box-shadow: 0 -3px 0 var(--color-primary); }
+.fileRowDrop { border-color: var(--color-primary); box-shadow: none; }
 .fileRowError { border-color: color-mix(in srgb, var(--fc-danger) 50%, var(--color-border)); }
 .fileIndex { flex: none; width: 24px; color: var(--color-text-secondary); font-size: 13px; font-weight: 650; text-align: center; }
 .fileThumb {
@@ -195,7 +195,7 @@
 .choice input { position: absolute; inset: 0; margin: 0; opacity: 0; cursor: inherit; }
 .choice span { display: block; padding: 7px 10px; border-radius: var(--radius-sm); color: var(--color-text-secondary); font-size: 13px; font-weight: 600; text-align: center; white-space: nowrap; }
 .choice:hover span { color: var(--color-text); }
-.choiceActive span { background: var(--color-surface); color: var(--color-primary); box-shadow: 0 1px 3px rgba(15, 23, 42, 0.12); }
+.choiceActive span { background: var(--color-surface); color: var(--color-primary); box-shadow: none; }
 .choiceGroup:disabled .choice { cursor: not-allowed; }
 .input {
   width: 100%;

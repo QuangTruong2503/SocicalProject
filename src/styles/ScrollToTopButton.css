@@ -3,16 +3,16 @@
   right: 1.25rem;
   bottom: 1.25rem;
   z-index: 900;
-  width: 3rem;
-  height: 3rem;
+  width: 44px;
+  height: 44px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  border: 1px solid rgba(255, 255, 255, 0.28);
-  border-radius: 50%;
-  background: linear-gradient(135deg, var(--primary-color), #764ba2);
-  color: var(--color-primary);
-  box-shadow: 0 16px 36px rgba(15, 23, 42, 0.24);
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  background: var(--color-surface);
+  color: var(--color-text);
+  box-shadow: none;
   cursor: pointer;
   opacity: 0;
   pointer-events: none;
@@ -31,13 +31,13 @@
 }
 
 .scroll-to-top-button:hover {
-  filter: brightness(1.05);
-  box-shadow: 0 20px 42px rgba(15, 23, 42, 0.3);
-  transform: translateY(-3px) scale(1.03);
+  background: var(--color-bg-alt);
+  box-shadow: var(--shadow-hover);
+  transform: translateY(-1px);
 }
 
 .scroll-to-top-button:active {
-  transform: translateY(-1px) scale(0.96);
+  transform: none;
 }
 
 .scroll-to-top-button svg {
@@ -46,16 +46,16 @@
 }
 
 .scroll-to-top-button:focus-visible {
-  outline: 3px solid rgba(102, 126, 234, 0.35);
-  outline-offset: 3px;
+  outline: none;
+  box-shadow: var(--focus-ring);
 }
 
 @media (max-width: 640px) {
   .scroll-to-top-button {
     right: 1rem;
     bottom: 1rem;
-    width: 2.75rem;
-    height: 2.75rem;
+    width: 44px;
+    height: 44px;
   }
 }
 

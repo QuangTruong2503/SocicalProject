@@ -2,7 +2,7 @@
 
 body.wm-watermark-theme .wm-preview-backdrop.wm-lightbox {
   padding: clamp(0.75rem, 3vw, 2.5rem);
-  background: rgba(2, 6, 23, 0.78);
+  background: rgba(10, 10, 10, 0.78);
   backdrop-filter: blur(14px) saturate(1.1);
   -webkit-backdrop-filter: blur(14px) saturate(1.1);
   cursor: zoom-out;
@@ -18,11 +18,11 @@ body.wm-watermark-theme .wm-preview-backdrop.wm-lightbox {
   grid-template-rows: auto minmax(0, 1fr) auto;
   overflow: hidden;
   border: 1px solid rgba(255, 255, 255, 0.14);
-  border-radius: clamp(18px, 2.4vw, 28px);
+  border-radius:12px;
   background: var(--wm-surface);
   color: var(--wm-text);
   font-family: var(--wm-font-body);
-  box-shadow: 0 40px 100px rgba(0, 0, 0, 0.5);
+  box-shadow: var(--shadow-lg);
   cursor: default;
   animation: wmModalIn 0.28s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
@@ -54,12 +54,12 @@ body.wm-watermark-theme .wm-preview-backdrop.wm-lightbox {
   max-width: 100%;
   overflow: hidden;
   padding: 0.18rem 0.55rem;
-  border-radius: 999px;
+  border-radius: 9999px;
   background: var(--wm-primary-soft);
   color: var(--wm-primary-deep);
   font-family: var(--wm-font-display);
   font-size: 0.68rem;
-  font-weight: 800;
+  font-weight: 700;
   letter-spacing: 0.06em;
   text-overflow: ellipsis;
   text-transform: uppercase;
@@ -73,7 +73,7 @@ body.wm-watermark-theme .wm-preview-backdrop.wm-lightbox {
   color: var(--wm-text-strong);
   font-family: var(--wm-font-display);
   font-size: clamp(0.9rem, 1.6vw, 1.02rem);
-  font-weight: 800;
+  font-weight: 700;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -88,7 +88,7 @@ body.wm-watermark-theme .wm-preview-backdrop.wm-lightbox {
 .wm-lightbox__counter {
   min-width: 3.6rem;
   padding: 0.35rem 0.6rem;
-  border-radius: 999px;
+  border-radius: 9999px;
   background: var(--wm-primary-soft);
   color: var(--wm-text);
   font-size: 0.82rem;
@@ -154,9 +154,7 @@ body.wm-watermark-theme .wm-preview-backdrop.wm-lightbox {
 .wm-lightbox__stage {
   position: relative;
   min-height: 0;
-  background:
-    radial-gradient(circle at 50% 0%, rgba(148, 163, 184, 0.16), transparent 55%),
-    #0b1120;
+  background: #0a0a0a;
 }
 
 .wm-lightbox__scroller {
@@ -182,8 +180,8 @@ body.wm-watermark-theme .wm-preview-backdrop.wm-lightbox {
   max-width: 100%;
   max-height: 100%;
   object-fit: contain;
-  border-radius: 10px;
-  box-shadow: 0 18px 50px rgba(0, 0, 0, 0.45);
+  border-radius: 8px;
+  box-shadow: none;
   cursor: zoom-in;
   user-select: none;
   animation: wmLightboxFade 0.2s ease both;
@@ -209,7 +207,7 @@ body.wm-watermark-theme .wm-preview-backdrop.wm-lightbox {
   padding-bottom: 4px;
   border: 1px solid rgba(255, 255, 255, 0.28);
   border-radius: 50%;
-  background: rgba(15, 23, 42, 0.62);
+  background: rgba(10, 10, 10, 0.62);
   color: #ffffff;
   cursor: pointer;
   font-size: 2.1rem;
@@ -222,7 +220,7 @@ body.wm-watermark-theme .wm-preview-backdrop.wm-lightbox {
 
 .wm-lightbox__nav:hover {
   background: rgba(255, 255, 255, 0.92);
-  color: #0f172a;
+  color: #0a0a0a;
   transform: translateY(-50%) scale(1.06);
 }
 

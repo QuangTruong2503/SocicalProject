@@ -1,12 +1,15 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap');
+/* Genesis design system tokens — see genesis-DESIGN.md. Fonts are loaded in index.html. */
 :root {
   color-scheme: light;
-  --font-display: "Inter", sans-serif;
-  --font-body: "Inter", sans-serif;
-  --font-mono: "Inter", monospace;
+  --font-display: "General Sans", "DM Sans", "Segoe UI", system-ui, sans-serif;
+  --font-body: "DM Sans", "Segoe UI", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Consolas, monospace;
 
   --color-primary: #6366f1;
   --color-primary-hover: #4f46e5;
+  --color-primary-soft: rgba(99, 102, 241, 0.08);
+  --color-primary-border: rgba(99, 102, 241, 0.32);
+  --color-on-primary: #fafafa;
   --color-secondary: #20970b;
   --color-neutral: #9c9c9c;
   --color-bg: #fafafa;
@@ -17,12 +20,21 @@
   --color-success: #10b981;
   --color-warning: #f59e0b;
   --color-error: #ef4444;
+  --color-success-soft: rgba(16, 185, 129, 0.1);
+  --color-warning-soft: rgba(245, 158, 11, 0.12);
+  --color-error-soft: rgba(239, 68, 68, 0.08);
+  --color-bg-alt: #f3f4f6;
+  --color-chip: #f3f4f6;
+  --color-chip-text: #4b5563;
+  --color-overlay: rgba(10, 10, 10, 0.48);
   --color-nav-hover: #f3f4f6;
   --color-dot: rgba(10, 10, 10, 0.06);
   --shadow-hover: 0 8px 30px rgba(0, 0, 0, 0.08);
   --shadow-glow: 0 4px 12px rgba(99, 102, 241, 0.35);
-  --shadow-lg: 0 18px 40px rgba(15, 23, 42, 0.12);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1);
   --focus-ring: 0 0 0 3px rgba(99, 102, 241, 0.12);
+  --lift-hover: translateY(-2px);
+  --lift-button: translateY(-1px);
 
   --radius-xs: 4px;
   --radius-sm: 6px;
@@ -53,11 +65,21 @@
   --color-text: #f4f4f5;
   --color-text-secondary: #a1a1aa;
   --color-border: #2a2d35;
+  --color-neutral: #7a7a82;
+  --color-primary-soft: rgba(99, 102, 241, 0.14);
+  --color-primary-border: rgba(129, 140, 248, 0.4);
+  --color-success-soft: rgba(16, 185, 129, 0.14);
+  --color-warning-soft: rgba(245, 158, 11, 0.14);
+  --color-error-soft: rgba(239, 68, 68, 0.14);
+  --color-bg-alt: #1f232b;
+  --color-chip: #23262e;
+  --color-chip-text: #c4c4cc;
+  --color-overlay: rgba(0, 0, 0, 0.64);
   --color-nav-hover: #1f232b;
   --color-dot: rgba(255, 255, 255, 0.08);
   --shadow-hover: 0 10px 34px rgba(0, 0, 0, 0.28);
-  --shadow-lg: 0 20px 48px rgba(0, 0, 0, 0.32);
-  --focus-ring: 0 0 0 3px rgba(99, 102, 241, 0.18);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.4), 0 4px 6px -4px rgba(0, 0, 0, 0.4);
+  --focus-ring: 0 0 0 3px rgba(99, 102, 241, 0.28);
 }
 
 *,
@@ -73,12 +95,11 @@ html {
 body {
   margin: 0;
   min-width: 320px;
-  background:
-    radial-gradient(circle at top left, rgba(99, 102, 241, 0.06), transparent 22%),
-    radial-gradient(circle at bottom right, rgba(32, 151, 11, 0.04), transparent 20%),
-    var(--color-bg);
+  background: var(--color-bg);
   color: var(--color-text);
   font-family: var(--font-body);
+  font-size: 15px;
+  line-height: 1.55;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
@@ -99,9 +120,21 @@ img {
   max-width: 100%;
 }
 
+h1,
+h2,
+h3,
+h4 {
+  font-family: var(--font-display);
+  font-weight: 700;
+  letter-spacing: -0.03em;
+}
+
 code,
-pre {
+pre,
+kbd,
+samp {
   font-family: var(--font-mono);
+  font-weight: 400;
 }
 
 #root {
@@ -146,7 +179,7 @@ pre {
   width: min(640px, 100%);
   padding: var(--space-10);
   border: 1px solid var(--color-border);
-  border-radius: 24px;
+  border-radius: var(--radius-lg);
   background: var(--color-surface);
   text-align: center;
 }
@@ -156,8 +189,8 @@ pre {
   font-family: var(--font-display);
   font-size: clamp(4rem, 12vw, 6rem);
   font-weight: 700;
-  letter-spacing: -0.05em;
-  color: var(--color-primary);
+  letter-spacing: -0.04em;
+  color: var(--color-text);
 }
 
 .error-title {
@@ -180,24 +213,21 @@ pre {
   border: 1px solid var(--color-primary);
   border-radius: var(--radius-sm);
   background: var(--color-primary);
-  color: #fff;
+  color: var(--color-on-primary);
   font-size: 14px;
-  font-weight: 600;
-  transition: background var(--transition-fast);
+  font-weight: 500;
+  transition: background var(--transition-fast), transform var(--transition-fast), box-shadow var(--transition-fast);
 }
 
 .error-button:hover {
   background: var(--color-primary-hover);
+  transform: var(--lift-button);
+  box-shadow: var(--shadow-glow);
 }
 
+/* Genesis allows no decorative illustrations; kept as a no-op for existing markup. */
 .error-blob {
-  position: absolute;
-  inset: auto auto -80px -80px;
-  width: 180px;
-  height: 180px;
-  border-radius: 50%;
-  background: rgba(99, 102, 241, 0.08);
-  filter: blur(10px);
+  display: none;
 }
 
 :focus-visible {

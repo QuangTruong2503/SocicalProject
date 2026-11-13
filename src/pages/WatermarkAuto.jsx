@@ -10,10 +10,8 @@ import ProductFolderPicker from '../components/watermark/auto/ProductFolderPicke
 import AutoProcessingProgress from '../components/watermark/auto/AutoProcessingProgress.jsx';
 import { useAuth } from '../hooks/useAuth.js';
 import { useAiNamingAccess } from '../hooks/useAiNamingAccess.js';
-import { useTheme } from '../hooks/useTheme.js';
 import { useWatermarkAutoProcessor } from '../hooks/useWatermarkAutoProcessor.js';
 import { loadWatermarkOptions, saveWatermarkOptions } from '../hooks/useIndexedDB.js';
-import { buildThemeAccentVars } from '../utils/colorTools.js';
 import { createWatermarkEngine } from '../utils/watermarkEngine.js';
 import { DEFAULT_OPTIONS, mergeWatermarkOptions } from '../utils/watermarkOptions.js';
 import {
@@ -93,7 +91,6 @@ function useTicker(active) {
 
 export default function WatermarkAuto() {
   const { user } = useAuth();
-  const { isDark } = useTheme();
   const navigate = useNavigate();
   const aiAccess = useAiNamingAccess();
   const [engine, setEngine] = useState(null);
@@ -113,7 +110,6 @@ export default function WatermarkAuto() {
   const userId = user?.id ?? null;
   // Fixed when a run starts, so its events stay with that account.
   const runContextRef = useRef(null);
-  const pageThemeVars = useMemo(() => buildThemeAccentVars(options.accentColor, isDark), [options.accentColor, isDark]);
 
   // Statistics per finished segment (start / resume / retry), same semantics as /watermark:
   // "created" = rendered for the first time, "download" = written to Named with close() done.
@@ -352,7 +348,7 @@ export default function WatermarkAuto() {
       <Helmet>
         <title>Watermark tự động - Đóng logo và đặt tên ảnh theo thư mục</title>
       </Helmet>
-      <div className="wm-page wma-page" style={pageThemeVars}>
+      <div className="wm-page wma-page">
         <div className="wm-container">
           <nav className="wma-breadcrumb" aria-label="Điều hướng">
             <Link to="/watermark">← Quay lại Watermark</Link>

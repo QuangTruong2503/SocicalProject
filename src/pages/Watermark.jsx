@@ -14,10 +14,8 @@ import WatermarkModal from '../components/watermark/WatermarkModal.jsx';
 import { buildFileName, getUniqueFileNames } from '../hooks/useWatermarkProcessor';
 import { useAuth } from '../hooks/useAuth.js';
 import { useAiNamingAccess } from '../hooks/useAiNamingAccess.js';
-import { useTheme } from '../hooks/useTheme.js';
 import { getUserDisplayName, hasProAccess } from '../utils/userProfile.js';
 import { loadWatermarkOptions, saveWatermarkOptions } from '../hooks/useIndexedDB.js';
-import { buildThemeAccentVars } from '../utils/colorTools.js';
 import {
   createWatermarkImageCount,
   getMyWatermarkImageTotal,
@@ -295,7 +293,6 @@ async function streamZipToFile(zip, fileHandle, isCancelled) {
 
 export default function Watermark() {
   const { user, profile } = useAuth();
-  const { isDark } = useTheme();
   const navigate = useNavigate();
   const aiNamingAccess = useAiNamingAccess();
   const resultsRef = useRef([]);
@@ -332,7 +329,6 @@ export default function Watermark() {
   const [buttonRipples, setButtonRipples] = useState([]);
   const [visitorId] = useState(() => getOrCreateWatermarkVisitorId());
   const userId = user?.id ?? null;
-  const pageThemeVars = useMemo(() => buildThemeAccentVars(options.accentColor, isDark), [options.accentColor, isDark]);
   const readableImages = useMemo(() => images.filter((image) => image.status !== 'error'), [images]);
   const unreadableCount = images.length - readableImages.length;
 
@@ -760,7 +756,7 @@ export default function Watermark() {
       <Helmet>
         <title>Watermark - Thêm Logo Vào Ảnh</title>
       </Helmet>
-      <div className="wm-page" style={pageThemeVars}>
+      <div className="wm-page">
         <SeasonalEffectLayer settings={options.seasonalEffect} />
         <div className="wm-container">
           <header className="wm-workspace-heading">

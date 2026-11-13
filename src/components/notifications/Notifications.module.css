@@ -8,7 +8,7 @@
 .actions { justify-content: flex-end; }
 .filters { margin-bottom: 18px; }
 .pagination { justify-content: center; margin: 24px 0; font-size: 13px; }
-.button, .primary, .danger { display: inline-flex; align-items: center; justify-content: center; gap: 8px; border: 1px solid var(--color-border); border-radius: 9px; padding: 10px 14px; background: var(--color-surface); color: var(--color-text); font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; text-decoration: none; }
+.button, .primary, .danger { display: inline-flex; align-items: center; justify-content: center; gap: 8px; border: 1px solid var(--color-border); border-radius: 8px; padding: 10px 14px; background: var(--color-surface); color: var(--color-text); font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; text-decoration: none; }
 .primary { background: var(--color-primary); color: white; border-color: var(--color-primary); }
 .danger { background: #b91c1c; border-color: #b91c1c; color: white; }
 .button:hover:not(:disabled) { background: var(--color-nav-hover); }
@@ -18,7 +18,7 @@
 .bell { position: relative; flex-shrink: 0; }
 .bellButton { position: relative; display: grid; place-items: center; width: 42px; height: 42px; border: 1px solid var(--color-border); border-radius: 50%; background: var(--color-surface); color: var(--color-text); cursor: pointer; font-size: 19px; }
 .counter { position: absolute; top: -5px; right: -7px; padding: 2px 5px; min-width: 19px; border-radius: 12px; background: #b91c1c; color: white; border: 2px solid var(--color-surface); font-size: 10px; font-weight: 700; }
-.dropdown { position: absolute; top: calc(100% + 12px); right: 0; width: min(380px, calc(100vw - 24px)); border: 1px solid var(--color-border); border-radius: 14px; background: var(--color-surface); box-shadow: var(--shadow-lg); color: var(--color-text); overflow: hidden; z-index: 230; }
+.dropdown { position: absolute; top: calc(100% + 12px); right: 0; width: min(380px, calc(100vw - 24px)); border: 1px solid var(--color-border); border-radius: 12px; background: var(--color-surface); box-shadow: var(--shadow-lg); color: var(--color-text); overflow: hidden; z-index: 230; }
 .dropdownHead { padding: 16px; display: flex; justify-content: space-between; align-items: center; gap: 10px; border-bottom: 1px solid var(--color-border); }
 .textButton { border: 0; background: none; color: var(--color-primary); font: inherit; font-size: 12px; cursor: pointer; padding: 6px; }
 .textButton:disabled { opacity: .5; cursor: not-allowed; }
@@ -32,7 +32,7 @@
 .unread { background: color-mix(in srgb, var(--color-primary) 5%, var(--color-surface)); }
 .dropdownFooter { display: block; padding: 14px; text-align: center; font-size: 13px; font-weight: 600; text-decoration: none; color: var(--color-primary); }
 .empty { text-align: center; padding: 32px 16px; color: var(--color-text-secondary); font-size: 14px; }
-.error { margin: 12px 0; padding: 12px; border: 1px solid #dc2626; border-radius: 8px; color: var(--color-text); background: color-mix(in srgb, #dc2626 9%, var(--color-surface)); font-size: 13px; line-height: 1.5; }
+.error { margin: 12px 0; padding: 12px; border: 1px solid #ef4444; border-radius: 8px; color: var(--color-text); background: color-mix(in srgb, #ef4444 9%, var(--color-surface)); font-size: 13px; line-height: 1.5; }
 .list, .history { display: grid; gap: 14px; }
 .card { display: flex; justify-content: space-between; align-items: center; gap: 20px; padding: 20px; border: 1px solid var(--color-border); border-radius: 12px; background-color: var(--color-surface); }
 .card > div:first-child { flex: 1; min-width: 0; }
@@ -45,25 +45,25 @@
 .important { background: #fff1db; color: #8a4400; }
 .content h2 { font-size: 22px; line-height: 1.4; margin: 14px 0 8px; overflow-wrap: anywhere; }
 .body { white-space: pre-wrap; overflow-wrap: anywhere; font-size: 14px; line-height: 1.8; margin: 20px 0; }
-.image { display: block; width: 100%; max-height: 340px; object-fit: contain; margin-top: 18px; border-radius: 10px; }
-.imageUpload { display: grid; gap: 12px; padding: 16px; border: 1px dashed var(--color-border); border-radius: 10px; }
+.image { display: block; width: 100%; max-height: 340px; object-fit: contain; margin-top: 18px; border-radius: 8px; }
+.imageUpload { display: grid; gap: 12px; padding: 16px; border: 1px dashed var(--color-border); border-radius: 8px; }
 .imageUpload .image { max-height: 240px; margin-top: 0; background: var(--color-bg); }
 .backdrop { position: fixed; inset: 0; z-index: 2000; display: flex; padding: 24px 16px; overflow-y: auto; background: rgb(10 15 30 / 75%); }
-.modal { width: 100%; max-width: 580px; margin: auto; padding: 28px; border-radius: 18px; background: var(--color-surface); color: var(--color-text); box-shadow: var(--shadow-lg); }
-.editor { background: var(--color-surface); padding: 24px; border: 1px solid var(--color-border); border-radius: 14px; margin-bottom: 30px; scroll-margin-top: 100px; }
+.modal { width: 100%; max-width: 580px; margin: auto; padding: 28px; border-radius: 12px; background: var(--color-surface); color: var(--color-text); box-shadow: var(--shadow-lg); }
+.editor { background: var(--color-surface); padding: 24px; border: 1px solid var(--color-border); border-radius: 12px; margin-bottom: 30px; scroll-margin-top: 100px; }
 .fieldset { border: 0; padding: 0; margin: 0; min-width: 0; display: grid; gap: 16px; }
 .fieldset label { display: grid; gap: 8px; font-size: 13px; font-weight: 600; min-width: 0; }
-.fieldset input:not([type=checkbox]), .fieldset select, .fieldset textarea { width: 100%; border: 1px solid var(--color-border); background: var(--color-bg); color: var(--color-text); padding: 12px; border-radius: 8px; font: inherit; font-size: 14px; }
+.fieldset input:not([type=checkbox]), .fieldset select, .fieldset textarea { width: 100%; border: 1px solid var(--color-border); background: var(--color-bg); color: var(--color-text); padding: 12px; border-radius: 6px; font: inherit; font-size: 14px; }
 .fieldset textarea { resize: vertical; min-height: 140px; }
 .fieldset input:focus, .fieldset select:focus, .fieldset textarea:focus { outline: 2px solid var(--color-primary); outline-offset: 1px; }
 .formGrid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
-.recipientPicker { display: grid; gap: 12px; padding: 16px; border: 1px solid var(--color-border); border-radius: 10px; }
+.recipientPicker { display: grid; gap: 12px; padding: 16px; border: 1px solid var(--color-border); border-radius: 8px; }
 .userResults { max-height: 230px; overflow-y: auto; }
 .fieldset .userOption { display: flex; align-items: center; gap: 10px; padding: 10px; cursor: pointer; border-bottom: 1px solid var(--color-border); }
 .userOption input { accent-color: var(--color-primary); }
 .userOption small { display: block; font-weight: 400; color: var(--color-text-secondary); margin-top: 3px; }
 .chips { display: flex; flex-wrap: wrap; gap: 6px; }
-.chip { border: 1px solid var(--color-border); border-radius: 16px; padding: 5px 10px; background: var(--color-nav-hover); color: var(--color-text); font: inherit; font-size: 12px; cursor: pointer; overflow-wrap: anywhere; max-width: 100%; }
+.chip { border: 1px solid var(--color-border); border-radius: 12px; padding: 5px 10px; background: var(--color-nav-hover); color: var(--color-text); font: inherit; font-size: 12px; cursor: pointer; overflow-wrap: anywhere; max-width: 100%; }
 .stats { font-size: 12px; color: var(--color-text-secondary); margin-bottom: 0; }
 @media (max-width: 700px) {
   .formGrid { grid-template-columns: 1fr; }

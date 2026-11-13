@@ -47,7 +47,7 @@ header.header {
 .logo-image {
   width: 36px;
   height: 36px;
-  border-radius: 10px;
+  border-radius: 8px;
   border: 1px solid var(--color-border);
   object-fit: contain;
   background: var(--color-surface);
@@ -87,7 +87,7 @@ header.header {
   gap: 4px;
   padding: 4px;
   border: 1px solid var(--color-border);
-  border-radius: 999px;
+  border-radius: 9999px;
   background: color-mix(in srgb, var(--color-surface) 88%, transparent);
 }
 
@@ -98,7 +98,7 @@ header.header {
   gap: 8px;
   min-height: 38px;
   padding: 0 12px;
-  border-radius: 999px;
+  border-radius: 9999px;
   color: var(--color-text-secondary);
   font-size: 14px;
   font-weight: 500;
@@ -182,7 +182,7 @@ header.header {
   height: 40px;
   padding: 4px;
   border: 1px solid var(--color-border);
-  border-radius: 999px;
+  border-radius: 9999px;
   background: var(--color-surface);
   cursor: pointer;
 }
@@ -196,7 +196,7 @@ header.header {
 .user-avatar-ring {
   width: 30px;
   height: 30px;
-  border-radius: 999px;
+  border-radius: 9999px;
   border: 1px solid var(--color-border);
   background: rgba(99, 102, 241, 0.1);
   display: inline-flex;
@@ -284,7 +284,7 @@ header.header {
   width: 34px;
   height: 34px;
   border: 1px solid var(--color-border);
-  border-radius: 999px;
+  border-radius: 9999px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -305,7 +305,7 @@ header.header {
 .hamburger-line {
   width: 18px;
   height: 2px;
-  border-radius: 999px;
+  border-radius: 9999px;
   background: currentColor;
 }
 
@@ -334,7 +334,6 @@ header.header {
   display: none;
   border-left: 1px solid var(--color-border);
   background: color-mix(in srgb, var(--color-surface) 96%, transparent);
-  backdrop-filter: blur(16px);
   transform: translateX(100%);
   transition: transform var(--transition-base);
   z-index: 220;

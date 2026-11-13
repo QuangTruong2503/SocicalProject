@@ -10,7 +10,7 @@
   align-items: center;
   justify-content: center;
   padding: 1rem;
-  background: rgba(15, 23, 42, 0.72);
+  background: rgba(10, 10, 10, 0.72);
   backdrop-filter: blur(10px);
 }
 
@@ -21,15 +21,15 @@
   display: grid;
   grid-template-rows: auto 1fr;
   background: #ffffff;
-  border: 1px solid rgba(148, 163, 184, 0.25);
-  border-radius: 20px;
-  box-shadow: 0 30px 80px rgba(15, 23, 42, 0.35);
+  border: 1px solid rgba(156, 156, 156, 0.25);
+  border-radius: 12px;
+  box-shadow: var(--shadow-lg);
 }
 
 .notification-modal-image-wrap {
   width: 100%;
   aspect-ratio: 16 / 9;
-  background: linear-gradient(135deg, #e2e8f0, #f8fafc);
+  background: var(--color-bg-alt);
   overflow: hidden;
 }
 
@@ -51,9 +51,9 @@
   display: inline-flex;
   align-self: flex-start;
   padding: 0.3rem 0.65rem;
-  border-radius: 999px;
-  background: rgba(37, 99, 235, 0.1);
-  color: #1d4ed8;
+  border-radius: 9999px;
+  background: rgba(99, 102, 241, 0.1);
+  color: #4f46e5;
   font-size: 0.78rem;
   font-weight: 700;
   letter-spacing: 0.02em;
@@ -61,14 +61,14 @@
 
 .notification-modal-title {
   margin: 0;
-  color: #0f172a;
+  color: #0a0a0a;
   font-size: 1.35rem;
   line-height: 1.25;
-  font-weight: 800;
+  font-weight: 700;
 }
 
 .notification-modal-content {
-  color: #334155;
+  color: #404040;
   font-size: 0.98rem;
   line-height: 1.6;
   white-space: pre-wrap;
@@ -84,30 +84,30 @@
   min-width: 120px;
   border: none;
   border-radius: 12px;
-  background: #2563eb;
+  background: #6366f1;
   color: #ffffff;
   font-size: 0.95rem;
   font-weight: 700;
   padding: 0.75rem 1rem;
   cursor: pointer;
   transition: transform 0.15s ease, background 0.15s ease, box-shadow 0.15s ease;
-  box-shadow: 0 14px 24px rgba(37, 99, 235, 0.24);
+  box-shadow: var(--shadow-lg);
 }
 
 .notification-modal-button:hover {
-  background: #1d4ed8;
+  background: #4f46e5;
   transform: translateY(-1px);
 }
 
 .notification-modal-button:focus-visible {
-  outline: 3px solid rgba(59, 130, 246, 0.35);
+  outline: 3px solid rgba(99, 102, 241, 0.35);
   outline-offset: 3px;
 }
 
 @media (max-width: 640px) {
   .notification-modal {
     width: min(100%, 100%);
-    border-radius: 18px;
+    border-radius: 12px;
   }
 
   .notification-modal-body {
