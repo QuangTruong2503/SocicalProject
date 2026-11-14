@@ -2,11 +2,12 @@
  * Folder access for /watermark/auto (File System Access API, Chrome/Edge desktop).
  * Every handle comes from a picker or folders the user dropped; nothing here
  * walks the disk on its own. Product folders are read one level deep, results
- * go to "<product>/Named". Source files are only read, never renamed or written.
+ * go to "<chosen root>/Result/<product>". Source files are only read, never renamed or written.
  */
 import { nextAvailableFileName } from './watermarkAutoNaming.js';
 
 export const RESULT_FOLDER_NAME = 'Named';
+export const COLLECTION_FOLDER_NAME = 'Result';
 export const SUPPORTED_IMAGE_TYPES = Object.freeze({ jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png', webp: 'image/webp' });
 const PICKER_ID = 'watermark-auto';
 const SYSTEM_FILES = new Set(['thumbs.db', 'desktop.ini', 'ehthumbs.db']);
@@ -15,7 +16,7 @@ const collator = new Intl.Collator('vi', { numeric: true, sensitivity: 'base' })
 /** Natural order ("IMG_2" before "IMG_10"), stable for equal names. */
 export const naturalCompare = (a, b) => collator.compare(a, b) || (a < b ? -1 : a > b ? 1 : 0);
 
-export const isResultFolderName = (name) => String(name ?? '').trim().toLowerCase() === RESULT_FOLDER_NAME.toLowerCase();
+export const isResultFolderName = (name) => [RESULT_FOLDER_NAME, COLLECTION_FOLDER_NAME].some((folder) => String(name ?? '').trim().toLowerCase() === folder.toLowerCase());
 
 const isSystemFile = (name) => name.startsWith('.') || SYSTEM_FILES.has(name.toLowerCase());
 
@@ -156,12 +157,13 @@ export async function scanProductFolder(handle, { relativePath = handle.name } =
   let namedIsFile = false;
 
   for await (const entry of handle.values()) {
-    if (isResultFolderName(entry.name)) {
+    if (entry.name.toLowerCase() === RESULT_FOLDER_NAME.toLowerCase()) {
       // An existing "Named"/"named" folder is reused as is and never read as input.
       if (entry.kind === 'directory') namedHandle ??= entry;
       else namedIsFile = true;
       continue;
     }
+    if (isResultFolderName(entry.name)) continue;
     if (entry.kind === 'directory') {
       nestedFolders += 1;
       continue;
@@ -198,7 +200,7 @@ export async function scanProductFolder(handle, { relativePath = handle.name } =
 
 /**
  * Every direct sub-folder of a parent becomes a product; images at the
- * parent's root and folders called "Named" are skipped and counted.
+ * parent's root and folders called "Named" or "Result" are skipped and counted.
  */
 export async function scanParentFolder(parentHandle) {
   const folders = [];
@@ -262,7 +264,7 @@ export function classifyFileError(error) {
 
 async function findResultFolder(productHandle) {
   for await (const entry of productHandle.values()) {
-    if (isResultFolderName(entry.name)) return entry;
+    if (entry.name.toLowerCase() === RESULT_FOLDER_NAME.toLowerCase()) return entry;
   }
   return null;
 }
@@ -290,7 +292,7 @@ const SAFE_FILE_NAME = /^[a-z0-9][a-z0-9-]*\.jpg$/;
  * File System Access cannot lock a folder against other programs; this keeps
  * the app's own writes from colliding and re-checks at the last moment.
  */
-export function createNamedFolderWriter(productHandle, { namedHandle = null } = {}) {
+export function createNamedFolderWriter(productHandle, { namedHandle = null, resolveDirectory = null } = {}) {
   let directory = namedHandle;
   let used = null;
   // Names this writer created but could not finish; a retry may reuse them.
@@ -298,6 +300,10 @@ export function createNamedFolderWriter(productHandle, { namedHandle = null } = 
 
   async function ensureDirectory() {
     if (directory) return directory;
+    if (resolveDirectory) {
+      directory = await resolveDirectory();
+      return directory;
+    }
     const existing = await findResultFolder(productHandle);
     if (existing && existing.kind !== 'directory') {
       throw new FolderAccessError('named_is_file', `Trong thư mục đã có một file tên “${existing.name}”, nên không tạo được thư mục ${RESULT_FOLDER_NAME}.`);
@@ -363,4 +369,58 @@ export function createNamedFolderWriter(productHandle, { namedHandle = null } = 
       throw new FolderAccessError('write_failed', 'Không tìm được tên file còn trống.');
     },
   };
+}
+
+/** Find existing folders case-insensitively, preserving their spelling. */
+async function ensureChildDirectory(parent, name) {
+  if (!name || name === '.' || name === '..' || /[\\/\0]/.test(name)) {
+    throw new FolderAccessError('result_is_file', 'Tên thư mục kết quả không hợp lệ.');
+  }
+  for await (const entry of parent.values()) {
+    if (entry.name.toLowerCase() !== name.toLowerCase()) continue;
+    if (entry.kind !== 'directory') {
+      throw new FolderAccessError('result_is_file', `Đã có file tên “${entry.name}”, không tạo được thư mục kết quả. Hãy đổi tên file đó.`);
+    }
+    return entry;
+  }
+  return parent.getDirectoryHandle(name, { create: true });
+}
+
+/**
+ * Output: <chosen root>/Result/<source folder name>/*.jpg.
+ * Assign distinct product folders before workers start, even for equal names.
+ * Directories are created only when the first output is actually written.
+ */
+export function createResultCollection(rootHandle, products) {
+  let resultTask = null;
+  let resultFolderName = COLLECTION_FOLDER_NAME;
+  const used = new Set();
+  const sourceNames = new Set(products.map((product) => product.folderName.toLowerCase()));
+  const writers = new Map();
+  for (const product of products) {
+    const base = product.folderName;
+    let folderName = base;
+    for (let suffix = 2; used.has(folderName.toLowerCase()) || (folderName !== base && sourceNames.has(folderName.toLowerCase())); suffix += 1) {
+      folderName = `${base} (${suffix})`;
+    }
+    used.add(folderName.toLowerCase());
+    let actualFolderName = folderName;
+    const writer = createNamedFolderWriter(null, { resolveDirectory: async () => {
+      // Share the creation task so parallel products cannot race to create Result.
+      resultTask ??= ensureChildDirectory(rootHandle, COLLECTION_FOLDER_NAME).catch((error) => {
+        resultTask = null;
+        throw error;
+      });
+      const result = await resultTask;
+      resultFolderName = result.name;
+      const directory = await ensureChildDirectory(result, folderName);
+      actualFolderName = directory.name;
+      return directory;
+    } });
+    writers.set(product.id, {
+      write: (...args) => writer.write(...args),
+      get folderPath() { return `${rootHandle.name}/${resultFolderName}/${actualFolderName}`; },
+    });
+  }
+  return writers;
 }

@@ -57,6 +57,8 @@ const START_ERRORS = {
   busy: 'Đang có thao tác khác, vui lòng đợi.',
   engine: 'Bộ xử lý ảnh chưa sẵn sàng. Hãy thử lại sau giây lát.',
   no_images: 'Chưa chọn sản phẩm nào có ảnh hợp lệ.',
+  result_root: 'Chọn nơi lưu Result trước khi bắt đầu.',
+  result_permission: 'Cần cấp quyền ghi vào nơi lưu Result.',
   auth: 'Phiên đăng nhập đã hết hạn. Hãy đăng nhập lại rồi chọn lại thư mục.',
 };
 
@@ -112,7 +114,7 @@ export default function WatermarkAuto() {
   const runContextRef = useRef(null);
 
   // Statistics per finished segment (start / resume / retry), same semantics as /watermark:
-  // "created" = rendered for the first time, "download" = written to Named with close() done.
+  // "created" = rendered for the first time, "download" = written to Result with close() done.
   const handleSegmentEnd = useCallback(({ imageBatchId, config, segment }) => {
     const context = runContextRef.current;
     if (!context) return;
@@ -179,7 +181,7 @@ export default function WatermarkAuto() {
     onSegmentEnd: handleSegmentEnd,
     onAccessRejected: aiAccess.reportRejection,
   });
-  const { products, run, notices, picking, granting, support } = snapshot;
+  const { products, run, notices, picking, granting, support, resultRootName, resultPermission } = snapshot;
   const locked = run?.state === 'running' || run?.state === 'stopping';
   const now = useTicker(Boolean(run?.pause?.until));
 
@@ -268,6 +270,8 @@ export default function WatermarkAuto() {
   const blockers = [];
   if (!support.supported) blockers.push('Trình duyệt chưa hỗ trợ lưu trực tiếp vào thư mục.');
   if (!selectedImageCount) blockers.push('Chọn ít nhất một sản phẩm có ảnh hợp lệ.');
+  if (!resultRootName) blockers.push('Chọn nơi lưu Result để gom ảnh theo sản phẩm.');
+  else if (resultPermission && resultPermission !== 'granted') blockers.push('Cần cấp quyền ghi vào nơi lưu Result.');
   if (missingPermission.length) blockers.push(`Cần cấp quyền ghi cho: ${missingPermission.map((product) => product.name).join(', ')}.`);
   if (!logoState.ready) blockers.push('Chọn logo (bắt buộc với watermark tự động).');
   if (aiAccess.status === 'loading') blockers.push('Đang kiểm tra quyền Đặt tên AI…');
@@ -355,14 +359,14 @@ export default function WatermarkAuto() {
           </nav>
           <header className="wm-workspace-heading">
             <h1>Watermark tự động</h1>
-            <p>Chọn thư mục sản phẩm. Công cụ tự chèn logo, đặt tên AI và lưu vào Named.</p>
+            <p>Chọn thư mục sản phẩm. Công cụ tự chèn logo, đặt tên AI và lưu vào Result/Tên sản phẩm.</p>
           </header>
 
           {!support.supported && (
             <div className="wma-notice wma-notice--error wma-support" role="alert">
               <span>
                 <strong>Chưa lưu trực tiếp được trên trình duyệt này.</strong> {SUPPORT_MESSAGES[support.reason]}
-                {' '}Trang không tạo file ZIP thay thế, vì ZIP không tạo được thư mục Named trên máy.
+                {' '}Trang không tạo file ZIP thay thế, vì ZIP không tạo được thư mục Result trên máy.
               </span>
             </div>
           )}
@@ -473,9 +477,20 @@ export default function WatermarkAuto() {
                     <span aria-hidden="true">ⓘ</span> Ảnh được xử lý trên máy. Bản ảnh nhỏ được gửi tới dịch vụ AI để đặt tên.
                   </p>
                   <p className="wma-hint">
-                    Nơi lưu: <code>&lt;thư mục sản phẩm&gt;/Named</code>. Ảnh gốc không bị đổi tên, di chuyển hay ghi đè.
-                    Không chỉnh thư mục Named bằng ứng dụng khác trong lúc chạy.
+                    Nơi lưu: <code>{resultRootName ? `${resultRootName}/Result/<Tên sản phẩm>` : '<nơi lưu>/Result/<Tên sản phẩm>'}</code>.
+                    {' '}Ảnh gốc được giữ nguyên. Không chỉnh Result bằng ứng dụng khác trong lúc chạy.
                   </p>
+                  <div className="wma-picker-actions">
+                    <button type="button" className="wm-btn-outline" onClick={() => runner.chooseResultRoot()} disabled={locked || picking || granting || !support.supported}>
+                      {resultRootName ? 'Đổi nơi lưu Result' : 'Chọn nơi lưu Result'}
+                    </button>
+                    {resultRootName && resultPermission !== 'granted' && (
+                      <button type="button" className="wm-btn-outline" onClick={() => runner.requestResultPermission()} disabled={locked || picking || granting}>
+                        Cấp quyền lưu Result
+                      </button>
+                    )}
+                  </div>
+                  <small className="wma-hint">Chọn thư mục cha sẽ tự dùng thư mục đó làm nơi chứa Result. Khi chọn riêng hoặc kéo thả sản phẩm, hãy chọn nơi lưu Result một lần.</small>
                 </div>
               </div>
 

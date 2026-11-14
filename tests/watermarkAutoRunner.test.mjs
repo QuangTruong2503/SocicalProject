@@ -4,7 +4,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { JPEG, imagesSpec, makeTree } from './fixtures/fakeFileSystem.mjs';
 
-const { createAutoRunner, MAX_FAILED_BATCHES_IN_A_ROW } = await import('../src/hooks/useWatermarkAutoProcessor.js');
+const { createAutoRunner, MAX_FAILED_BATCHES_IN_A_ROW, MAX_PARALLEL_PRODUCTS } = await import('../src/hooks/useWatermarkAutoProcessor.js');
 const { slugifyFileName } = await import('../src/utils/aiImageNaming.js');
 
 const CONFIG = {
@@ -19,6 +19,14 @@ const deferred = () => {
   const promise = new Promise((done) => { resolve = done; });
   return { promise, resolve };
 };
+
+async function waitFor(predicate) {
+  const deadline = Date.now() + 2000;
+  while (!predicate()) {
+    assert.ok(Date.now() < deadline, 'queue reached the expected state');
+    await new Promise((resolve) => setTimeout(resolve, 1));
+  }
+}
 
 /** Default AI: one name per image, "<product>-mo-ta-<position>". */
 const describeAll = ({ productName, images }) => ({
@@ -61,19 +69,22 @@ function setup({ picks = [], ai = describeAll, now } = {}) {
     onSegmentEnd: (summary) => log.segments.push(summary),
     onAccessRejected: (code) => log.rejections.push(code),
   });
-  return { runner, log, clock, snap: () => runner.getSnapshot() };
+  const resultRoot = makeTree('Output', {});
+  runner.setResultRoot(resultRoot);
+  return { runner, log, clock, resultRoot, snap: () => runner.getSnapshot() };
 }
 
-const namesIn = (dir) => [...(dir.file('Named')?.handle.children.keys() ?? [])].sort();
+const resultDir = (root, name) => root.file('Result')?.handle.file(name)?.handle;
+const namesIn = (root, name) => [...(resultDir(root, name)?.children.keys() ?? [])].sort();
 const product = (snap, name) => snap().products.find((item) => item.name === name);
 
-test('parent folder: products in order, one product per request, ≤6 images, >60 images go through', async () => {
+test('parent folder: one product per request, ≤6 images, >60 images go through', async () => {
   const root = makeTree('SanPham', {
     'Máy khoan Bosch GSB 13 RE': imagesSpec(70),
     'Máy mài Makita 9553B': { 'IMG_003.webp': [...'RIFF'].map((c) => c.charCodeAt(0)).concat([0, 0, 0, 0], [...'WEBP'].map((c) => c.charCodeAt(0))) },
     'IMG_root.jpg': JPEG,
   });
-  const { runner, log, snap } = setup({ picks: [root] });
+  const { runner, log, snap, resultRoot } = setup({ picks: [root] });
   await runner.addParentFolder();
   assert.deepEqual(snap().products.map((item) => item.name), ['Máy khoan Bosch GSB 13 RE', 'Máy mài Makita 9553B']);
   assert.match(snap().notices.map((notice) => notice.text).join(' '), /Bỏ qua 1 ảnh nằm ngay trong thư mục cha/);
@@ -83,17 +94,18 @@ test('parent folder: products in order, one product per request, ≤6 images, >6
 
   assert.equal(log.ai.length, 13, '70 images → 12 batches, + 1 for the second product');
   assert.ok(log.ai.every((request) => request.images.length <= 6));
-  assert.ok(log.ai.slice(0, 12).every((request) => request.productName === 'Máy khoan Bosch GSB 13 RE'));
-  assert.equal(log.ai[12].productName, 'Máy mài Makita 9553B');
+  assert.equal(log.ai.filter((request) => request.productName === 'Máy khoan Bosch GSB 13 RE').length, 12);
+  assert.equal(log.ai.filter((request) => request.productName === 'Máy mài Makita 9553B').length, 1);
+  assert.ok(log.ai.every((request) => request.images.every((image) => image.id.startsWith(request.productName === 'Máy khoan Bosch GSB 13 RE' ? 'p1-' : 'p2-'))));
   assert.equal(new Set(log.ai.map((request) => request.requestId)).size, 13, 'new requestId per batch');
   assert.equal(new Set(log.ai.map((request) => request.aiRunId)).size, 1, 'one aiRunId per click');
   assert.equal(log.ai[0].prompt, CONFIG.prompt);
   assert.equal(log.ai[0].model, 'gpt-6-luna');
 
   const drill = root.file('Máy khoan Bosch GSB 13 RE').handle;
-  assert.equal(namesIn(drill).length, 70);
-  assert.ok(namesIn(drill).includes('may-khoan-bosch-gsb-13-re-mo-ta-70.jpg'));
-  assert.deepEqual(namesIn(root.file('Máy mài Makita 9553B').handle), ['may-mai-makita-9553b-mo-ta-1.jpg']);
+  assert.equal(namesIn(resultRoot, drill.name).length, 70);
+  assert.ok(namesIn(resultRoot, drill.name).includes('may-khoan-bosch-gsb-13-re-mo-ta-70.jpg'));
+  assert.deepEqual(namesIn(resultRoot, 'Máy mài Makita 9553B'), ['may-mai-makita-9553b-mo-ta-1.jpg']);
   assert.equal(drill.file('IMG_1.jpg').committed, true, 'sources untouched');
   assert.ok(log.renders.every((call) => call.overrides.maxDimension === 4096));
   assert.ok(log.resizes.every((call) => call.width === 800 && call.height === 600));
@@ -102,8 +114,157 @@ test('parent folder: products in order, one product per request, ≤6 images, >6
   const run = snap().run;
   assert.equal(run.state, 'finished');
   assert.deepEqual([run.saved, run.total, run.errors, run.review, run.productsWithSaved], [71, 71, 0, 0, 2]);
-  const written = (await root.file('Máy mài Makita 9553B').handle.file('Named').handle.file('may-mai-makita-9553b-mo-ta-1.jpg').data.text());
+  const written = await resultDir(resultRoot, 'Máy mài Makita 9553B').file('may-mai-makita-9553b-mo-ta-1.jpg').data.text();
   assert.equal(written, 'wm(IMG_003.webp)@800x600', 'logo first, then letterbox');
+});
+
+test('two products overlap, a free slot takes the next folder, batches within each folder stay ordered', async (t) => {
+  const root = makeTree('P', { A: imagesSpec(13), B: imagesSpec(1), C: imagesSpec(1), D: imagesSpec(1) });
+  const gateA = deferred();
+  const gateB = deferred();
+  t.after(() => { gateA.resolve(); gateB.resolve(); });
+  let active = 0;
+  let maximum = 0;
+  const activeNames = new Set();
+  const { runner, log, snap } = setup({ picks: [root], ai: async (input) => {
+    assert.ok(!activeNames.has(input.productName), 'one request per product at a time');
+    activeNames.add(input.productName);
+    maximum = Math.max(maximum, ++active);
+    if (input.productName === 'A') await gateA.promise;
+    if (input.productName === 'B') await gateB.promise;
+    activeNames.delete(input.productName);
+    active -= 1;
+    return describeAll(input);
+  } });
+  await runner.addParentFolder();
+  await runner.start(CONFIG);
+  await waitFor(() => log.ai.length === 2);
+  assert.equal(maximum, MAX_PARALLEL_PRODUCTS);
+  assert.deepEqual(snap().run.activeProducts.map((item) => item.name), ['A', 'B']);
+  assert.ok(snap().run.activeProducts.every((item) => item.stage === 'naming'));
+  assert.deepEqual(log.ai.map((input) => input.productName).sort(), ['A', 'B']);
+
+  gateB.resolve();
+  await waitFor(() => product(snap, 'D').status === 'done');
+  assert.equal(product(snap, 'A').counts.saved, 0, 'slow folder does not hold the other slot');
+  assert.equal(log.segments.length, 0, 'telemetry waits for every worker');
+  gateA.resolve();
+  await runner.idle();
+  assert.equal(maximum, 2);
+  assert.deepEqual(log.ai.filter((input) => input.productName === 'A').map((input) => input.images.map((image) => image.position)), [
+    [1, 2, 3, 4, 5, 6], [7, 8, 9, 10, 11, 12], [13],
+  ]);
+  assert.equal(snap().run.saved, 16);
+  assert.deepEqual(snap().run.activeProducts, []);
+  assert.equal(log.segments.length, 1);
+  assert.equal(log.segments[0].segment.write.written, 16);
+});
+
+test('stop waits for both concurrent requests, ignores late answers and resumes every unfinished product', async (t) => {
+  const root = makeTree('P', { A: imagesSpec(2), B: imagesSpec(2), C: imagesSpec(1) });
+  const gates = { A: deferred(), B: deferred() };
+  t.after(() => Object.values(gates).forEach((gate) => gate.resolve()));
+  const { runner, log, snap } = setup({ picks: [root], ai: async (input) => {
+    await gates[input.productName]?.promise;
+    return describeAll(input);
+  } });
+  await runner.addParentFolder();
+  await runner.start(CONFIG);
+  await waitFor(() => log.ai.length === 2);
+  runner.stop();
+  assert.ok(log.ai.every((input) => input.signal.aborted));
+  gates.A.resolve();
+  await waitFor(() => snap().run.activeProducts.length === 1);
+  assert.equal(snap().run.state, 'stopping');
+  assert.equal(runner.resume().reason, 'busy');
+  assert.equal(log.segments.length, 0);
+  gates.B.resolve();
+  await runner.idle();
+  assert.deepEqual([snap().run.state, snap().run.pending, snap().run.errors], ['paused', 5, 0]);
+  assert.equal(root.fs.writes.length, 0);
+  assert.equal(log.ai.length, 2, 'third product was never dispatched');
+  runner.resume();
+  await runner.idle();
+  assert.equal(snap().run.saved, 5);
+  assert.equal(log.segments.length, 2);
+});
+
+test('a parallel rate-limit pause preserves successful names, waits for workers and honors cooldown', async (t) => {
+  const root = makeTree('P', { A: imagesSpec(1), B: imagesSpec(1), C: imagesSpec(1) });
+  const gates = { A: deferred(), B: deferred() };
+  t.after(() => Object.values(gates).forEach((gate) => gate.resolve()));
+  let limited = true;
+  const { runner, log, snap, clock } = setup({ picks: [root], ai: async (input) => {
+    await gates[input.productName]?.promise;
+    return input.productName === 'A' && limited
+      ? { data: null, error: 'Quá tải', code: 'rate_limited', retryAfterSeconds: 120 }
+      : describeAll(input);
+  } });
+  await runner.addParentFolder();
+  await runner.start(CONFIG);
+  await waitFor(() => log.ai.length === 2);
+  gates.A.resolve();
+  await waitFor(() => snap().run.pause?.code === 'rate_limited');
+  assert.equal(runner.resume().reason, 'busy', 'other worker is still running');
+  assert.equal(log.segments.length, 0);
+  gates.B.resolve();
+  await runner.idle();
+  assert.equal(root.fs.writes.length, 0);
+  assert.equal(product(snap, 'B').images[0].suggestion.name, 'b-mo-ta-1');
+  assert.deepEqual([snap().run.pending, snap().run.errors], [3, 0]);
+  assert.equal(runner.resume().reason, 'wait');
+  clock.value += 121_000;
+  limited = false;
+  runner.resume();
+  await runner.idle();
+  assert.equal(snap().run.saved, 3);
+  assert.deepEqual(log.ai.map((input) => input.productName).sort(), ['A', 'A', 'B', 'C'], 'B reuses the successful answer received during pause');
+  assert.equal(log.segments.length, 2);
+});
+
+test('concurrent pause errors retain the first cause and extend its cooldown', async (t) => {
+  const root = makeTree('P', { A: imagesSpec(1), B: imagesSpec(1), C: imagesSpec(1) });
+  const gates = { A: deferred(), B: deferred() };
+  t.after(() => Object.values(gates).forEach((gate) => gate.resolve()));
+  const { runner, log, snap, clock } = setup({ picks: [root], ai: async (input) => {
+    await gates[input.productName].promise;
+    return { data: null, error: input.productName, code: 'rate_limited', retryAfterSeconds: input.productName === 'A' ? 5 : 120 };
+  } });
+  await runner.addParentFolder();
+  await runner.start(CONFIG);
+  await waitFor(() => log.ai.length === 2);
+  gates.A.resolve();
+  await waitFor(() => snap().run.pause?.message === 'A');
+  gates.B.resolve();
+  await runner.idle();
+  assert.equal(snap().run.pause.message, 'A');
+  assert.equal(snap().run.pause.until, clock.value + 120_000);
+  assert.equal(snap().run.pending, 3);
+  assert.equal(log.ai.length, 2);
+});
+
+test('unexpected failure pauses dispatch but waits for the other product before completing', async (t) => {
+  const root = makeTree('P', { A: imagesSpec(1), B: imagesSpec(1), C: imagesSpec(1) });
+  const gates = { A: deferred(), B: deferred() };
+  t.after(() => Object.values(gates).forEach((gate) => gate.resolve()));
+  const { runner, log, snap } = setup({ picks: [root], ai: async (input) => {
+    await gates[input.productName].promise;
+    if (input.productName === 'A') throw new Error('Unexpected failure');
+    return describeAll(input);
+  } });
+  await runner.addParentFolder();
+  await runner.start(CONFIG);
+  await waitFor(() => log.ai.length === 2);
+  gates.A.resolve();
+  await waitFor(() => snap().run.pause?.kind === 'unexpected');
+  assert.equal(log.segments.length, 0);
+  assert.equal(runner.resume().reason, 'busy');
+  gates.B.resolve();
+  await runner.idle();
+  assert.equal(snap().run.state, 'paused');
+  assert.deepEqual([snap().run.saved, snap().run.pending, snap().run.errors], [0, 3, 0]);
+  assert.equal(log.ai.length, 2);
+  assert.equal(log.segments.length, 1);
 });
 
 test('the same folder twice is one product; equal names in different places are two', async () => {
@@ -161,40 +322,43 @@ test('reordered, missing, duplicate and unknown IDs never move a name to another
 
 test('unclear images keep the padded fallback name and are flagged; review is part of saved', async () => {
   const root = makeTree('P', { 'Máy khoan': imagesSpec(2) });
-  const { runner, snap } = setup({
+  const { runner, snap, resultRoot } = setup({
     picks: [root.file('Máy khoan').handle],
     ai: ({ images }) => ({ data: { items: images.map((image) => ({ imageId: image.id, suggestedName: `may-khoan-${image.position}`, needsReview: true })), failed: [] }, error: null, code: null }),
   });
   await runner.addProductFolder();
   await runner.start(CONFIG);
   await runner.idle();
-  assert.deepEqual(namesIn(root.file('Máy khoan').handle), ['may-khoan-001.jpg', 'may-khoan-002.jpg']);
+  assert.deepEqual(namesIn(resultRoot, 'Máy khoan'), ['may-khoan-001.jpg', 'may-khoan-002.jpg']);
   assert.deepEqual([snap().run.saved, snap().run.review], [2, 2]);
 });
 
-test('names stay unique per Named across batches and against files already there', async () => {
+test('names stay unique per Result product across batches and against files already there', async () => {
   const root = makeTree('P', { 'Máy': { ...imagesSpec(8), Named: { 'may-giong.jpg': JPEG, 'MAY-GIONG-2.JPG': JPEG } } });
-  const { runner, log } = setup({
+  const { runner, log, resultRoot } = setup({
     picks: [root.file('Máy').handle],
     ai: ({ images }) => ({ data: { items: images.map((image) => ({ imageId: image.id, suggestedName: 'may-giong', needsReview: false })), failed: [] }, error: null, code: null }),
   });
+  const existing = resultRoot.addDir('Result').addDir('Máy');
+  existing.addFile('may-giong.jpg', JPEG);
+  existing.addFile('MAY-GIONG-2.JPG', JPEG);
   await runner.addProductFolder();
   await runner.start(CONFIG);
   await runner.idle();
   assert.equal(log.ai.length, 2);
-  const names = namesIn(root.file('Máy').handle);
+  const names = namesIn(resultRoot, 'Máy');
   assert.equal(names.length, 10);
   assert.ok(names.includes('may-giong-10.jpg') && names.includes('may-giong-3.jpg'));
   assert.equal(new Set(names.map((name) => name.toLowerCase())).size, 10);
   // IMG_1 got the first free suffix: order follows the folder, not the answers.
-  const image1 = [...root.fs.writes].find((write) => write.path.endsWith('may-giong-3.jpg'));
+  const image1 = [...resultRoot.fs.writes].find((write) => write.path.endsWith('may-giong-3.jpg'));
   assert.equal(await image1.data.text(), 'wm(IMG_1.jpg)@800x600');
 });
 
 test('stop: a late answer is not written, saved files stay, resume only does the rest', async () => {
   const root = makeTree('P', { 'Máy': imagesSpec(12) });
   const gate = deferred();
-  const { runner, log, snap } = setup({
+  const { runner, log, snap, resultRoot } = setup({
     picks: [root.file('Máy').handle],
     ai: async (input, call) => {
       if (call === 2) await gate.promise; // ignores the abort signal on purpose
@@ -211,23 +375,23 @@ test('stop: a late answer is not written, saved files stay, resume only does the
   await runner.idle();
   assert.equal(snap().run.state, 'paused');
   assert.equal(snap().run.pause.kind, 'stopped');
-  assert.equal(namesIn(root.file('Máy').handle).length, 6, 'only the first batch');
+  assert.equal(namesIn(resultRoot, 'Máy').length, 6, 'only the first batch');
   assert.deepEqual([snap().run.saved, snap().run.errors, snap().run.pending], [6, 0, 6], 'not counted as AI errors');
 
   const rendersBefore = log.renders.length;
   assert.deepEqual(runner.resume(), { ok: true });
   await runner.idle();
   assert.equal(snap().run.state, 'finished');
-  assert.equal(namesIn(root.file('Máy').handle).length, 12);
+  assert.equal(namesIn(resultRoot, 'Máy').length, 12);
   assert.deepEqual(log.renders.slice(rendersBefore).map((call) => call.name), Array.from({ length: 6 }, (_, i) => `IMG_${i + 7}.jpg`));
   assert.equal(log.ai[2].requestId !== log.ai[1].requestId, true);
 });
 
 test('a failed write is retried without a second AI call, rendered again from the original', async () => {
   const root = makeTree('P', { 'Máy': imagesSpec(3) });
-  const { runner, log, snap } = setup({ picks: [root.file('Máy').handle] });
+  const { runner, log, snap, resultRoot } = setup({ picks: [root.file('Máy').handle] });
   let failOnce = true;
-  root.fs.failClose = (name) => {
+  resultRoot.fs.failClose = (name) => {
     if (name === 'may-mo-ta-2.jpg' && failOnce) {
       failOnce = false;
       return new Error('I/O');
@@ -251,9 +415,93 @@ test('a failed write is retried without a second AI call, rendered again from th
   const lastRender = log.renders.at(-1);
   assert.equal(lastRender.name, 'IMG_2.jpg');
   assert.ok(!lastRender.text.startsWith('wm('), 'never re-stamps the exported file');
-  assert.deepEqual(namesIn(root.file('Máy').handle), ['may-mo-ta-1.jpg', 'may-mo-ta-2.jpg', 'may-mo-ta-3.jpg']);
+  assert.deepEqual(namesIn(resultRoot, 'Máy'), ['may-mo-ta-1.jpg', 'may-mo-ta-2.jpg', 'may-mo-ta-3.jpg']);
   assert.equal(log.segments[1].segment.create.requested, 0, 'a re-written image is not created twice');
   assert.equal(log.segments[1].segment.write.written, 1);
+});
+
+test('outputs are saved only under Result/product and never written into the source folder', async () => {
+  const source = makeTree('P', { Máy: imagesSpec(2) });
+  const { runner, log, snap, resultRoot } = setup({ picks: [source] });
+  await runner.addParentFolder();
+  await runner.start(CONFIG);
+  await runner.idle();
+  assert.equal(log.ai.length, 1);
+  assert.equal(source.fs.writes.length, 0);
+  assert.equal(source.file('Máy').handle.file('Named'), undefined);
+  assert.deepEqual([snap().run.saved, snap().run.errors], [2, 0]);
+  const collected = resultRoot.file('Result').handle.file('Máy').handle;
+  for (const image of product(snap, 'Máy').images) {
+    assert.equal(await collected.file(image.outputName).data.text(), `wm(${image.sourceName})@800x600`);
+  }
+  assert.equal(log.segments[0].segment.write.written, 2);
+});
+
+test('Result access is checked before AI and a lost destination grant pauses every product', async () => {
+  const source = makeTree('P', { A: imagesSpec(1), B: imagesSpec(1), C: imagesSpec(1) });
+  let revoke = true;
+  const { runner, log, snap, resultRoot } = setup({ picks: [source], ai: (input) => {
+    if (revoke) resultRoot.fs.permission = 'prompt';
+    return describeAll(input);
+  } });
+  await runner.addParentFolder();
+  resultRoot.fs.permission = 'prompt';
+  assert.deepEqual(await runner.start(CONFIG), { ok: false, reason: 'result_permission' });
+  assert.equal(log.ai.length, 0);
+  assert.equal(resultRoot.fs.requests.length, 0);
+  resultRoot.fs.permission = 'granted';
+  await runner.start(CONFIG);
+  await runner.idle();
+  assert.equal(snap().run.pause.kind, 'result');
+  assert.equal(snap().run.pause.code, 'permission');
+  assert.equal(log.ai.length, 2, 'third product was not dispatched');
+  assert.equal(log.segments.length, 1);
+  assert.equal(snap().run.errors, 0);
+  revoke = false;
+  resultRoot.fs.grantOnRequest = true;
+  await runner.requestResultPermission();
+  runner.resume();
+  await runner.idle();
+  assert.equal(snap().run.saved, 3);
+  assert.equal(source.fs.writes.length, 0);
+  assert.equal(resultRoot.fs.writes.length, 3);
+  assert.equal(log.ai.length, 3, 'successful in-flight names are reused');
+});
+
+test('stop during a Result close counts the completed file and does not write it again on resume', async () => {
+  const source = makeTree('Máy', imagesSpec(1));
+  const { runner, log, snap, resultRoot } = setup({ picks: [source] });
+  await runner.addProductFolder();
+  let stopOnce = true;
+  resultRoot.fs.failClose = () => {
+    if (stopOnce) { stopOnce = false; runner.stop(); }
+    return null;
+  };
+  await runner.start(CONFIG);
+  await runner.idle();
+  assert.equal(source.fs.writes.length, 0);
+  assert.equal(resultRoot.fs.writes.length, 1);
+  assert.deepEqual([snap().run.saved, snap().run.pending], [1, 0]);
+  runner.resume();
+  await runner.idle();
+  assert.equal(snap().run.saved, 1);
+  assert.equal(source.fs.writes.length, 0);
+  assert.equal(resultRoot.fs.writes.length, 1);
+  assert.equal(log.ai.length, 1);
+});
+
+test('selecting a parent uses its Result folder by default; output folders are skipped on the next scan', async () => {
+  const source = makeTree('P', { A: imagesSpec(1), B: imagesSpec(1) });
+  const { runner, snap, resultRoot } = setup({ picks: [source, source] });
+  runner.setResultRoot(null);
+  await runner.addParentFolder();
+  assert.equal(snap().resultRootName, 'P');
+  await runner.start(CONFIG);
+  await runner.idle();
+  assert.equal(source.file('Result').handle.file('A').handle.children.size, 1);
+  assert.equal(source.file('Result').handle.file('B').handle.children.size, 1);
+  await runner.addParentFolder();
+  assert.deepEqual(snap().products.map((item) => item.name), ['A', 'B']);
 });
 
 test('changed source files fail without AI and are not retried with an old name', async () => {
@@ -314,7 +562,7 @@ test('rate limit pauses the queue until the wait is over; images wait instead of
 });
 
 test('access, quota and session errors stop new requests and are reported', async () => {
-  for (const code of ['AI_NAMING_ACCESS_DENIED', 'AI_QUOTA_EXCEEDED', 'AUTH_REQUIRED', 'AI_USAGE_PAUSED', 'network', 'timeout']) {
+  for (const code of ['AI_NAMING_ACCESS_DENIED', 'AI_QUOTA_EXCEEDED', 'AUTH_REQUIRED', 'AI_USAGE_PAUSED', 'network', 'timeout', 'too_many_concurrent']) {
     const root = makeTree('P', { 'Máy': imagesSpec(12) });
     const { runner, log, snap } = setup({ picks: [root.file('Máy').handle], ai: () => ({ data: null, code, error: `lỗi ${code}` }) });
     await runner.addProductFolder();
@@ -341,21 +589,24 @@ test('other AI errors fail their batch; repeated ones pause instead of failing e
 });
 
 test('disk full pauses the whole run', async () => {
-  const root = makeTree('P', { A: imagesSpec(3), B: imagesSpec(3) });
-  const { runner, snap } = setup({ picks: [root] });
+  const root = makeTree('P', { A: imagesSpec(3), B: imagesSpec(3), C: imagesSpec(3) });
+  const { runner, snap, resultRoot } = setup({ picks: [root] });
   await runner.addParentFolder();
-  root.fs.failClose = (name) => (name.endsWith('-2.jpg') ? new DOMException('full', 'QuotaExceededError') : null);
+  resultRoot.fs.failClose = (name) => (name.endsWith('-2.jpg') ? new DOMException('full', 'QuotaExceededError') : null);
   await runner.start(CONFIG);
   await runner.idle();
   assert.equal(snap().run.pause.kind, 'disk');
-  assert.deepEqual(namesIn(root.file('A').handle), ['a-mo-ta-1.jpg']);
-  assert.equal(root.file('B').handle.file('Named'), undefined, 'next product not started');
+  assert.deepEqual(namesIn(resultRoot, 'A'), ['a-mo-ta-1.jpg']);
+  assert.ok(namesIn(resultRoot, 'B').length <= 1, 'other in-flight product stops before another write');
+  assert.equal(resultDir(resultRoot, 'C'), undefined, 'waiting product not started');
 });
 
-test('a folder that loses permission is paused alone; granting again resumes it without new AI calls', async () => {
-  const root = makeTree('P', { A: imagesSpec(2), B: imagesSpec(2) });
+test('a source folder that loses permission before its next batch is blocked alone and resumes the remaining images', async () => {
+  const root = makeTree('P', { A: imagesSpec(8), B: imagesSpec(2) });
   const a = root.file('A').handle;
-  const { runner, log, snap } = setup({
+  const nextFile = a.file('IMG_7.jpg').handle;
+  const originalGetFile = nextFile.getFile.bind(nextFile);
+  const { runner, log, snap, resultRoot } = setup({
     picks: [root],
     ai: (input) => {
       // Permission is revoked while A's answer is on its way (e.g. the user clicked “Block” in site settings).
@@ -364,13 +615,17 @@ test('a folder that loses permission is paused alone; granting again resumes it 
     },
   });
   await runner.addParentFolder();
+  nextFile.getFile = async () => {
+    if (a.permission === 'prompt') throw new DOMException('blocked', 'NotAllowedError');
+    return originalGetFile();
+  };
   assert.equal((await runner.start(CONFIG)).ok, true);
   await runner.idle();
   let view = snap();
   const productA = view.products.find((item) => item.name === 'A');
   assert.equal(productA.status, 'blocked');
   assert.equal(productA.blocked.code, 'permission');
-  assert.deepEqual(productA.images.map((image) => image.status), ['cancelled', 'cancelled'], 'waiting, not failed');
+  assert.deepEqual(productA.images.map((image) => image.status), [...Array(6).fill('saved'), 'cancelled', 'cancelled'], 'remaining images wait instead of failing');
   assert.equal(view.products.find((item) => item.name === 'B').status, 'done', 'other folders continue');
   assert.deepEqual([view.run.state, view.run.pause.kind], ['paused', 'blocked']);
   assert.equal(root.fs.requests.length, 0, 'no prompt from the background loop');
@@ -382,9 +637,9 @@ test('a folder that loses permission is paused alone; granting again resumes it 
   await runner.idle();
   view = snap();
   assert.equal(view.run.state, 'finished');
-  assert.equal(view.run.saved, 4);
-  assert.deepEqual(log.ai.map((request) => request.productName), ['A', 'B'], 'names received before the loss are reused');
-  assert.deepEqual(namesIn(a), ['a-mo-ta-1.jpg', 'a-mo-ta-2.jpg']);
+  assert.equal(view.run.saved, 10);
+  assert.deepEqual(log.ai.filter((request) => request.productName === 'A').map((request) => request.images.map((image) => image.position)), [[1, 2, 3, 4, 5, 6], [7, 8]], 'already saved images are not sent to AI again');
+  assert.equal(namesIn(resultRoot, a.name).length, 8);
 });
 
 test('start re-checks permission and session and refuses folder names over the backend limit', async () => {
@@ -405,6 +660,7 @@ test('start re-checks permission and session and refuses folder names over the b
 
   root.fs.permission = 'granted';
   const noSession = createAutoRunner({ engine: {}, checkSession: async () => false, pickDirectory: async () => root.file('A').handle, schedule: (cb) => cb(), getSupport: () => ({ supported: true }) });
+  noSession.setResultRoot(root);
   await noSession.addProductFolder();
   assert.deepEqual(await noSession.start(CONFIG), { ok: false, reason: 'auth' });
 });

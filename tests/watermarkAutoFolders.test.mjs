@@ -5,6 +5,7 @@ import { JPEG, PNG, WEBP, makeTree } from './fixtures/fakeFileSystem.mjs';
 import {
   classifyFileError,
   createNamedFolderWriter,
+  createResultCollection,
   getDroppedDirectories,
   getFolderAccessSupport,
   getWritePermission,
@@ -152,6 +153,44 @@ test('source snapshot: edited or deleted files are reported as changed', async (
   await assert.rejects(readSourceFile(image), (error) => error.code === 'source_changed');
   root.children.clear();
   await assert.rejects(readSourceFile(image), (error) => error.code === 'source_changed');
+});
+
+test('Result collection: original product names, distinct destinations and independent parallel writes', async () => {
+  const root = makeTree('Output', { result: { 'Máy khoan': { 'may-anh.jpg': JPEG } } });
+  const writers = createResultCollection(root, [
+    { id: 'p1', folderName: 'Máy khoan' }, { id: 'p2', folderName: 'Máy khoan' }, { id: 'p3', folderName: 'Máy khoan (2)' },
+  ]);
+  assert.equal(root.file('result').handle.children.size, 1, 'creating writers does not create product folders');
+  const names = await Promise.all([...writers.values()].map((writer, index) => writer.write('may-anh', blob(String(index)))));
+  assert.deepEqual(names, ['may-anh-2.jpg', 'may-anh.jpg', 'may-anh.jpg']);
+  const result = root.file('result').handle;
+  assert.deepEqual([...result.children.keys()].sort(), ['Máy khoan', 'Máy khoan (2)', 'Máy khoan (3)']);
+  assert.equal(await result.file('Máy khoan (3)').handle.file('may-anh.jpg').data.text(), '1');
+  assert.equal(await result.file('Máy khoan (2)').handle.file('may-anh.jpg').data.text(), '2');
+  assert.equal(result.file('Máy khoan').handle.file('Named'), undefined, 'images go directly inside Result/product');
+  assert.equal(root.file('result').handle.file('Máy khoan').handle.file('may-anh.jpg').committed, true, 'old file retained');
+});
+
+test('Result collection: file conflicts fail clearly and a corrected destination can be retried', async () => {
+  const root = makeTree('Output', { Result: [1, 2] });
+  const writer = createResultCollection(root, [{ id: 'p1', folderName: 'Máy' }]).get('p1');
+  await assert.rejects(writer.write('may-anh', blob()), (error) => error.code === 'result_is_file');
+  assert.equal(root.file('Result').kind, 'file', 'conflicting file never replaced');
+  await root.removeEntry('Result');
+  const result = root.addDir('Result');
+  result.addFile('Máy', [1]);
+  await assert.rejects(writer.write('may-anh', blob()), (error) => error.code === 'result_is_file');
+  await result.removeEntry('Máy');
+  assert.equal(await writer.write('may-anh', blob()), 'may-anh.jpg');
+});
+
+test('scans skip both Named and Result so generated outputs cannot become input products', async () => {
+  const root = makeTree('P', { Máy: { 'a.jpg': JPEG, Result: { 'copy.jpg': JPEG } }, RESULT: { Máy: { 'copy.jpg': JPEG } }, Named: { 'copy.jpg': JPEG } });
+  const scan = await scanParentFolder(root);
+  assert.deepEqual(scan.products.map((product) => product.folderName), ['Máy']);
+  assert.equal(scan.namedSkipped, 2);
+  assert.equal(scan.products[0].nestedFolders, 0);
+  assert.deepEqual(scan.products[0].images.map((image) => image.name), ['a.jpg']);
 });
 
 test('permissions: query without prompting, request only when asked, errors count as denied', async () => {

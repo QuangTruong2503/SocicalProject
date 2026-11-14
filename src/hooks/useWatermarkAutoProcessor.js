@@ -8,7 +8,7 @@ import {
 } from '../services/imageNameService.js';
 import {
   classifyFileError,
-  createNamedFolderWriter,
+  createResultCollection,
   getDroppedDirectories,
   getFolderAccessSupport,
   getWritePermission,
@@ -25,10 +25,10 @@ import { normalizeProductName, outputBaseName, validateProductName } from '../ut
 import { supabase } from '../lib/supabase.js';
 
 /**
- * Queue of /watermark/auto: product folders one after another, images of one
+ * Queue of /watermark/auto: up to two product folders in parallel, images of one
  * product in batches of the endpoint's limit (never two products in one
- * request), one AI request in flight. Per batch: read → logo → AI name (from
- * the original, without logo) → size → save into "<product>/Named" → release.
+ * request), one AI request per product in flight. Per batch: read → logo → AI name (from
+ * the original, without logo) → size → save into "Result/<product>" → release.
  * Only metadata stays in memory between batches.
  *
  * Image status: queued → reading → rendering → naming → resizing → writing → saved,
@@ -44,7 +44,8 @@ export const PAUSING_AI_CODES = new Set([
 const ACCESS_REJECTIONS = new Set([AI_NAMING_ERRORS.authRequired, AI_NAMING_ERRORS.accessDenied, AI_NAMING_ERRORS.modelDenied]);
 /** Batches failing in a row (other errors) before the run pauses instead of failing every image. */
 export const MAX_FAILED_BATCHES_IN_A_ROW = 3;
-const PRODUCT_BLOCKING_CODES = new Set(['permission', 'not_found', 'named_is_file']);
+export const MAX_PARALLEL_PRODUCTS = 2;
+const RESULT_BLOCKING_CODES = new Set(['permission', 'not_found', 'result_is_file', 'named_is_file']);
 const PENDING = new Set(['queued', 'cancelled']);
 const ACTIVE = new Set(['reading', 'rendering', 'naming', 'resizing', 'writing']);
 const EMIT_DELAY_MS = 60;
@@ -58,7 +59,7 @@ export const IMAGE_ERROR_MESSAGES = {
   ai_missing: 'AI chưa trả tên hợp lệ cho ảnh này.',
   ai_failed: 'Không đặt được tên AI.',
   resize_failed: 'Không chỉnh được kích thước ảnh.',
-  write_failed: 'Không ghi được file vào Named.',
+  write_failed: 'Không ghi được file vào Result. Hãy thử lại ảnh lỗi.',
   locked: 'File đích đang bị khóa hoặc chỉ đọc.',
   disk_full: 'Ổ đĩa đã đầy, không ghi thêm được.',
 };
@@ -66,7 +67,6 @@ export const IMAGE_ERROR_MESSAGES = {
 export const PRODUCT_BLOCK_MESSAGES = {
   permission: 'Chưa có quyền ghi vào thư mục này. Bấm “Cấp quyền” rồi tiếp tục.',
   not_found: 'Không tìm thấy thư mục (đã xóa, đổi tên hoặc ổ đĩa bị ngắt). Hãy chọn lại.',
-  named_is_file: 'Đã có một file tên “Named” trong thư mục nên không tạo được thư mục kết quả. Đổi tên file đó rồi tiếp tục.',
 };
 
 /** Render failures in original size are usually the canvas/memory limit, not a broken file. */
@@ -82,7 +82,6 @@ const defaultDeps = {
   scanProductFolder,
   scanParentFolder,
   readSourceFile,
-  createWriter: createNamedFolderWriter,
   createAiImageDataUrl,
   requestNames: requestImageNameSuggestions,
   checkSession: async () => Boolean((await supabase.auth.getSession()).data?.session),
@@ -114,6 +113,8 @@ export function createAutoRunner(overrides = {}) {
   let snapshot = null;
   let emitTimer = null;
   let version = 0;
+  let resultRoot = null;
+  let resultPermission = null;
 
   // ── store ──────────────────────────────────────────────────────────
   function emitNow() {
@@ -175,16 +176,19 @@ export function createAutoRunner(overrides = {}) {
         } else if (image.status === 'error') counts.error += 1;
         else counts.pending += 1;
       }
-      const resultFolderName = run?.writers.get(product.id)?.folderName ?? product.namedHandle?.name ?? 'Named';
-      return { ...product, images: productImages, counts, status: productStatus(product, productImages), resultFolderName };
+      const outputFolderPath = run?.writers.get(product.id)?.folderPath ?? (resultRoot ? `${resultRoot.name}/Result/${product.folderName}` : null);
+      return { ...product, images: productImages, counts, status: productStatus(product, productImages), outputFolderPath };
     });
 
     let runView = null;
     if (run) {
       const runProducts = productList.filter((product) => run.productIds.includes(product.id));
       const all = runProducts.flatMap((product) => product.images);
-      const current = run.currentProductId ? products.get(run.currentProductId) : null;
-      const activeImage = all.find((image) => ACTIVE.has(image.status));
+      const activeProducts = runProducts.filter((product) => run.activeProductIds.has(product.id)).map((product) => ({
+        id: product.id,
+        name: product.name,
+        stage: product.images.find((image) => ACTIVE.has(image.status))?.status ?? null,
+      }));
       runView = {
         id: run.id,
         productIds: [...run.productIds],
@@ -192,8 +196,7 @@ export function createAutoRunner(overrides = {}) {
         pause: run.pause,
         config: run.config,
         startedAt: run.startedAt,
-        currentProductName: run.state === 'running' || run.state === 'stopping' ? current?.name ?? null : null,
-        stage: activeImage?.status ?? null,
+        activeProducts,
         total: all.length,
         saved: all.filter((image) => image.status === 'saved').length,
         errors: all.filter((image) => image.status === 'error').length,
@@ -205,7 +208,7 @@ export function createAutoRunner(overrides = {}) {
       };
     }
 
-    return { version, products: productList, run: runView, notices, picking, granting, support: deps.getSupport() };
+    return { version, products: productList, run: runView, notices, picking, granting, resultRootName: resultRoot?.name ?? null, resultPermission, support: deps.getSupport() };
   }
 
   // ── folders ────────────────────────────────────────────────────────
@@ -252,12 +255,10 @@ export function createAutoRunner(overrides = {}) {
       unsupported: scan.unsupported,
       invalid: scan.invalid,
       nestedFolders: scan.nestedFolders,
-      namedHandle: scan.namedHandle,
-      namedIsFile: scan.namedIsFile,
       nameError,
       permission,
       blocked: null,
-      selected: imageIds.length > 0 && !nameError && !scan.namedIsFile,
+      selected: imageIds.length > 0 && !nameError,
     });
     return products.get(id);
   }
@@ -307,6 +308,44 @@ export function createAutoRunner(overrides = {}) {
     });
   }
 
+  function setResultRoot(handle) {
+    if (isLocked() || disposed) return false;
+    resultRoot = handle;
+    resultPermission = null;
+    // Changing the destination starts a fresh run; saved files remain on disk.
+    run = null;
+    emitNow();
+    return true;
+  }
+
+  function chooseResultRoot() {
+    return withPicker(async () => {
+      const handle = await deps.pickDirectory();
+      if (!handle) return { cancelled: true };
+      if (isResultFolderName(handle.name)) {
+        setNotices([{ tone: 'error', text: 'Hãy chọn thư mục chứa Result; công cụ sẽ tạo Result bên trong thư mục đó.' }]);
+        return null;
+      }
+      setResultRoot(handle);
+      resultPermission = await deps.getWritePermission(handle);
+      emitNow();
+      return { ok: true };
+    });
+  }
+
+  async function requestResultPermission() {
+    if (!resultRoot || granting || picking || isLocked() || disposed) return 'denied';
+    granting = true;
+    emitNow();
+    try {
+      resultPermission = await deps.requestWritePermission(resultRoot);
+      return resultPermission;
+    } finally {
+      granting = false;
+      emitNow();
+    }
+  }
+
   /** Multiple folders dropped together, retaining writable directory handles. */
   function addDroppedFolders(dataTransfer) {
     return withPicker(() => importProductFolders(getDroppedDirectories(dataTransfer)));
@@ -344,7 +383,7 @@ export function createAutoRunner(overrides = {}) {
       setNotices([
         { tone: added ? 'success' : 'warning', text: added ? `Đã thêm ${added} sản phẩm.` : 'Chưa thêm được thư mục sản phẩm mới. Hãy kéo thả thư mục chứa ảnh sản phẩm.' },
         duplicates > 0 && { tone: 'info', text: `${duplicates} thư mục đã có trong danh sách nên không thêm lại.` },
-        resultFolders > 0 && { tone: 'info', text: `Bỏ qua ${resultFolders} thư mục kết quả “Named”. Hãy chọn thư mục sản phẩm chứa nó.` },
+        resultFolders > 0 && { tone: 'info', text: `Bỏ qua ${resultFolders} thư mục kết quả “Named”/“Result”. Hãy chọn thư mục sản phẩm chứa nó.` },
         ignoredFiles > 0 && { tone: 'info', text: `Bỏ qua ${ignoredFiles} file được thả riêng. Hãy chọn thư mục chứa ảnh sản phẩm.` },
         failed > 0 && { tone: 'error', text: `Không đọc được ${failed} mục kéo thả. Hãy thử thêm lại các thư mục này.` },
         ...warnings,
@@ -363,6 +402,10 @@ export function createAutoRunner(overrides = {}) {
       }
       const permission = await deps.getWritePermission(handle);
       const result = await deps.scanParentFolder(handle);
+      if (!resultRoot) {
+        resultRoot = handle;
+        resultPermission = permission;
+      }
       let added = 0;
       let duplicates = 0;
       let nested = 0;
@@ -411,7 +454,7 @@ export function createAutoRunner(overrides = {}) {
   function setSelected(id, selected) {
     const product = products.get(id);
     if (isLocked() || !product) return;
-    if (selected && (!product.imageIds.length || product.nameError || product.namedIsFile)) return;
+    if (selected && (!product.imageIds.length || product.nameError)) return;
     // User input is published at once: a controlled checkbox must not lag behind the click.
     products.set(id, { ...product, selected });
     emitNow();
@@ -420,7 +463,7 @@ export function createAutoRunner(overrides = {}) {
   function setAllSelected(selected) {
     if (isLocked()) return;
     for (const product of products.values()) {
-      const eligible = product.imageIds.length && !product.nameError && !product.namedIsFile;
+      const eligible = product.imageIds.length && !product.nameError;
       products.set(product.id, { ...product, selected: Boolean(selected && eligible) });
     }
     emitNow();
@@ -446,7 +489,7 @@ export function createAutoRunner(overrides = {}) {
   /** All missing grants start in the same click; native browser prompts may remain separate. */
   async function requestAllPermissions() {
     if (granting || picking || isLocked() || disposed) return null;
-    const pending = [...products.values()].filter((product) => product.permission !== 'granted' && product.imageIds.length > 0 && !product.nameError && !product.namedIsFile);
+    const pending = [...products.values()].filter((product) => product.permission !== 'granted' && product.imageIds.length > 0 && !product.nameError);
     if (!pending.length) return { requested: 0, granted: 0, remaining: 0 };
     granting = true;
     emitNow();
@@ -471,6 +514,7 @@ export function createAutoRunner(overrides = {}) {
 
   /** Recheck inherited grants without opening any browser permission prompts. */
   async function refreshPermissions() {
+    if (resultRoot) resultPermission = await deps.getWritePermission(resultRoot);
     for (const product of products.values()) {
       const permission = await deps.getWritePermission(product.handle);
       if (disposed) return;
@@ -499,6 +543,7 @@ export function createAutoRunner(overrides = {}) {
     if (isLocked() || !products.has(id)) return;
     const order = [...products.keys()];
     const runIndex = run ? run.productIds.indexOf(id) : -1;
+    const outputWriter = run?.writers.get(id);
     run?.writers.delete(id);
     forgetProduct(id);
     const next = await addScanned(scan, { permission });
@@ -506,7 +551,10 @@ export function createAutoRunner(overrides = {}) {
     const entries = order.map((key) => (key === id ? [next.id, next] : [key, products.get(key)]));
     products.clear();
     entries.forEach(([key, value]) => products.set(key, value));
-    if (runIndex >= 0) run.productIds.splice(runIndex, 0, next.id);
+    if (runIndex >= 0) {
+      run.productIds.splice(runIndex, 0, next.id);
+      run.writers.set(next.id, outputWriter);
+    }
     emitNow();
   }
 
@@ -515,6 +563,15 @@ export function createAutoRunner(overrides = {}) {
   const isActive = (target) => isCurrent(target) && !target.stopRequested && !target.pause;
 
   function pauseRun(target, pause) {
+    // Concurrent workers may finish with different errors; retain the first cause
+    // and the longest server cooldown before allowing a resume.
+    if (target.pause) {
+      if (pause.retryAfterSeconds) {
+        target.pause.until = Math.max(target.pause.until ?? 0, deps.now() + pause.retryAfterSeconds * 1000);
+      }
+      emit();
+      return;
+    }
     target.pause = {
       ...pause,
       until: pause.retryAfterSeconds ? deps.now() + pause.retryAfterSeconds * 1000 : null,
@@ -629,6 +686,11 @@ export function createAutoRunner(overrides = {}) {
 
         if (response.error) {
           if (ACCESS_REJECTIONS.has(response.code)) deps.onAccessRejected?.(response.code);
+          if (target.pause) {
+            cancelPrepared();
+            pauseRun(target, { retryAfterSeconds: response.retryAfterSeconds });
+            return;
+          }
           target.aiFailureStreak += 1;
           if (PAUSING_AI_CODES.has(response.code) || target.aiFailureStreak >= MAX_FAILED_BATCHES_IN_A_ROW) {
             // Not these images' fault: they wait for "Tiếp tục".
@@ -692,9 +754,10 @@ export function createAutoRunner(overrides = {}) {
         if (!isCurrent(target)) return;
         const code = classifyFileError(error);
         if (error?.attemptedName) setImage(item.id, { outputName: error.attemptedName });
-        if (PRODUCT_BLOCKING_CODES.has(code)) {
+        if (RESULT_BLOCKING_CODES.has(code)) {
           cancelImages(prepared.slice(index).map((entry) => entry.id));
-          blockProduct(productId, code);
+          if (code === 'permission') resultPermission = 'prompt';
+          pauseRun(target, { kind: 'result', code, message: error?.code === 'result_is_file' ? error.message : 'Không truy cập được nơi lưu Result. Hãy cấp lại quyền lưu Result hoặc kết nối lại ổ đĩa rồi tiếp tục.' });
           return;
         }
         failImage(item.id, code);
@@ -712,24 +775,30 @@ export function createAutoRunner(overrides = {}) {
   }
 
   async function processSegment(target, segment) {
-    for (const productId of [...target.productIds]) {
+    const productIds = [...target.productIds];
+    let nextProduct = 0;
+    async function processProduct(productId) {
       if (!isActive(target)) return;
       const product = products.get(productId);
-      if (!product || product.blocked) continue;
+      if (!product || product.blocked) return;
       const queue = imagesOf(product).filter((image) => PENDING.has(image.status));
-      if (!queue.length) continue;
+      if (!queue.length) return;
+
+      resultPermission = await deps.getWritePermission(target.resultRoot);
+      if (!isActive(target)) return;
+      if (resultPermission !== 'granted') {
+        pauseRun(target, { kind: 'result', code: 'permission', message: 'Chưa có quyền ghi vào nơi lưu Result. Bấm “Cấp quyền lưu Result” rồi tiếp tục.' });
+        return;
+      }
 
       const permission = await deps.getWritePermission(product.handle);
-      if (!isCurrent(target)) return;
+      if (!isActive(target)) return;
       if (permission !== 'granted') {
         setProduct(productId, { permission });
         blockProduct(productId, 'permission');
-        continue;
+        return;
       }
-      if (!target.writers.has(productId)) {
-        target.writers.set(productId, deps.createWriter(product.handle, { namedHandle: product.namedHandle }));
-      }
-      target.currentProductId = productId;
+      target.activeProductIds.add(productId);
       emit();
 
       for (const batch of chunkArray(queue.map((image) => image.id), IMAGE_NAME_LIMITS.maxImagesPerRequest)) {
@@ -738,6 +807,28 @@ export function createAutoRunner(overrides = {}) {
         if (!isCurrent(target) || target.pause) return;
       }
     }
+
+    async function worker() {
+      while (isActive(target) && nextProduct < productIds.length) {
+        const productId = productIds[nextProduct++];
+        try {
+          await processProduct(productId);
+        } catch (error) {
+          if (isCurrent(target)) pauseRun(target, { kind: 'unexpected', code: 'unexpected', message: error?.message || 'Lỗi không mong muốn.' });
+        } finally {
+          // Also reset statuses left behind by an unexpected dependency failure.
+          target.activeProductIds.delete(productId);
+          if (isCurrent(target)) {
+            cancelImages(imagesOf(products.get(productId)).filter((image) => ACTIVE.has(image.status)).map((image) => image.id));
+            emit();
+          }
+        }
+      }
+    }
+
+    // Wait for every in-flight product (including a file's close()) before
+    // finalizing telemetry or permitting resume/new runs.
+    await Promise.all(Array.from({ length: Math.min(MAX_PARALLEL_PRODUCTS, productIds.length) }, () => worker()));
   }
 
   function startSegment(target) {
@@ -765,7 +856,7 @@ export function createAutoRunner(overrides = {}) {
         if (isCurrent(target)) pauseRun(target, { kind: 'unexpected', code: 'unexpected', message: error?.message || 'Lỗi không mong muốn.' });
       })
       .finally(() => {
-        target.currentProductId = null;
+        target.activeProductIds.clear();
         const finished = { ...segment, durationMs: deps.now() - segment.startedAt, aborted: Boolean(target.stopRequested) || disposed };
         if (isCurrent(target)) {
           const pending = target.productIds.some((id) => {
@@ -795,8 +886,14 @@ export function createAutoRunner(overrides = {}) {
   async function start(config) {
     if (isLocked() || picking || granting || disposed) return { ok: false, reason: 'busy' };
     if (!deps.engine) return { ok: false, reason: 'engine' };
-    const ready = [...products.values()].filter((product) => product.selected && product.imageIds.length && !product.nameError && !product.namedIsFile);
+    const ready = [...products.values()].filter((product) => product.selected && product.imageIds.length && !product.nameError);
     if (!ready.length) return { ok: false, reason: 'no_images' };
+    if (!resultRoot) return { ok: false, reason: 'result_root' };
+    resultPermission = await deps.getWritePermission(resultRoot);
+    if (resultPermission !== 'granted') {
+      emitNow();
+      return { ok: false, reason: 'result_permission' };
+    }
     const invalidNames = [...products.values()].filter((product) => product.selected && product.nameError);
     if (invalidNames.length) return { ok: false, reason: 'product_name', products: invalidNames.map((product) => product.name) };
 
@@ -825,11 +922,12 @@ export function createAutoRunner(overrides = {}) {
       imageBatchId: deps.newId(),
       config: Object.freeze({ ...config, renderOptions: Object.freeze({ ...config.renderOptions }) }),
       productIds: ready.map((product) => product.id),
-      writers: new Map(),
+      writers: createResultCollection(resultRoot, [...products.values()]),
+      resultRoot,
       state: 'running',
       pause: null,
       startedAt: deps.now(),
-      currentProductId: null,
+      activeProductIds: new Set(),
     };
     startSegment(run);
     return { ok: true };
@@ -906,6 +1004,9 @@ export function createAutoRunner(overrides = {}) {
     addProductFolder,
     addDroppedFolders,
     addParentFolder,
+    setResultRoot,
+    chooseResultRoot,
+    requestResultPermission,
     removeProduct,
     clearProducts,
     setSelected,

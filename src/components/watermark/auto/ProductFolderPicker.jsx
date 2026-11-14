@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import { PRODUCT_BLOCK_MESSAGES } from '../../../hooks/useWatermarkAutoProcessor.js';
 
 const PRODUCT_STATUS_LABELS = {
   waiting: 'Chờ',
@@ -16,7 +15,7 @@ export function ProductStatusChip({ product }) {
   return <span className={`wma-chip wma-chip--${product.status}`}>{label}</span>;
 }
 
-const isEligible = (product) => product.imageIds.length > 0 && !product.nameError && !product.namedIsFile;
+const isEligible = (product) => product.imageIds.length > 0 && !product.nameError;
 
 function PermissionBadge({ permission }) {
   if (permission === 'granted') return <span className="wma-perm is-granted">Quyền ghi: đã cấp</span>;
@@ -57,8 +56,7 @@ function ProductRow({ product, locked, bulkPermission, onToggle, onRemove, onReq
           <PermissionBadge permission={product.permission} />
         </div>
         {product.nameError && <p className="wma-row-error">{product.nameError}</p>}
-        {product.namedIsFile && <p className="wma-row-error">{PRODUCT_BLOCK_MESSAGES.named_is_file}</p>}
-        {product.blocked && !product.namedIsFile && <p className="wma-row-error">{product.blocked.message}</p>}
+        {product.blocked && <p className="wma-row-error">{product.blocked.message}</p>}
       </div>
       <div className="wma-product-actions">
         {product.permission !== 'granted' && eligible && !bulkPermission && (
@@ -171,7 +169,7 @@ export default function ProductFolderPicker({
         <p>Hoặc dùng “Chọn thư mục cha” để thêm các thư mục con cùng lúc. Nếu nhiều thư mục chưa có quyền ghi, bấm “Cấp quyền toàn bộ”.</p>
       </div>
       <p className="wma-hint">
-        Chỉ xử lý ảnh nằm trực tiếp trong thư mục sản phẩm (JPG, PNG, WebP). Thư mục “Named” luôn được bỏ qua khi đọc ảnh.
+        Chỉ xử lý ảnh nằm trực tiếp trong thư mục sản phẩm (JPG, PNG, WebP). Thư mục “Named” và “Result” luôn được bỏ qua khi đọc ảnh.
       </p>
 
       {notices.length > 0 && (

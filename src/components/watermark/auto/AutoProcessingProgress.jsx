@@ -24,7 +24,7 @@ function ProductImages({ product }) {
             <span className="wma-image-arrow" aria-hidden="true">→</span>
             <span className="wma-image-target">
               {image.status === 'saved' ? (
-                <span title={`${product.resultFolderName}/${image.outputName}`}>{image.outputName}</span>
+                <span title={`${product.outputFolderPath}/${image.outputName}`}>{image.outputName}</span>
               ) : (
                 <span className="wma-image-state">{imageStatusLabel(image.status)}</span>
               )}
@@ -57,7 +57,7 @@ function ProductDetails({ product }) {
         </span>
       </summary>
       {product.blocked && <p className="wma-row-error">{product.blocked.message}</p>}
-      <p className="wma-detail-path">Lưu tại: {product.relativePath}/{product.resultFolderName}</p>
+      <p className="wma-detail-path">Lưu tại: {product.outputFolderPath}</p>
       {open && <ProductImages product={product} />}
     </details>
   );
@@ -96,7 +96,8 @@ export default function AutoProcessingProgress({
         <span className="wma-step-num" aria-hidden="true">3</span>
         <div>
           <h2 id="wma-step-run">Xử lý và lưu</h2>
-          <p>Chèn logo, đặt tên AI, chỉnh kích thước và lưu vào thư mục Named của từng sản phẩm.</p>
+          <p>Chèn logo, đặt tên AI, chỉnh kích thước và lưu vào Result/Tên sản phẩm.</p>
+          <p>Tối đa 2 sản phẩm chạy song song, mỗi lượt AI tối đa 6 ảnh cùng sản phẩm.</p>
         </div>
       </header>
 
@@ -154,12 +155,12 @@ export default function AutoProcessingProgress({
             <div><dt>Cần kiểm tra</dt><dd>{run.review}</dd></div>
             <div><dt>Còn chờ</dt><dd>{run.pending}</dd></div>
           </dl>
-          {running && run.currentProductName && (
-            <p className="wma-current">
-              Sản phẩm: <strong>{run.currentProductName}</strong>
-              {run.stage && <> · {imageStatusLabel(run.stage)}</>}
+          {running && run.activeProducts.map((product) => (
+            <p className="wma-current" key={product.id}>
+              Sản phẩm: <strong>{product.name}</strong>
+              {product.stage && <> · {imageStatusLabel(product.stage)}</>}
             </p>
-          )}
+          ))}
         </div>
       )}
 

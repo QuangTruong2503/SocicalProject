@@ -1,7 +1,7 @@
 /**
  * Naming rules of /watermark/auto on top of the shared AI naming contract:
  * the product name is the folder name, files are "<slug-product>-<descriptor>.jpg",
- * unique per "Named" folder (existing files included, case-insensitive).
+ * unique per "Result/<product>" folder (existing files included, case-insensitive).
  */
 import { IMAGE_NAME_LIMITS, slugifyFileName } from '../../supabase/functions/suggest-image-names/imageNaming.js';
 
@@ -88,7 +88,7 @@ export function buildReportRows(products) {
     product: product.name,
     folder: product.relativePath,
     source: image.sourceName,
-    output: image.status === 'saved' ? `${product.relativePath}/${product.resultFolderName}/${image.outputName}` : '',
+    output: image.status === 'saved' ? `${product.outputFolderPath}/${image.outputName}` : '',
     status: imageStatusLabel(image.status),
     needsReview: image.status === 'saved' && image.needsReview,
     error: image.status === 'error' ? image.errorMessage || '' : '',
@@ -101,9 +101,9 @@ export function reportRowsToCsvRows(rows) {
   return rows.map((row) => [row.product, row.folder, row.source, row.output, row.status, row.needsReview ? 'Có' : '', row.error]);
 }
 
-/** "Đã lưu X/Y ảnh trong Named của N sản phẩm; E ảnh lỗi; R ảnh cần kiểm tra." */
+/** "Đã lưu X/Y ảnh trong Result của N sản phẩm; E ảnh lỗi; R ảnh cần kiểm tra." */
 export function describeRunSummary({ saved, total, productsWithSaved, errors, review }) {
-  return `Đã lưu ${saved}/${total} ảnh trong Named của ${productsWithSaved} sản phẩm; ${errors} ảnh lỗi; ${review} ảnh cần kiểm tra.`;
+  return `Đã lưu ${saved}/${total} ảnh trong Result của ${productsWithSaved} sản phẩm; ${errors} ảnh lỗi; ${review} ảnh cần kiểm tra.`;
 }
 
 /** Plain-text report for the clipboard. */

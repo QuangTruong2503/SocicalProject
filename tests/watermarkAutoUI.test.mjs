@@ -27,6 +27,11 @@ async function settle(ms = 30) { await act(async () => { await new Promise((reso
 const text = () => document.body.textContent;
 const button = (label) => [...document.querySelectorAll('button')].find((item) => item.textContent.trim().startsWith(label));
 async function click(element) { assert.ok(element, 'control exists'); await act(async () => { element.click(); }); await settle(); }
+async function chooseResultRoot(folder = makeTree('Output', {})) {
+  picks.unshift(folder);
+  await click(button('Chọn nơi lưu Result') ?? button('Đổi nơi lưu Result'));
+  return folder;
+}
 async function dropFolders(items) {
   const event = new dom.window.Event('drop', { bubbles: true, cancelable: true });
   Object.defineProperty(event, 'dataTransfer', { value: { items } });
@@ -102,7 +107,7 @@ test.afterEach(async () => {
   root = null;
 });
 
-test('unsupported browser: explains the limit, no ZIP pretending to create Named', async () => {
+test('unsupported browser: explains the limit, no ZIP pretending to create Result', async () => {
   delete dom.window.showDirectoryPicker;
   await render();
   assert.match(text(), /Watermark tự động/);
@@ -113,7 +118,7 @@ test('unsupported browser: explains the limit, no ZIP pretending to create Named
   assert.equal(document.querySelector('a[href="/watermark"]').textContent, '← Quay lại Watermark');
 });
 
-test('parent folder → AI names per folder → files in each Named, with summary and report', async () => {
+test('parent folder → AI names per folder → files in Result/product, with summary and report', async () => {
   const sanPham = makeTree('SanPham', {
     'Máy khoan': { 'IMG_001.jpg': JPEG, 'IMG_002.png': [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0, 0] },
     'Máy mài': { 'IMG_003.jpg': JPEG },
@@ -142,18 +147,17 @@ test('parent folder → AI names per folder → files in each Named, with summar
   assert.equal(fetchCalls.length, 2);
   assert.equal(fetchCalls[0].url, 'https://project.supabase.co/functions/v1/suggest-image-names');
   assert.equal(fetchCalls[0].headers.Authorization, 'Bearer user-jwt');
-  assert.equal(fetchCalls[0].body.productName, 'Máy khoan');
-  assert.equal(fetchCalls[1].body.productName, 'Máy mài');
-  assert.deepEqual(fetchCalls[0].body.images.map((image) => image.position), [1, 2]);
+  assert.deepEqual(fetchCalls.map((call) => call.body.productName).sort(), ['Máy khoan', 'Máy mài']);
+  assert.deepEqual(fetchCalls.find((call) => call.body.productName === 'Máy khoan').body.images.map((image) => image.position), [1, 2]);
   assert.equal(fetchCalls[0].body.model, 'gpt-6-luna');
 
-  const named = (folder) => [...sanPham.file(folder).handle.file('Named').handle.children.keys()].sort();
+  const named = (folder) => [...sanPham.file('Result').handle.file(folder).handle.children.keys()].sort();
   assert.deepEqual(named('Máy khoan'), ['may-khoan-goc-1.jpg', 'may-khoan-goc-2.jpg']);
   assert.deepEqual(named('Máy mài'), ['may-mai-goc-1.jpg']);
   assert.ok(globalThis.__autoEngine.renders.every((call) => call.overrides.maxDimension === 4096));
   assert.deepEqual(globalThis.__autoEngine.resizes, [[800, 600], [800, 600], [800, 600]]);
   assert.equal(document.querySelector('.wma-summary p').textContent,
-    'Hoàn tất. Đã lưu 3/3 ảnh trong Named của 2 sản phẩm; 0 ảnh lỗi; 1 ảnh cần kiểm tra.');
+    'Hoàn tất. Đã lưu 3/3 ảnh trong Result của 2 sản phẩm; 0 ảnh lỗi; 1 ảnh cần kiểm tra.');
 
   // Report: local file only, with source → result mapping.
   let csv = null;
@@ -168,7 +172,8 @@ test('parent folder → AI names per folder → files in each Named, with summar
     dom.window.HTMLAnchorElement.prototype.click = anchorClick;
   }
   const report = await csv.text();
-  assert.match(report, /IMG_002\.png,SanPham\/Máy khoan\/Named\/may-khoan-goc-2\.jpg,Đã lưu,Có/);
+  assert.match(report, /IMG_002\.png,SanPham\/Result\/Máy khoan\/may-khoan-goc-2\.jpg,Đã lưu,Có/);
+  assert.equal(sanPham.file('Máy khoan').handle.file('Named'), undefined);
 
   // Telemetry: counts and codes only, under the new source page.
   await settle(1700);
@@ -182,7 +187,7 @@ test('parent folder → AI names per folder → files in each Named, with summar
   for (const secret of ['Máy', 'IMG_', 'may-khoan', 'SanPham', 'Prompt']) assert.ok(!serialized.includes(secret), `no ${secret} in telemetry`);
 });
 
-test('drop multiple folders: deduplicate by handle, retain equal names, grant write access and save each Named', async () => {
+test('drop multiple folders: deduplicate by handle, retain equal names, grant write access and save distinct Result products', async () => {
   const first = makeTree('Máy khoan', imagesSpec(1));
   const second = makeTree('Máy khoan', imagesSpec(1));
   second.fs.permission = 'prompt';
@@ -190,6 +195,7 @@ test('drop multiple folders: deduplicate by handle, retain equal names, grant wr
   unreadable.values = async function* () { throw new DOMException('lost', 'NotFoundError'); };
   picks.push(first);
   await render();
+  const resultRoot = await chooseResultRoot();
   await click(button('Thêm thư mục sản phẩm'));
   await dropFolders([
     droppedItem(first), droppedItem(second), droppedItem(second),
@@ -211,8 +217,10 @@ test('drop multiple folders: deduplicate by handle, retain equal names, grant wr
   await waitFor(() => !button('Bắt đầu xử lý').disabled, 'granted');
   await click(button('Bắt đầu xử lý'));
   await waitFor(() => /Hoàn tất/.test(document.querySelector('.wma-summary')?.textContent || ''), 'finished');
-  assert.equal(first.file('Named').handle.children.size, 1);
-  assert.equal(second.file('Named').handle.children.size, 1);
+  assert.equal(resultRoot.file('Result').handle.file('Máy khoan').handle.children.size, 1);
+  assert.equal(resultRoot.file('Result').handle.file('Máy khoan (2)').handle.children.size, 1);
+  assert.equal(first.file('Named'), undefined);
+  assert.equal(second.file('Named'), undefined);
   assert.equal(fetchCalls.length, 2);
 });
 
@@ -235,6 +243,7 @@ test('missing permission blocks start until the folder is granted from its butto
   folder.fs.permission = 'prompt';
   picks.push(folder);
   await render();
+  await chooseResultRoot();
   await click(button('Thêm thư mục sản phẩm'));
   await waitFor(() => /Quyền ghi: chưa cấp/.test(text()), 'permission shown');
   assert.equal(button('Bắt đầu xử lý').disabled, true);
@@ -255,6 +264,7 @@ test('entry and folder selection never show an app permission modal, including w
   assert.equal(picks.length, 1, 'no native picker opens on entry');
   await click(button('Thêm thư mục sản phẩm'));
   assert.equal(document.querySelector('[role="dialog"]'), null);
+  await chooseResultRoot();
   assert.equal(button('Bắt đầu xử lý').disabled, false, 'old consent storage cannot block actual directory access');
   assert.deepEqual(folder.fs.requests, []);
 });
@@ -266,6 +276,7 @@ test('bulk permission replaces individual buttons, skips granted or ineligible f
     folder.fs.grantOnRequest = true;
   }
   await render();
+  await chooseResultRoot();
   assert.equal(button('Cấp quyền toàn bộ'), undefined);
   await dropFolders(folders.map(droppedItem));
   assert.equal(document.querySelector('[role="dialog"]'), null);
@@ -287,6 +298,7 @@ test('bulk permission isolates refusals and errors, retries only missing grants,
   const originalRequest = folders[2].requestPermission;
   folders[2].requestPermission = async () => { throw new DOMException('blocked', 'SecurityError'); };
   await render();
+  await chooseResultRoot();
   await dropFolders(folders.map(droppedItem));
   await click(button('Cấp quyền toàn bộ'));
   assert.match(text(), /Đã cấp quyền ghi cho 1\/3 thư mục/);
@@ -318,6 +330,7 @@ test('bulk permission shows progress and locks folder actions until native promp
     };
   }
   await render();
+  await chooseResultRoot();
   await dropFolders(folders.map(droppedItem));
   await click(button('Cấp quyền toàn bộ'));
   try {
@@ -349,6 +362,7 @@ test('stop while AI is working, then resume with the captured configuration; con
     return new Response(JSON.stringify(describe(body)), { status: 200, headers: { 'Content-Type': 'application/json' } });
   };
   await render();
+  const resultRoot = await chooseResultRoot();
   await click(button('Thêm thư mục sản phẩm'));
   await waitFor(() => !button('Bắt đầu xử lý').disabled, 'ready');
   await select(document.querySelector('.wma-config select'), 'original');
@@ -362,17 +376,47 @@ test('stop while AI is working, then resume with the captured configuration; con
   await click(button('Dừng'));
   await waitFor(() => /Đã dừng/.test(text()), 'stopped');
   release();
-  assert.equal([...folder.file('Named').handle.children.keys()].length, 6);
+  assert.equal(resultRoot.file('Result').handle.file('Máy khoan').handle.children.size, 6);
   assert.match(text(), /Còn chờ2/);
 
   // Changing the size now does not change the paused run.
   await select(document.querySelector('.wma-config select'), '800x600');
   await click(button('Tiếp tục phần còn lại (2)'));
   await waitFor(() => /Hoàn tất/.test(document.querySelector('.wma-summary')?.textContent || ''), 'finished');
-  assert.equal([...folder.file('Named').handle.children.keys()].length, 8);
+  assert.equal(resultRoot.file('Result').handle.file('Máy khoan').handle.children.size, 8);
   assert.ok(globalThis.__autoEngine.renders.every((call) => call.overrides.maxDimension === 0), 'original size kept on resume');
   assert.equal(globalThis.__autoEngine.resizes.length, 0);
   assert.equal(fetchCalls.length, 3);
+});
+
+test('parallel products show individual progress and stopping waits for all active requests', async (t) => {
+  const folder = makeTree('SanPham', { 'Máy khoan': imagesSpec(1), 'Máy mài': imagesSpec(1), 'Máy cưa': imagesSpec(1) });
+  picks.push(folder);
+  let release;
+  const gate = new Promise((resolve) => { release = resolve; });
+  t.after(() => release());
+  respond = async (body) => {
+    await gate;
+    return new Response(JSON.stringify(describe(body)), { status: 200, headers: { 'Content-Type': 'application/json' } });
+  };
+  await render();
+  assert.match(text(), /Tối đa 2 sản phẩm chạy song song/);
+  await click(button('Chọn thư mục cha'));
+  await waitFor(() => !button('Bắt đầu xử lý').disabled, 'start enabled');
+  await click(button('Bắt đầu xử lý'));
+  await waitFor(() => fetchCalls.length === 2 && document.querySelectorAll('.wma-current').length === 2, 'two products running');
+  const activeNames = [...document.querySelectorAll('.wma-current strong')].map((element) => element.textContent);
+  assert.equal(new Set(activeNames).size, 2);
+  assert.ok([...document.querySelectorAll('.wma-current')].every((element) => /Đang đặt tên AI/.test(element.textContent)));
+  await click(button('Dừng'));
+  release();
+  await waitFor(() => button('Tiếp tục phần còn lại (3)'), 'all concurrent workers stopped');
+  assert.equal(folder.fs.writes.length, 0);
+  assert.equal(fetchCalls.length, 2, 'third product was queued');
+  assert.equal(document.querySelectorAll('.wma-current').length, 0);
+  await click(button('Tiếp tục phần còn lại (3)'));
+  await waitFor(() => /Hoàn tất\./.test(document.querySelector('.wma-summary')?.textContent || ''), 'all products finished');
+  assert.equal(folder.fs.writes.length, 3, 'one Result file per image');
 });
 
 test('no AI permission: start stays disabled and explains why', async () => {
@@ -384,6 +428,33 @@ test('no AI permission: start stays disabled and explains why', async () => {
   assert.match(text(), /chưa được cấp quyền Đặt tên AI/);
   assert.equal(button('Bắt đầu xử lý').disabled, true);
   assert.equal(fetchCalls.length, 0);
+});
+
+test('individual product needs a Result destination; permission is granted by click before AI runs', async () => {
+  const source = makeTree('Máy khoan', imagesSpec(1));
+  const output = makeTree('Output', {});
+  output.fs.permission = 'prompt';
+  picks.push(source);
+  await render();
+  await click(button('Thêm thư mục sản phẩm'));
+  assert.equal(button('Bắt đầu xử lý').disabled, true);
+  assert.match(document.querySelector('.wma-blockers').textContent, /Chọn nơi lưu Result/);
+  await click(button('Chọn nơi lưu Result')); // cancelled picker
+  assert.equal(button('Bắt đầu xử lý').disabled, true);
+  await chooseResultRoot(output);
+  assert.equal(button('Bắt đầu xử lý').disabled, true);
+  assert.equal(fetchCalls.length, 0);
+  assert.deepEqual(output.fs.requests, []);
+  output.fs.grantOnRequest = true;
+  await click(button('Cấp quyền lưu Result'));
+  assert.deepEqual(output.fs.requests, ['Output']);
+  assert.equal(button('Bắt đầu xử lý').disabled, false);
+  await click(button('Bắt đầu xử lý'));
+  await waitFor(() => /Hoàn tất\./.test(document.querySelector('.wma-summary')?.textContent || ''), 'Result saved');
+  assert.equal(output.file('Result').handle.file('Máy khoan').handle.children.size, 1);
+  assert.equal(source.fs.writes.length, 0);
+  assert.equal(source.file('Named'), undefined);
+  assert.match(document.querySelector('.wma-detail-path').textContent, /Output\/Result\/Máy khoan/);
 });
 
 test('a missing logo blocks the run', async () => {

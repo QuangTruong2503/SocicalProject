@@ -1,23 +1,23 @@
 # Watermark tự động (`/watermark/auto`)
 
-Đóng logo, đặt tên ảnh bằng AI và lưu thẳng vào `<thư mục sản phẩm>/Named`, theo từng thư mục sản phẩm. Đặc tả gốc: [agent-watermark-auto.md](agent-watermark-auto.md).
+Đóng logo, đặt tên ảnh bằng AI và lưu vào `<nơi lưu>/Result/<Tên sản phẩm>`. Không tạo ảnh mới trong `Named` của thư mục nguồn. Đặc tả gốc: [agent-watermark-auto.md](agent-watermark-auto.md); cách lưu hiện hành được cập nhật ngày 14/11/2026.
 
 ## Cách dùng
 
 1. Mở từ `/watermark` (liên kết “Watermark tự động theo thư mục sản phẩm”) hoặc vào thẳng `/watermark/auto`. **Chỉ admin và tài khoản gói Pro/Enterprise đang hoạt động** được vào (`ProPlanRoute`, `hasProAccess`); tài khoản khác không thấy liên kết và gặp màn hình “Cần gói Pro”. Vẫn cần quyền Đặt tên AI (model theo gói).
 2. Để thêm **nhiều thư mục cùng lúc**, giữ Ctrl/Shift chọn các thư mục trong File Explorer rồi kéo thả vào vùng **Kéo thả nhiều thư mục sản phẩm vào đây**. Có thể dùng **Thêm thư mục sản phẩm** (hộp thoại trình duyệt chỉ hỗ trợ một thư mục mỗi lần) hoặc **Chọn thư mục cha** (mỗi thư mục con trực tiếp là một sản phẩm). Tên thư mục là tên sản phẩm gửi cho AI. Các thư mục trùng được bỏ qua. Trang không có modal hỏi quyền khi vào hoặc thêm thư mục. Khi từ hai thư mục sản phẩm hợp lệ chưa có quyền ghi, bấm **Cấp quyền toàn bộ** thay cho nút riêng từng thư mục; nếu chỉ còn một thư mục thì dùng **Cấp quyền** ở thư mục đó. Thư mục đã có quyền, thư mục trống hoặc có lỗi đầu vào không được yêu cầu lại.
-3. Chọn logo (bắt buộc), chỉnh logo như trang Watermark, chọn **Kích thước ảnh xuất** (800 × 600 px hoặc Kích thước gốc) và model. Prompt nằm trong **Nâng cao**, dùng chung với trang Watermark.
+3. Chọn logo (bắt buộc), chỉnh logo như trang Watermark, chọn **Kích thước ảnh xuất** (800 × 600 px hoặc Kích thước gốc) và model. Prompt nằm trong **Nâng cao**, dùng chung với trang Watermark. **Chọn thư mục cha** tự đặt nơi chứa `Result` là thư mục cha đầu tiên được chọn. Nếu kéo thả hoặc chọn riêng sản phẩm, bấm **Chọn nơi lưu Result**, chọn thư mục sẽ chứa `Result`. Có nút **Đổi nơi lưu Result** và **Cấp quyền lưu Result** khi cần; không gọi AI trước khi nơi lưu có quyền ghi. Đổi nơi lưu kết thúc lượt đang tạm dừng; dùng **Bắt đầu xử lý** để chạy lượt mới tại nơi mới.
 4. **Bắt đầu xử lý**. Có **Dừng**, **Tiếp tục phần còn lại**, **Thử lại ảnh lỗi**; kết thúc có báo cáo sao chép / CSV / JSON (chỉ tạo trên máy).
 
-Ví dụ: `SanPham/Máy khoan Bosch GSB 13 RE/IMG_001.jpg` → `SanPham/Máy khoan Bosch GSB 13 RE/Named/may-khoan-bosch-gsb-13-re-goc-nhin-mat-truoc.jpg`.
+Ví dụ chọn thư mục cha `SanPham`: `SanPham/Máy khoan Bosch GSB 13 RE/IMG_001.jpg` → `SanPham/Result/Máy khoan Bosch GSB 13 RE/may-khoan-bosch-gsb-13-re-goc-nhin-mat-truoc.jpg`.
 
 ## Quy tắc
 
-- Chỉ đọc ảnh JPG/PNG/WebP nằm trực tiếp trong thư mục sản phẩm; kiểm tra chữ ký file khi quét và giải mã khi xử lý. Thư mục con, ảnh ở gốc thư mục cha và mọi thư mục `Named` (không phân biệt hoa/thường) bị bỏ qua và được báo số lượng.
-- Ảnh nguồn không bị đổi tên, di chuyển, ghi đè hay xóa. `Named` chỉ được tạo khi lưu ảnh đầu tiên; nếu đã có `named`/`NAMED` thì dùng lại. Một file tên `Named` chặn sản phẩm đó với thông báo rõ.
+- Chỉ đọc ảnh JPG/PNG/WebP nằm trực tiếp trong thư mục sản phẩm; kiểm tra chữ ký file khi quét và giải mã khi xử lý. Thư mục con, ảnh ở gốc thư mục cha và mọi thư mục `Named`/`Result` (không phân biệt hoa/thường) bị bỏ qua để tránh xử lý lại kết quả.
+- Ảnh nguồn và các file `Named` cũ được giữ nguyên. Chỉ tạo `Result/<Tên thư mục sản phẩm>` khi lưu ảnh đầu tiên, dùng lại các thư mục đã có kể cả khác hoa/thường. Nếu file chiếm tên `Result` hoặc tên thư mục sản phẩm trong đó, tạm dừng với thông báo rõ. Hai thư mục nguồn cùng tên có nơi lưu riêng (`Tên`, `Tên (2)`…); tên thư mục sản phẩm có sẵn trong danh sách được ưu tiên trước hậu tố. Báo cáo CSV/JSON và chi tiết sản phẩm chỉ đúng đường dẫn kết quả.
 - Tên file: `slug-ten-san-pham-mo-ta.jpg`. Trùng (kể cả với file đã có, khác hoa/thường) → `-2`, `-3`… theo thứ tự ảnh nguồn; kiểm tra lại ngay trước khi tạo file, không bao giờ ghi lên file có sẵn. Ảnh AI không nhận diện rõ → `slug-ten-san-pham-001.jpg`, gắn **Cần kiểm tra**, vẫn lưu.
 - 800 × 600: chèn logo trên ảnh gốc rồi letterbox nền trắng (logo không nằm trên lề trắng). Kích thước gốc: không thu nhỏ (bỏ giới hạn 4096 px chỉ cho chế độ này, cả worker lẫn fallback), đúng hướng EXIF; ảnh vượt khả năng canvas của máy báo lỗi và gợi ý dùng 800 × 600. Ảnh xuất luôn là JPEG, nền trắng cho ảnh trong suốt.
-- Hàng đợi: từng sản phẩm một, mỗi request ≤ giới hạn endpoint (6 ảnh) và chỉ một sản phẩm, một request AI tại một thời điểm. Không có giới hạn 60 ảnh/lượt như hộp thoại thủ công, và người dùng của trang (admin, Pro trở lên) được server miễn cửa sổ tần suất 40 request / 150 ảnh mỗi 10 phút. Giới hạn đồng thời, quota ngày/tháng (khi admin bật) và công tắc dừng AI vẫn áp dụng; trang vẫn tạm dừng đúng cách nếu server trả `rate_limited`.
+- Hàng đợi: tối đa **2 sản phẩm chạy song song**, mỗi sản phẩm xử lý tuần tự các lô ≤ 6 ảnh/request. Mỗi request chỉ chứa ảnh của một sản phẩm; tổng cộng tối đa 2 request AI đang chạy. Khi một sản phẩm xong hoặc bị chặn riêng, luồng trống nhận sản phẩm tiếp theo. Tên file và hậu tố vẫn theo thứ tự nguồn trong từng thư mục. Giao diện hiển thị riêng các sản phẩm đang chạy. Không có giới hạn 60 ảnh/lượt như hộp thoại thủ công, và người dùng của trang (admin, Pro trở lên) được server miễn cửa sổ tần suất 40 request / 150 ảnh mỗi 10 phút. Giới hạn đồng thời, quota ngày/tháng (khi admin bật) và công tắc dừng AI vẫn áp dụng; trang tạm dừng nếu server trả `rate_limited` hoặc `too_many_concurrent`.
 - AI nhận bản thu nhỏ ≤ 512 px **của ảnh gốc chưa có logo**. Kết quả ghép theo ID, không theo thứ tự.
 
 ## Lỗi, dừng, thử lại
@@ -29,18 +29,21 @@ Ví dụ: `SanPham/Máy khoan Bosch GSB 13 RE/IMG_001.jpg` → `SanPham/Máy kho
 | Hết phiên, mất quyền model, quota, AI tạm dừng, mạng/timeout (sau lần gửi lại có sẵn của service), rate limit | Tạm dừng hàng đợi, ảnh chưa xử lý ở trạng thái chờ (không tính lỗi). Rate limit có `retryAfterSeconds` → nút Tiếp tục khóa tới khi hết thời gian chờ |
 | Lỗi AI khác | Lỗi các ảnh của lô; 3 lô lỗi liên tiếp → tạm dừng |
 | Mất quyền ghi / thư mục bị xóa, ổ đĩa ngắt | Chặn riêng sản phẩm đó (nút **Cấp quyền** / **Quét lại**), sản phẩm khác tiếp tục |
+| Mất quyền hoặc không truy cập được nơi lưu Result | Tạm dừng toàn bộ, cấp lại quyền lưu hoặc kết nối lại ổ đĩa rồi tiếp tục; giữ tên AI đã có |
 | Ổ đĩa đầy | Tạm dừng cả lượt |
 | Ảnh nguồn đổi sau khi quét | Lỗi “nguồn đã thay đổi”, bỏ tên AI cũ, cần **Quét lại** |
-| Dừng | Không xếp ảnh mới, hủy request; file đang ghi hoàn tất trước; phản hồi đến muộn bị bỏ |
+| Dừng | Không xếp ảnh mới, hủy mọi request đang chạy; chờ tất cả luồng và file đang ghi hoàn tất trước khi cho tiếp tục; phản hồi đến muộn bị bỏ |
 | Thử lại lỗi ghi | Dùng lại tên AI và tên file đã giữ chỗ, render lại từ ảnh gốc (không đóng logo hai lần), không gọi AI lại |
 
 Tiếp tục/thử lại dùng cấu hình chụp lúc bấm Bắt đầu. **Bắt đầu lượt mới** xử lý lại mọi ảnh đã chọn với cấu hình hiện tại; bản mới có hậu tố. Tiếp tục chỉ trong phiên đang mở: tải lại trang phải chọn lại thư mục.
+
+Khi một luồng gặp lỗi phải tạm dừng toàn cục, không xếp lô mới ở bất kỳ luồng nào. Request của luồng khác đã gửi được chờ hoàn tất; tên AI trả thành công được giữ lại trong phiên để dùng khi tiếp tục, chưa lưu thêm ảnh. Nếu nhiều request cùng trả lỗi, giữ nguyên nguyên nhân tạm dừng đầu tiên và áp dụng thời gian chờ dài nhất. Thống kê lượt chạy chỉ được chốt sau khi mọi luồng đã kết thúc.
 
 ## Giới hạn nền tảng
 
 - Cần Chrome/Edge desktop có File System Access API, chạy qua HTTPS hoặc localhost. Trình duyệt khác thấy thông báo và không chạy được; **không có** phương án ZIP thay thế ở bản này.
 - **Cấp quyền toàn bộ** khởi tạo yêu cầu cho các thư mục còn thiếu trong một lần bấm trên trang. Thông báo xác nhận của trình duyệt vẫn có thể xuất hiện riêng cho từng thư mục; đây là [giới hạn của File System Access API](https://github.com/WICG/file-system-access/issues/349). Từ chối hoặc lỗi một yêu cầu không chặn việc cập nhật quyền của thư mục khác; các thư mục chưa có quyền vẫn chặn xử lý đến khi được cấp hoặc bỏ chọn.
-- File System Access không khóa thư mục với ứng dụng khác: không chỉnh `Named` bằng ứng dụng khác khi đang chạy.
+- File System Access không khóa thư mục với ứng dụng khác: không chỉnh `Result` bằng ứng dụng khác khi đang chạy. Trình duyệt không cho truy cập thư mục cha từ handle sản phẩm được kéo thả/chọn riêng, nên cần chọn nơi chứa `Result` một lần.
 - Hủy request trên trình duyệt không bảo đảm hủy chi phí của request đã tới server.
 
 ## Thống kê

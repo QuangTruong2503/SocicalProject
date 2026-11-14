@@ -2,6 +2,8 @@
 
 Ngày lập: 26/10/2026. Đây là đặc tả để triển khai tính năng mới; việc tạo tài liệu này chưa đồng nghĩa tính năng đã được lập trình.
 
+**Cập nhật theo yêu cầu 14/11/2026:** hiện chỉ lưu kết quả tại `<nơi lưu>/Result/<Tên sản phẩm>`, thay cho mọi mô tả ghi vào `<sản phẩm>/Named` ở đặc tả gốc bên dưới. Giữ nguyên `Named` cũ và bỏ qua `Named`/`Result` khi quét. Chọn thư mục cha dùng nó làm nơi chứa `Result`; kéo thả/chọn riêng cần chọn nơi lưu một lần. Mỗi thư mục sản phẩm có writer riêng, chống trùng tên, giữ thứ tự ảnh và tiếp tục/thử lại bằng tên AI đã nhận. Xem [watermark-auto.md](watermark-auto.md) cho hành vi hiện tại.
+
 ## 1. Nhiệm vụ và kết quả bắt buộc
 
 Tạo trang con **`/watermark/auto`**, tên hiển thị **Watermark tự động**, có liên kết truy cập từ `/watermark` và liên kết quay lại. Giữ trải nghiệm logo, xem trước và điều chỉnh watermark quen thuộc của trang hiện tại.
@@ -148,9 +150,9 @@ Trình duyệt không hỗ trợ: hiển thị lý do và hướng dẫn mở b�
 
 ### 6.1. Thứ tự và giới hạn tài nguyên
 
-- Xử lý **từng sản phẩm tuần tự**; hoàn tất hoặc ghi nhận lỗi sản phẩm hiện tại rồi chuyển sản phẩm tiếp theo, trừ khi phải dừng toàn cục.
+- Cập nhật 14/11/2026: xử lý tối đa **2 sản phẩm song song**; từng sản phẩm vẫn chạy các lô tuần tự và lưu theo thứ tự nguồn. Luồng trống nhận sản phẩm tiếp theo, trừ khi phải dừng toàn cục.
 - Chia ảnh của cùng một sản phẩm thành lô theo giới hạn endpoint hiện tại (khi lập tài liệu: tối đa 6 ảnh/request). Không ghép ảnh của hai sản phẩm vào request chỉ có một `productName`.
-- Mặc định một request AI đang chạy. Giới hạn toàn cục không vượt cơ chế hiện tại; không nhân concurrency theo số folder hoặc số ảnh.
+- Mỗi sản phẩm tối đa một request AI đang chạy, toàn trang tối đa 2 request. Không nhân concurrency theo số folder hoặc số ảnh; vẫn tuân theo giới hạn phía server. Dừng/tiếp tục và thống kê phải chờ tất cả luồng đang chạy hoàn tất.
 - Với mỗi lô: đọc ảnh → render logo → tạo bản ảnh nhỏ cho AI từ **ảnh nguồn chưa có logo** → gọi AI với tên thư mục → ghép tên theo ID → áp dụng kích thước → lưu lần lượt → giải phóng blob/bitmap/URL/canvas.
 - Ưu tiên xử lý và lưu từng lô, không watermark tất cả ảnh rồi giữ toàn bộ trong RAM. Chỉ giữ full blob trong lô đang làm; danh sách kết quả chủ yếu là metadata và thumbnail giới hạn.
 - Mỗi ảnh có ID ổn định riêng, gắn với product ID và file nguồn trong lượt chạy. Không dùng tên file đơn lẻ làm khóa và không khớp kết quả AI theo vị trí mảng.
