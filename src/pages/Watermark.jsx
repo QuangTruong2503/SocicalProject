@@ -332,6 +332,10 @@ export default function Watermark() {
   const readableImages = useMemo(() => images.filter((image) => image.status !== 'error'), [images]);
   const unreadableCount = images.length - readableImages.length;
 
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, []);
+
   // One rendering engine (Web Worker + fallback) for previews and exports.
   useEffect(() => {
     const nextEngine = createWatermarkEngine();
@@ -754,7 +758,7 @@ export default function Watermark() {
   return (
     <>
       <Helmet>
-        <title>Watermark - Thêm Logo Vào Ảnh</title>
+        <title>Watermark - Thêm Logo Vào Ảnh · ZepLao Tools Suite</title>
       </Helmet>
       <div className="wm-page">
         <SeasonalEffectLayer settings={options.seasonalEffect} />

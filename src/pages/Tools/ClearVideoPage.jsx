@@ -45,7 +45,7 @@ export default function ClearVideoPage() {
 
   return (
     <div className={styles.page}>
-      <Helmet><title>Clear Video - AISEO Tools Suite</title><meta name="description" content="Quét, chọn và xóa video trong thư mục trên máy. Xác minh video trước khi xóa, xử lý cục bộ và tải báo cáo kết quả." /></Helmet>
+      <Helmet><title>Clear Video - ZepLao Tools Suite</title><meta name="description" content="Quét, chọn và xóa video trong thư mục trên máy. Xác minh video trước khi xóa, xử lý cục bộ và tải báo cáo kết quả." /></Helmet>
       <Link to="/tools" className={styles.backLink}><FiArrowLeft aria-hidden="true" /> Tất cả Tools</Link>
       <header className={styles.toolHead}>
         <div><span className={styles.eyebrow}>VIDEO / CÔNG CỤ CỤC BỘ</span><h1>Clear Video<span>.</span></h1><p>Dọn video, gọn không gian làm việc.<br />Chọn thư mục, kiểm tra danh sách và quyết định tệp cần xóa.</p></div>

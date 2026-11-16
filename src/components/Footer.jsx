@@ -1,4 +1,6 @@
 import React from 'react';
+import { Link } from 'react-router-dom';
+import { ZepLaoLogo } from './brand/ZepLaoBrand.jsx';
 import '../styles/Footer.css';
 
 const Footer = () => {
@@ -8,6 +10,7 @@ const Footer = () => {
     <footer className="footer">
       <div className="footer-container">
         <div className="footer-grid">
+          <Link to="/" className="zl-brand-link" aria-label="ZepLao — Trang chủ"><ZepLaoLogo responsive decorative /></Link>
           {/* Cột 1: Thông tin công ty/dự án */}
           <div className="footer-section">
             <h5 className="footer-section h5">

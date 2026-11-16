@@ -7,6 +7,7 @@ export async function load(url, context, nextLoad) {
   const pages = {
     '/src/pages/Watermark.jsx': 'Watermark content',
     '/src/pages/WatermarkAuto.jsx': 'Automatic watermark content',
+    '/src/pages/FileConvert/FileConvertPage.jsx': 'File conversion content',
     '/src/pages/AuthPage.jsx': 'Login page',
   };
   const page = Object.entries(pages).find(([suffix]) => url.endsWith(suffix));

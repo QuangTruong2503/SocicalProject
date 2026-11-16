@@ -122,7 +122,7 @@ export default function AuthCard() {
     <div className="auth-card">
       <div className="auth-card-header">
         <span className="auth-eyebrow">KHÔNG GIAN LÀM VIỆC CỦA BẠN</span>
-        <h1>{isRegister ? 'Bắt đầu cùng AISEO' : 'Chào mừng trở lại'}</h1>
+        <h1>{isRegister ? 'Bắt đầu cùng ZepLao' : 'Chào mừng trở lại'}</h1>
         <p>{isRegister ? 'Tạo tài khoản để sử dụng các công cụ yêu thích.' : 'Đăng nhập để tiếp tục công việc của bạn.'}</p>
       </div>
 
@@ -181,7 +181,7 @@ export default function AuthCard() {
               <>{isRegister ? 'Tạo tài khoản' : 'Đăng nhập'}<FiArrowRight aria-hidden="true" /></>}
           </button>
         </form>
-        <p className="auth-switch-copy">{isRegister ? 'Đã có tài khoản?' : 'Bạn mới đến AISEO?'}{' '}
+        <p className="auth-switch-copy">{isRegister ? 'Đã có tài khoản?' : 'Bạn mới đến ZepLao?'}{' '}
           <button type="button" disabled={Boolean(pending)} onClick={() => changeMode(isRegister ? 'login' : 'register')}>
             {isRegister ? 'Đăng nhập' : 'Tạo tài khoản ngay'}
           </button>

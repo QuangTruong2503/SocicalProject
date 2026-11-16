@@ -188,6 +188,10 @@ export default function WatermarkAuto() {
   const now = useTicker(Boolean(run?.pause?.until));
 
   useEffect(() => {
+    window.scrollTo(0, 0);
+  }, []);
+
+  useEffect(() => {
     const nextEngine = createWatermarkEngine();
     setEngine(nextEngine);
     return () => nextEngine.dispose();
@@ -381,7 +385,7 @@ export default function WatermarkAuto() {
   return (
     <>
       <Helmet>
-        <title>Watermark tự động - Đóng logo và đặt tên ảnh theo thư mục</title>
+        <title>Watermark tự động - Đóng logo và đặt tên ảnh theo thư mục · ZepLao Tools Suite</title>
       </Helmet>
       <div className="wm-page wma-page">
         <div className="wm-container">

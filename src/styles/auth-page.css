@@ -6,7 +6,7 @@
   --auth-border: var(--color-border);
   --auth-surface: var(--color-surface);
   --auth-soft: var(--color-bg-alt);
-  --auth-accent: var(--color-primary);
+  --auth-accent: var(--color-primary-text);
   display: block;
   min-height: 100svh;
   padding: 28px 40px 20px;

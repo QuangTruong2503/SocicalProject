@@ -13,7 +13,7 @@ export default function AuthCallbackPage() {
     return (
       <>
         <Helmet>
-          <title>Đang hoàn tất đăng nhập - AISEO Tools Suite</title>
+          <title>Đang hoàn tất đăng nhập - ZepLao Tools Suite</title>
         </Helmet>
 
         <div className="auth-loading-screen">

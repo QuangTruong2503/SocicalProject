@@ -1,0 +1,23 @@
+/* Approved Option A assets retain their original proportions and artwork. */
+.zl-logo { display: block; width: auto; height: 44px; max-width: 100%; object-fit: contain; flex-shrink: 0; }
+.zl-logo-picture { display: block; flex-shrink: 0; }
+.zl-logo-stacked { height: 130px; }
+.zl-tool-image { display: block; flex-shrink: 0; object-fit: contain; max-width: none; }
+.zl-ui-icon { flex-shrink: 0; }
+.zl-admin-heading { display: flex; align-items: center; gap: 12px; }
+.zl-dashboard-title { display: flex; align-items: center; gap: 16px; min-width: 0; }
+.zl-brand-link { display: inline-flex; align-items: center; border-radius: 6px; }
+.zl-brand-link:focus-visible { outline: 2px solid var(--color-primary); outline-offset: 4px; }
+
+@media (max-width: 540px) {
+  .zl-logo { height: 36px; }
+  .zl-logo-stacked { height: 104px; }
+}
+@media (max-width: 360px) {
+  .header-container { gap: 8px; }
+  .header-right { gap: 4px; }
+  .header .logo-link { padding: 4px 0; }
+  .header .btn-auth-link { padding: 0 8px; font-size: 12px; }
+  .header .btn-icon-header, .header .btn-mobile-menu { width: 32px; min-width: 32px; }
+  .header .zl-logo { height: 32px; }
+}

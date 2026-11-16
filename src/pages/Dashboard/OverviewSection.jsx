@@ -17,6 +17,7 @@ import { describeProductLinkLog } from '../../utils/productLinkLog.js';
 import { formatDateTime, formatNumber, formatRelative } from '../../utils/formatters.js';
 import { getUserAvatarUrl } from '../../utils/userProfile.js';
 import UploadGallery from './UploadGallery.jsx';
+import { ZepLaoRouteIcon } from '../../components/brand/ZepLaoBrand.jsx';
 import { getProductLinkLevelLabel } from './dashboardLabels.js';
 import { useUserUploads } from './useUserUploads.js';
 import styles from './Dashboard.module.css';
@@ -174,7 +175,7 @@ export default function OverviewSection({ refreshToken }) {
             {tools.map((tool) => (
               <li key={tool.to}>
                 <Link to={tool.to} className={styles.toolLink}>
-                  <span className={styles.toolIcon}><tool.icon aria-hidden="true" /></span>
+                  <ZepLaoRouteIcon to={tool.to} size={48} />
                   <span>
                     <strong>{tool.label}</strong>
                     <small>{tool.desc}</small>

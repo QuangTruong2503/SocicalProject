@@ -1,0 +1,47 @@
+[
+  {
+    "route": "/",
+    "icon": "home",
+    "ui": true
+  },
+  {
+    "route": "/bao-gia-minh-triet",
+    "icon": "quote-minh-triet",
+    "ui": false
+  },
+  {
+    "route": "/bao-gia-knm",
+    "icon": "quote-knm",
+    "ui": false
+  },
+  {
+    "route": "/link-anh-san-pham",
+    "icon": "image-links",
+    "ui": false
+  },
+  {
+    "route": "/watermark",
+    "icon": "watermark",
+    "ui": false
+  },
+  {
+    "route": "/chuyen-doi-file",
+    "icon": "convert",
+    "ui": false
+  },
+  {
+    "route": "/dashboard/overview",
+    "icon": "dashboard",
+    "ui": false
+  },
+  {
+    "route": "/memory-game",
+    "icon": "memory",
+    "ui": false
+  },
+  {
+    "route": "/admin",
+    "icon": "admin",
+    "ui": false
+  }
+]

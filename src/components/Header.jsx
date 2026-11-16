@@ -7,6 +7,7 @@ import { frameLayerProps, resolveAvatarFrame } from '../utils/avatarFrames.js';
 import { getUserAvatarUrl, getUserDisplayName, getUserInitials } from '../utils/userProfile.js';
 import UserAvatar from './UserAvatar.jsx';
 import NotificationBell from './notifications/NotificationBell.jsx';
+import { ZepLaoLogo, ZepLaoUIIcon } from './brand/ZepLaoBrand.jsx';
 import '../styles/Header.css';
 
 export default function Header() {
@@ -69,15 +70,15 @@ export default function Header() {
     {
       label: 'Trang Chủ',
       path: '/',
-      icon: '🏠',
+      icon: 'home',
     },
     {
       label: 'Tools',
       path: '/tools',
-      icon: '🧰',
+      icon: 'settings',
     },
-    ...(user ? [{ label: 'Dashboard', path: '/dashboard/overview', icon: '📊' }] : []),
-    ...(profile?.role === 'admin' ? [{ label: 'Quản trị', path: '/admin', icon: '🛠️' }] : []),
+    ...(user ? [{ label: 'Dashboard', path: '/dashboard/overview', icon: 'dashboard' }] : []),
+    ...(profile?.role === 'admin' ? [{ label: 'Quản trị', path: '/admin', icon: 'admin' }] : []),
   ];
 
   const isActive = (path) => {
@@ -116,21 +117,8 @@ export default function Header() {
       <header className="header">
         <div className="header-container">
           <div className="header-logo">
-            <NavLink to="/" className="logo-link" aria-label="Home">
-              <div className="logo-wrapper">
-                <img
-                  src="/zeplao.png"
-                  alt="AISEO Logo"
-                  width="48"
-                  height="48"
-                  className="logo-image"
-                  loading="lazy"
-                />
-                <div className="logo-text">
-                  <span className="logo-primary">AISEO</span>
-                  <span className="logo-secondary">Tools Suite</span>
-                </div>
-              </div>
+            <NavLink to="/" className="logo-link zl-brand-link" aria-label="ZepLao — Trang chủ">
+              <ZepLaoLogo responsive decorative />
             </NavLink>
           </div>
 
@@ -143,7 +131,7 @@ export default function Header() {
                   className={`nav-item ${isActive(item.path) ? 'active' : ''}`}
                   onClick={() => setIsOpen(false)}
                 >
-                  <span className="nav-icon">{item.icon}</span>
+                  <ZepLaoUIIcon className="nav-icon" name={item.icon} />
                   <span className="nav-label">{item.label}</span>
                   {isActive(item.path) && <span className="nav-indicator"></span>}
                 </NavLink>
@@ -183,7 +171,7 @@ export default function Header() {
                       <span>{profile?.email || user.email || 'Account'}</span>
                     </div>
                     <button type="button" className="user-menu-item" onClick={handleDashboardClick} role="menuitem">
-                      <span className="user-menu-item-icon">📊</span>
+                      <ZepLaoUIIcon className="user-menu-item-icon" name="dashboard" />
                       <span>
                         <strong>Dashboard</strong>
                         <small>Quản lý ảnh và hồ sơ</small>
@@ -213,36 +201,35 @@ export default function Header() {
             <button
               className="btn-icon-header"
               onClick={toggleTheme}
-              aria-label={`Switch to ${theme === 'light' ? 'dark' : 'light'} mode`}
-              title={`Switch to ${theme === 'light' ? 'dark' : 'light'} mode`}
+              aria-label={`Chuyển sang giao diện ${theme === 'light' ? 'tối' : 'sáng'}`}
+              title={`Chuyển sang giao diện ${theme === 'light' ? 'tối' : 'sáng'}`}
             >
-              {theme === 'light' ? '🌙' : '☀️'}
+              <ZepLaoUIIcon name="theme" />
             </button>
 
             <button
               className={`btn-mobile-menu ${isOpen ? 'active' : ''}`}
               onClick={() => setIsOpen(!isOpen)}
-              aria-label="Toggle navigation menu"
+              aria-label={isOpen ? 'Đóng menu' : 'Mở menu'}
+              aria-controls="mobile-navigation"
               aria-expanded={isOpen}
             >
-              <span className="hamburger-line"></span>
-              <span className="hamburger-line"></span>
-              <span className="hamburger-line"></span>
+              <ZepLaoUIIcon name={isOpen ? 'close' : 'menu'} />
             </button>
           </div>
         </div>
       </header>
 
-      <div className={`mobile-menu ${isOpen ? 'open' : ''}`}>
+      <div id="mobile-navigation" className={`mobile-menu ${isOpen ? 'open' : ''}`} inert={!isOpen}>
         <div className="mobile-menu-content">
           <div className="mobile-menu-header">
             <h3>Menu</h3>
             <button
               className="btn-close-menu"
               onClick={() => setIsOpen(false)}
-              aria-label="Close menu"
+              aria-label="Đóng menu điều hướng"
             >
-              ✕
+              <ZepLaoUIIcon name="close" />
             </button>
           </div>
 
@@ -254,9 +241,9 @@ export default function Header() {
                 className={`mobile-nav-item ${isActive(item.path) ? 'active' : ''}`}
                 onClick={() => setIsOpen(false)}
               >
-                <span className="mobile-nav-icon">{item.icon}</span>
+                <ZepLaoUIIcon className="mobile-nav-icon" name={item.icon} />
                 <span className="mobile-nav-label">{item.label}</span>
-                {isActive(item.path) && <span className="mobile-nav-indicator">✓</span>}
+                {isActive(item.path) && <ZepLaoUIIcon className="mobile-nav-indicator" name="check" size={16} />}
               </NavLink>
             ))}
           </nav>

@@ -16,7 +16,7 @@
 .catalogHead h2 { font-size: 24px; }
 .catalogHead h2 span { margin-left: 8px; color: var(--color-text-secondary); font-family: var(--font-mono); font-size: 12px; font-weight: 400; vertical-align: middle; }
 .search { display: flex; align-items: center; gap: 12px; padding: 0 12px; width: 320px; min-height: 44px; border: 1px solid var(--color-border); border-radius: 12px; background: var(--color-surface); color: var(--color-text-secondary); }
-.search:focus-within { border-color: var(--color-primary); box-shadow: var(--focus-ring); }
+.search:focus-within { border-color: var(--color-primary-text); box-shadow: var(--focus-ring); }
 .search input { min-width: 0; width: 100%; border: 0; outline: none; box-shadow: none; background: transparent; color: var(--color-text); font-size: 14px; }
 .search input::placeholder { color: var(--color-neutral); }
 .search kbd { white-space: nowrap; font-size: 11px; border: 1px solid var(--color-border); padding: 0 4px; border-radius: 4px; }
@@ -45,7 +45,7 @@
 .cardBody > p { margin: 12px 0 20px; color: var(--color-text-secondary); font-size: 14px; line-height: 1.75; }
 .cardTags { display: flex; flex-wrap: wrap; gap: 8px; }
 .cardTags span { padding: 4px 12px; background: var(--color-chip); border-radius: 9999px; color: var(--color-chip-text); font-size: 12px; }
-.cardAction { display: flex; justify-content: space-between; align-items: center; margin-top: 24px; padding-top: 16px; border-top: 1px solid var(--color-border); color: var(--color-primary); font-size: 14px; font-weight: 500; }
+.cardAction { display: flex; justify-content: space-between; align-items: center; margin-top: 24px; padding-top: 16px; border-top: 1px solid var(--color-border); color: var(--color-primary-text); font-size: 14px; font-weight: 500; }
 .collectionNote { padding: 32px 24px; align-self: center; }
 .collectionNote h3 { margin-top: 16px; font-size: 32px; line-height: 1.2; }
 .collectionNote p { margin: 16px 0 24px; font-size: 14px; line-height: 1.8; color: var(--color-text-secondary); }
@@ -58,7 +58,7 @@
 .noResults > svg { width: 32px; height: 32px; margin-bottom: 16px; color: var(--color-text-secondary); }
 .noResults p { color: var(--color-text-secondary); margin-bottom: 24px; }
 .backLink { display: inline-flex; align-items: center; gap: 8px; color: var(--color-text-secondary); font-size: 13px; padding: 4px 0; margin-bottom: 32px; }
-.backLink:hover { color: var(--color-primary); }
+.backLink:hover { color: var(--color-primary-text); }
 .toolHead { display: flex; justify-content: space-between; align-items: flex-end; flex-wrap: wrap; gap: 24px; margin-bottom: 32px; }
 .toolHead h1 { margin: 12px 0 16px; font-size: clamp(40px, 5vw, 60px); line-height: 1.1; letter-spacing: -.04em; }
 .toolHead h1 > span { color: var(--color-text-secondary); }
@@ -77,7 +77,7 @@
 .button { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 38px; padding: 8px 16px; border: 1px solid var(--color-border); border-radius: 6px; background: var(--color-surface); color: var(--color-text); cursor: pointer; font-size: 13px; font-weight: 500; line-height: 1.5; transition: transform 200ms ease, background 200ms ease, box-shadow 200ms ease; }
 .button:hover:enabled { transform: translateY(-1px); background: var(--color-bg-alt); }
 .button:disabled { opacity: .45; cursor: not-allowed; }
-.primaryButton { background: var(--color-primary); border-color: var(--color-primary); color: var(--color-on-primary); min-height: 44px; }
+.primaryButton { background: var(--color-primary); border-color: var(--color-primary-text); color: var(--color-on-primary); min-height: 44px; }
 .primaryButton:hover:enabled { background: var(--color-primary-hover); box-shadow: var(--shadow-glow); }
 .dangerButton { color: var(--color-error); border-color: var(--color-error); }
 .dangerButton:hover:enabled { background: var(--color-error-soft); }
@@ -93,7 +93,7 @@
 .scopeSection { margin-top: 24px; padding-top: 24px; border-top: 1px solid var(--color-border); }
 .checkline { display: flex; align-items: flex-start; gap: 8px; font-size: 13px; cursor: pointer; }
 .scopeSection .checkline { margin-top: 20px; }
-.checkline input, .fileTable input { width: 20px; height: 20px; margin: 0; flex: 0 0 20px; accent-color: var(--color-primary); cursor: pointer; }
+.checkline input, .fileTable input { width: 20px; height: 20px; margin: 0; flex: 0 0 20px; accent-color: var(--color-primary-text); cursor: pointer; }
 .checkline input:disabled, .fileTable input:disabled { cursor: not-allowed; }
 .panelHead { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; padding: 24px; }
 .panelHead h2 { font-size: 24px; margin-top: 8px; }
@@ -133,7 +133,7 @@
 .progressBox p { flex: 1; margin: 0; font-size: 13px; overflow-wrap: anywhere; }
 .progressBox[data-tone='error'] { background: var(--color-error-soft); }
 .progressBox[data-tone='success'] { background: var(--color-success-soft); }
-.progressBox progress { width: 100%; height: 8px; margin-top: 16px; accent-color: var(--color-primary); }
+.progressBox progress { width: 100%; height: 8px; margin-top: 16px; accent-color: var(--color-primary-text); }
 .detail { border: 1px solid var(--color-border); border-radius: 8px; background: var(--color-surface); margin-top: 16px; }
 .detail > summary { cursor: pointer; padding: 16px 20px; font-weight: 500; font-size: 13px; }
 .detailBody { padding: 0 20px 20px; color: var(--color-text-secondary); font-size: 13px; line-height: 1.8; }
@@ -153,7 +153,7 @@
 .confirmLabel { display: block; margin-bottom: 8px; font-size: 13px; }
 .confirmLabel strong { font-weight: 500; }
 .textInput { width: 100%; min-height: 44px; border: 1px solid var(--color-border); border-radius: 6px; padding: 10px 14px; color: var(--color-text); background: var(--color-surface); }
-.textInput:focus { outline: none; border-color: var(--color-primary); box-shadow: var(--focus-ring); }
+.textInput:focus { outline: none; border-color: var(--color-primary-text); box-shadow: var(--focus-ring); }
 .confirmActions { display: flex; justify-content: flex-end; gap: 12px; margin-top: 24px; }
 .confirmContent p.errorText { margin: 12px 0 0; color: var(--color-error); }
 .srOnly { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }

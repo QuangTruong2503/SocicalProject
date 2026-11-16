@@ -1,0 +1,5 @@
+FONT NOTICE
+
+Logo paths and presentation lettering were outlined from Open Sans (ExtraBold / Semibold / Regular) by Steve Matteson. No font binary is required at runtime and no font binary is included in this package. Open Sans is distributed under the Apache License, Version 2.0 in the installed source distribution. See the bundled license below. Application body font is intentionally not prescribed; keep the project's existing UI font unless otherwise requested.
+
+The vector brand geometry and icons in this kit were constructed for the ZepLao Option A identity. This package makes no trademark-availability claim.

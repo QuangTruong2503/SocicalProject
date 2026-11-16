@@ -48,7 +48,7 @@
 
 .footer-link:hover,
 .footer-credits a:hover {
-  color: var(--color-primary);
+  color: var(--color-primary-text);
 }
 
 .footer-divider {

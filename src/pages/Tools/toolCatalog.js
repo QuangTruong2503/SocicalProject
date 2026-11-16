@@ -14,6 +14,7 @@ export const TOOL_CATALOG = [
   },
   {
     id: 'watermark',
+    brandIcon: 'watermark',
     name: 'Watermark',
     category: 'Ảnh',
     description: 'Thêm logo, điều chỉnh dấu bản quyền và xuất ảnh hàng loạt. Hỗ trợ xử lý tự động cho tài khoản Pro.',
@@ -23,6 +24,19 @@ export const TOOL_CATALOG = [
     icon: 'image',
     previewTitle: 'Ảnh của bạn, dấu ấn riêng.',
     steps: ['Chọn ảnh', 'Thêm logo', 'Xuất ảnh'],
+  },
+  {
+    id: 'chuyen-doi-file',
+    brandIcon: 'convert',
+    name: 'Chuyển đổi file',
+    category: 'PDF',
+    description: 'Chuyển ảnh sang PDF, xuất PDF thành ảnh, gộp và tách trang PDF ngay trên trình duyệt.',
+    path: '/tools/chuyen-doi-file',
+    keywords: 'chuyển đổi file tệp tài liệu ảnh pdf jpg png jpeg gộp tách convert merge split',
+    local: true,
+    icon: 'file',
+    previewTitle: 'Đúng định dạng, gọn công việc.',
+    steps: ['Chọn tệp', 'Chuyển đổi', 'Tải xuống'],
   },
 ];
 

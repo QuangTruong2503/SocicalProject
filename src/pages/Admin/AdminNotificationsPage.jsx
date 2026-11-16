@@ -132,7 +132,7 @@ export default function AdminNotificationsPage() {
     setBusy(false);
   }
   return <div className={styles.adminPage}>
-    <Helmet><title>Quản trị thông báo · AISEO Tools Suite</title></Helmet>
+    <Helmet><title>Quản trị thông báo · ZepLao Tools Suite</title></Helmet>
     <div className={styles.pageHead}><div><span className={styles.muted}>QUẢN TRỊ HỆ THỐNG</span><h1>Thông báo đến người dùng</h1>
       <p className={styles.muted}>Gửi cập nhật chung hoặc thông tin dành cho từng người.</p></div></div>
     <section ref={editor} className={styles.editor}>

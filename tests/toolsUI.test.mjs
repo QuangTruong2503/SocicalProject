@@ -66,14 +66,19 @@ test('directory links to Clear Video, searches and resets empty results', async 
   await mount(ToolsPage);
   assert(document.querySelector('a[href="/tools/clear-video"]'));
   assert(document.querySelector('a[href="/tools/watermark"]'));
-  assert.equal(document.querySelectorAll('a[aria-label^="Mở "]').length, 2);
+  assert(document.querySelector('a[href="/tools/chuyen-doi-file"]'));
+  assert.equal(document.querySelectorAll('a[aria-label^="Mở "]').length, 3);
   const input = document.querySelector('input[type="search"]');
   await type(input, 'không tồn tại');
   assert.match(document.body.textContent, /Chưa tìm thấy công cụ/);
   assert.equal(document.querySelector('a[href="/tools/clear-video"]'), null);
   assert.equal(document.querySelector('a[href="/tools/watermark"]'), null);
+  assert.equal(document.querySelector('a[href="/tools/chuyen-doi-file"]'), null);
   await click(button('Xóa bộ lọc'));
   assert(document.querySelector('a[href="/tools/clear-video"]'));
+  await type(input, 'pdf');
+  assert(document.querySelector('a[href="/tools/chuyen-doi-file"]'));
+  assert.equal(document.querySelectorAll('a[aria-label^="Mở "]').length, 1);
   await act(async () => document.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'k', ctrlKey: true, bubbles: true })));
   assert.equal(document.activeElement, input);
 });
@@ -82,6 +87,7 @@ test('image category finds Watermark with its own preview and canonical link', a
   await mount(ToolsPage);
   await click([...document.querySelectorAll('[aria-label="Danh mục công cụ"] button')].find((node) => node.textContent === 'Ảnh'));
   assert.equal(document.querySelector('a[href="/tools/clear-video"]'), null);
+  assert.equal(document.querySelector('a[href="/tools/chuyen-doi-file"]'), null);
   const card = document.querySelector('a[href="/tools/watermark"]');
   assert(card);
   assert.match(card.textContent, /Ảnh của bạn, dấu ấn riêng/);

@@ -1,0 +1,16 @@
+:root {
+  --zl-primary: #6558f5;
+  --zl-primary-hover: #5140d8;
+  --zl-primary-soft: #f0edff;
+  --zl-ink: #111118;
+  --zl-surface: #fafafc;
+  --zl-muted: #5c6170;
+  --zl-navy: #0d0b2e;
+  --zl-icon-radius: 16px;
+}
+.zl-brand-logo { display:block; width:auto; height:44px; max-width:100%; }
+.zl-tool-icon { display:block; width:64px; height:64px; flex-shrink:0; }
+/* currentColor works via a mask; external <img src="...svg"> cannot inherit text color. */
+.zl-ui-icon { display:inline-block; width:24px; height:24px; flex:0 0 24px;
+  background-color:currentColor; -webkit-mask:var(--zl-icon-url) center / contain no-repeat;
+  mask:var(--zl-icon-url) center / contain no-repeat; vertical-align:middle; }

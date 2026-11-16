@@ -1,7 +1,8 @@
 import { lazy, Suspense } from 'react';
 import { Routes, Route, NavLink, useLocation, Navigate } from 'react-router-dom';
 import { HelmetProvider, Helmet } from 'react-helmet-async';
-import { FiArrowRight, FiFileText, FiLink2, FiPlayCircle, FiRepeat, FiTool, FiUser } from 'react-icons/fi';
+import { ZepLaoRouteIcon, ZepLaoUIIcon } from './components/brand/ZepLaoBrand.jsx';
+import BrandMetadata from './components/brand/BrandMetadata.jsx';
 import { useTheme } from './hooks/useTheme';
 import './styles/auth.css';
 const Watermark = lazy(() => import('./pages/Watermark.jsx'));
@@ -22,7 +23,7 @@ import ProtectedRoute from './components/ProtectedRoute.jsx';
 import AdminRoute from './components/AdminRoute.jsx';
 import ProPlanRoute from './components/ProPlanRoute.jsx';
 import PublicRoute from './components/PublicRoute.jsx';
-import WatermarkRedirect from './pages/Tools/WatermarkRedirect.jsx';
+import ToolRedirect from './pages/Tools/ToolRedirect.jsx';
 const AdminLayout = lazy(() => import('./pages/Admin/AdminLayout.jsx'));
 const AdminDashboardPage = lazy(() => import('./pages/Admin/AdminDashboardPage.jsx'));
 const AdminUsersPage = lazy(() => import('./pages/Admin/AdminUsersPage.jsx'));
@@ -44,7 +45,7 @@ function ToolCard({ icon, title, description, link }) {
       <span className="home-tool-icon" aria-hidden="true">{icon}</span>
       <h3>{title}</h3>
       <p>{description}</p>
-      <span className="home-tool-action">Mở công cụ <FiArrowRight aria-hidden="true" /></span>
+      <span className="home-tool-action">Mở công cụ <ZepLaoUIIcon name="arrow-right" size={16} /></span>
     </NavLink>
   );
 }
@@ -52,42 +53,36 @@ function ToolCard({ icon, title, description, link }) {
 function HomePage() {
   const tools = [
     {
-      icon: <FiTool />,
+      icon: <ZepLaoRouteIcon to="/tools" />,
       title: 'Tools',
-      description: 'Khám phá Watermark, Clear Video và các tiện ích mới.',
+      description: 'Watermark, Clear Video, chuyển đổi file và các tiện ích mới.',
       link: '/tools',
     },
     {
-      icon: <FiFileText />,
+      icon: <ZepLaoRouteIcon to="/bao-gia-minh-triet" />,
       title: 'Báo giá Minh Triết',
       description: 'Tạo, lưu và in báo giá A4.',
       link: '/bao-gia-minh-triet',
     },
     {
-      icon: <FiFileText />,
+      icon: <ZepLaoRouteIcon to="/bao-gia-knm" />,
       title: 'Báo giá KNM',
       description: 'Xem trước báo giá và xuất PDF.',
       link: '/bao-gia-knm',
     },
     {
-      icon: <FiLink2 />,
+      icon: <ZepLaoRouteIcon to="/link-anh-san-pham" />,
       title: 'Link ảnh sản phẩm',
       description: 'Tìm và sao chép link theo mã sản phẩm.',
       link: '/link-anh-san-pham',
-    },
-    {
-      icon: <FiRepeat />,
-      title: 'Chuyển đổi file',
-      description: 'Ảnh ↔ PDF, gộp và tách trang PDF.',
-      link: '/chuyen-doi-file',
     },
   ];
 
   return (
     <>
       <Helmet>
-        <title>Trang Chủ - AISEO Tools Suite</title>
-        <meta name="description" content="Mở nhanh công cụ tạo báo giá, tìm link ảnh sản phẩm, thêm watermark và chuyển đổi file PDF tại AISEO Tools Suite." />
+        <title>Trang chủ — ZepLao Tools Suite</title>
+        <meta name="description" content="Mở nhanh công cụ tạo báo giá, tìm link ảnh sản phẩm, thêm watermark và chuyển đổi file PDF tại ZepLao Tools Suite." />
       </Helmet>
 
       <div className="home-page-wrapper">
@@ -98,7 +93,7 @@ function HomePage() {
             <p>Chọn đúng công cụ và bắt đầu công việc trong vài giây.</p>
           </div>
           <NavLink to="/bao-gia-minh-triet/tao-moi" className="home-primary-action">
-            Tạo báo giá mới <FiArrowRight aria-hidden="true" />
+            Tạo báo giá mới <ZepLaoUIIcon name="arrow-right" size={18} />
           </NavLink>
         </section>
 
@@ -119,8 +114,8 @@ function HomePage() {
             <h2 id="home-more-title">Khác</h2>
           </div>
           <div className="home-more-links">
-            <NavLink to="/memory-game"><FiPlayCircle aria-hidden="true" /> Memory Game <FiArrowRight aria-hidden="true" /></NavLink>
-            <NavLink to="/dashboard/overview"><FiUser aria-hidden="true" /> Hồ sơ của tôi <FiArrowRight aria-hidden="true" /></NavLink>
+            <NavLink to="/memory-game"><ZepLaoRouteIcon to="/memory-game" size={48} /> Memory Game <ZepLaoUIIcon name="arrow-right" size={16} /></NavLink>
+            <NavLink to="/dashboard/overview"><ZepLaoRouteIcon to="/dashboard/profile" size={48} /> Hồ sơ của tôi <ZepLaoUIIcon name="arrow-right" size={16} /></NavLink>
           </div>
         </section>
       </div>
@@ -236,6 +231,7 @@ export default function App() {
 
   return (
     <HelmetProvider>
+      <BrandMetadata />
       <div className={`app-container theme-${theme}`} data-theme={theme}>
         {!isAuthPage && <Header />}
 
@@ -245,9 +241,10 @@ export default function App() {
             <Route path="/" element={<HomePage />} />
             <Route path="/tools" element={<ToolsPage />} />
             <Route path="/tools/clear-video" element={<ClearVideoPage />} />
-            <Route path="/watermark" element={<WatermarkRedirect to="/tools/watermark" />} />
-            <Route path="/watermark/auto" element={<WatermarkRedirect to="/tools/watermark/auto" />} />
-            <Route path="/chuyen-doi-file" element={<FileConvertPage />} />
+            <Route path="/watermark" element={<ToolRedirect to="/tools/watermark" />} />
+            <Route path="/watermark/auto" element={<ToolRedirect to="/tools/watermark/auto" />} />
+            <Route path="/tools/chuyen-doi-file" element={<FileConvertPage />} />
+            <Route path="/chuyen-doi-file" element={<ToolRedirect to="/tools/chuyen-doi-file" />} />
             <Route path="/notifications" element={<ProtectedRoute title="Đăng nhập để xem thông báo"><NotificationsPage /></ProtectedRoute>} />
             <Route path="/watermark/dashboard" element={<AdminUsageRedirect />} />
             <Route path="/quotation" element={<Navigate to="/bao-gia-minh-triet/tao-moi" replace />} />

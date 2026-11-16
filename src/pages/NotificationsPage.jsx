@@ -33,7 +33,7 @@ export default function NotificationsPage() {
     setError(response.error || ''); setBusy(false);
   }
   return <div className={styles.page}>
-    <Helmet><title>Thông báo · AISEO Tools Suite</title></Helmet>
+    <Helmet><title>Thông báo · ZepLao Tools Suite</title></Helmet>
     <div className={styles.pageHead}><div><span className={styles.muted}>HỘP THƯ CỦA BẠN</span><h1>Thông báo</h1><p className={styles.muted}>Cập nhật và thông tin từ quản trị viên.</p></div>
       <div className={styles.actions}><button className={styles.button} onClick={refresh}>Làm mới</button><button className={styles.primary} onClick={() => read()} disabled={busy}>Đọc tất cả thông báo thường</button></div>
     </div>

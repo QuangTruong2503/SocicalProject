@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { FaBell } from 'react-icons/fa6';
+import { ZepLaoUIIcon } from '../brand/ZepLaoBrand.jsx';
 import { useNotifications } from '../../hooks/useNotifications.js';
 import { notificationDate } from '../../utils/notifications.js';
 import NotificationDetail from './NotificationDetail.jsx';
@@ -42,7 +42,7 @@ export default function NotificationBell() {
   return <div className={styles.bell} ref={ref}>
     <button ref={trigger} className={styles.bellButton} aria-label={`Thông báo, ${unread} chưa đọc`} aria-expanded={open} aria-controls="notification-dropdown"
       onClick={() => { setOpen(!open); if (!open) void refresh(); }}>
-      <FaBell aria-hidden="true" />{unread > 0 && <span className={styles.counter}>{unread > 99 ? '99+' : unread}</span>}
+      <ZepLaoUIIcon name="notification" />{unread > 0 && <span className={styles.counter}>{unread > 99 ? '99+' : unread}</span>}
     </button>
     {open && <section id="notification-dropdown" className={styles.dropdown} aria-label="Thông báo gần đây">
       <div className={styles.dropdownHead}><strong>Thông báo</strong><button className={styles.textButton} title="Đánh dấu đã đọc tất cả thông báo bình thường" disabled={busy || !unread} onClick={readAll}>Đọc tất cả</button></div>

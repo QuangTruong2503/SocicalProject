@@ -113,5 +113,6 @@ test('tool directory supports accented and unaccented search and category filter
   assert.deepEqual(filterTools(TOOL_CATALOG, 'dong dau', 'Ảnh').map((tool) => tool.id), ['watermark']);
   assert.equal(filterTools(TOOL_CATALOG, 'thu muc', 'Video').length, 1);
   assert.equal(filterTools(TOOL_CATALOG, 'unknown', 'all').length, 0);
-  assert.equal(filterTools(TOOL_CATALOG, '', 'PDF').length, 0);
+  assert.deepEqual(filterTools(TOOL_CATALOG, 'chuyen doi', 'PDF').map((tool) => tool.id), ['chuyen-doi-file']);
+  assert.equal(filterTools(TOOL_CATALOG, '', 'Âm thanh').length, 0);
 });

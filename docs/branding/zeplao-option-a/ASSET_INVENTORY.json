@@ -1,0 +1,1418 @@
+{
+  "brand": "ZepLao",
+  "option": "A",
+  "version": "1.0.0",
+  "asset_count": 177,
+  "assets": [
+    {
+      "path": "public/brand/zeplao/app/zeplao-app-dark-1024.png",
+      "bytes": 29785,
+      "sha256": "389e182cfdb3224a63472a36e213d5a131d070c6fb0df2c57601fac110538d46",
+      "width": 1024,
+      "height": 1024,
+      "mode": "RGBA"
+    },
+    {
+      "path": "public/brand/zeplao/app/zeplao-app-dark-192.png",
+      "bytes": 4048,
+      "sha256": "0b23780e164bc4431e1feeb2f371e39fb13ce84d83add9528558630567672b18",
+      "width": 192,
+      "height": 192,
+      "mode": "RGBA"
+    },
+    {
+      "path": "public/brand/zeplao/app/zeplao-app-dark-512.png",
+      "bytes": 11324,
+      "sha256": "b0da95a5eec7b67fe8d65cfc5789baed91f1c81bf951fc58858f4cc86982e6d5",
+      "width": 512,
+      "height": 512,
+      "mode": "RGBA"
+    },
+    {
+      "path": "public/brand/zeplao/app/zeplao-app-dark.svg",
+      "bytes": 952,
+      "sha256": "4ee818b7da2d8d03de45816f1d8825700b4234cfe6714713ed5be634924418a9",
+      "viewBox": "0 0 512 512",
+      "width": "512",
+      "height": "512"
+    },
+    {
+      "path": "public/brand/zeplao/app/zeplao-app-gradient-1024.png",
+      "bytes": 67050,
+      "sha256": "fa81a6ec5e5cce6d1e8d0d1692a87d43c38dc5283a6c65a1ebb4c710520a468b",
+      "width": 1024,
+      "height": 1024,
+      "mode": "RGBA"
+    },
+    {
+      "path": "public/brand/zeplao/app/zeplao-app-gradient-192.png",
+      "bytes": 5741,
+      "sha256": "10ae2ca38e38250debc7e096c280e90a6a46e6f851a579f82854d14d909646f9",
+      "width": 192,
+      "height": 192,
+      "mode": "RGBA"
+    },
+    {
+      "path": "public/brand/zeplao/app/zeplao-app-gradient-512.png",
+      "bytes": 23038,
+      "sha256": "007007f848de6d3f940184c2d9d6cc369aa26b53b55457ac4cf87da60fc673b8",
+      "width": 512,
+      "height": 512,
+      "mode": "RGBA"
+    },
+    {
+      "path": "public/brand/zeplao/app/zeplao-app-gradient.svg",
+      "bytes": 955,
+      "sha256": "8d65c8c08090a80785861cce8e3b064a865342c4454ccac81ea768fdcd0b8549",
+      "viewBox": "0 0 512 512",
+      "width": "512",
+      "height": "512"
+    },
+    {
+      "path": "public/brand/zeplao/app/zeplao-app-light-1024.png",
+      "bytes": 26977,
+      "sha256": "3001ab361af4f905d77055b7b52b325c4817f61662fd6a0bb71d5c92bbd4b6b3",
+      "width": 1024,
+      "height": 1024,
+      "mode": "RGBA"
+    },
+    {
+      "path": "public/brand/zeplao/app/zeplao-app-light-192.png",
+      "bytes": 3646,
+      "sha256": "30c1d64302767bb486138abcd2fd932bab38d200095b17c0f3f26a3f15b08f63",
+      "width": 192,
+      "height": 192,
+      "mode": "RGBA"
+    },
+    {
+      "path": "public/brand/zeplao/app/zeplao-app-light-512.png",
+      "bytes": 10406,
+      "sha256": "11ee9fdbad32428eb1d3d69b2618fda11e4e4031e2360d2575fae06a0d77a7e6",
+      "width": 512,
+      "height": 512,
+      "mode": "RGBA"
+    },
+    {
+      "path": "public/brand/zeplao/app/zeplao-app-light.svg",
+      "bytes": 952,
+      "sha256": "7e4e306db9f7ceda8230cf6b6cf085dcc9c136b4e5a8edef176c71f6cd9eaad5",
+      "viewBox": "0 0 512 512",
+      "width": "512",
+      "height": "512"
+    },
+    {
+      "path": "public/brand/zeplao/app/zeplao-app-maskable-1024.png",
+      "bytes": 17928,
+      "sha256": "b60bd0bdf323caa7e5bef721080338aba4e2dabca126265d462c205a7fe0a4bf",
+      "width": 1024,
+      "height": 1024,
+      "mode": "RGBA"
+    },
+    {
+      "path": "public/brand/zeplao/app/zeplao-app-maskable-192.png",
+      "bytes": 2207,
+      "sha256": "917ae6e2051b2906857c561934d05184e58d89d3bf95c45d3839f355489bae02",
+      "width": 192,
+      "height": 192,
+      "mode": "RGBA"
+    },
+    {
+      "path": "public/brand/zeplao/app/zeplao-app-maskable-512.png",
+      "bytes": 5889,
+      "sha256": "c7c0cfbac1ac4fddf8143b1d330ac3267f6afafddfd871626fe62ea564279f6e",
+      "width": 512,
+      "height": 512,
+      "mode": "RGBA"
+    },
+    {
+      "path": "public/brand/zeplao/app/zeplao-app-maskable.svg",
+      "bytes": 950,
+      "sha256": "fe77174214d0168058329cfa4fa7c9c755f8726bc8081d6f92c2e751ce8c766e",
+      "viewBox": "0 0 512 512",
+      "width": "512",
+      "height": "512"
+    },
+    {
+      "path": "public/brand/zeplao/brand-tokens.css",
+      "bytes": 701,
+      "sha256": "d6b3b2bbe1d5ee22f79290626b0ec5076440fd1639e15694535040fa9d2c58af"
+    },
+    {
+      "path": "public/brand/zeplao/favicons/apple-touch-icon.png",
+      "bytes": 2001,
+      "sha256": "bd877f2238c23004bac257dc5cd9c2de3d29d8db95db0d344a30e1d6954c39d2",
+      "width": 180,
+      "height": 180,
+      "mode": "RGBA"
+    },
+    {
+      "path": "public/brand/zeplao/favicons/favicon-16x16.png",
+      "bytes": 475,
+      "sha256": "1519288649fcb40976e11cf50884a24f571cb071ee47cb772608f726a38a5577",
+      "width": 16,
+      "height": 16,
+      "mode": "RGBA"
+    },
+    {
+      "path": "public/brand/zeplao/favicons/favicon-32x32.png",
+      "bytes": 833,
+      "sha256": "831fc9b57bc957b6ecb33ef0394723fe608b2ff7c58784fba2d587397429aae9",
+      "width": 32,
+      "height": 32,
+      "mode": "RGBA"
+    },
+    {
+      "path": "public/brand/zeplao/favicons/favicon-48x48.png",
+      "bytes": 1212,
+      "sha256": "e176931bc6bff6819803e55921251f72469229d475720206dab5fd5ba10e3685",
+      "width": 48,
+      "height": 48,
+      "mode": "RGBA"
+    },
+    {
+      "path": "public/brand/zeplao/favicons/favicon-64x64.png",
+      "bytes": 1503,
+      "sha256": "bc24a154060e6a267b67705b561ad3bb3a75502b825d697dee04e3088eaac673",
+      "width": 64,
+      "height": 64,
+      "mode": "RGBA"
+    },
+    {
+      "path": "public/brand/zeplao/favicons/favicon.ico",
+      "bytes": 5272,
+      "sha256": "9a77b59ac3aa9d1ad47230da90f6c8c2afbaabc3a9b98d37c6421f08eb803354",
+      "width": 64,
+      "height": 64,
+      "mode": "RGBA"
+    },
+    {
+      "path": "public/brand/zeplao/favicons/favicon.svg",
+      "bytes": 942,
+      "sha256": "333371693b217e0180fc193528c104c97e21a65c3a717a7efca21a2a6dd835f5",
+      "viewBox": "0 0 64 64",
+      "width": "64",
+      "height": "64"
+    },
+    {
+      "path": "public/brand/zeplao/icons/tools/admin-dark-192w.png",
+      "bytes": 7245,
+      "sha256": "49b3a87b902b848605bb032c00c471c489b90de5143a1d307067f587bc7a5c6c",
+      "width": 192,
+      "height": 192,
+      "mode": "RGBA"
+    },
+    {
+      "path": "public/brand/zeplao/icons/tools/admin-dark-512w.png",
+      "bytes": 19586,
+      "sha256": "4f093bfebfbd6e3007c798e379f74859fed71d900ce5b50d277d8bae2c43fe46",
+      "width": 512,
+      "height": 512,
+      "mode": "RGBA"
+    },
+    {
+      "path": "public/brand/zeplao/icons/tools/admin-dark-96w.png",
+      "bytes": 3888,
+      "sha256": "4ad7891e197f21c01ed8f4d171c3f578f8238cefb460582fed7eaf4f79687f43",
+      "width": 96,
+      "height": 96,
+      "mode": "RGBA"
+    },
+    {
+      "path": "public/brand/zeplao/icons/tools/admin-dark.svg",
+      "bytes": 1039,
+      "sha256": "429604e8c17345bb903abf25175847e327ba508fda482caf8898a56ab9df2815",
+      "viewBox": "0 0 96 96",
+      "width": "96",
+      "height": "96"
+    },
+    {
+      "path": "public/brand/zeplao/icons/tools/admin-light-192w.png",
+      "bytes": 6774,
+      "sha256": "24cb7878139f28e06bb31b4d87e9d8d64b1b7a5c96b01f75b0e513e386ba2e09",
+      "width": 192,
+      "height": 192,
+      "mode": "RGBA"
+    },
+    {
+      "path": "public/brand/zeplao/icons/tools/admin-light-512w.png",
+      "bytes": 18517,
+      "sha256": "8dffebde4d617f902fab99dc294df48939b6dcd09fd646ad50e43dbf6e534958",
+      "width": 512,
+      "height": 512,
+      "mode": "RGBA"
+    },
+    {
+      "path": "public/brand/zeplao/icons/tools/admin-light-96w.png",
+      "bytes": 3657,
+      "sha256": "a716a21ef69d8e69d610faa3fc0a02037a4090091614519b3411f4eb1944715f",
+      "width": 96,
+      "height": 96,
+      "mode": "RGBA"
+    },
+    {
+      "path": "public/brand/zeplao/icons/tools/admin-light.svg",
+      "bytes": 1039,
+      "sha256": "045c7e67fe36bcbbbef8f1062dda74152941265b27fdfd0805804f51d03d8ccf",
+      "viewBox": "0 0 96 96",
+      "width": "96",
+      "height": "96"
+    },
+    {
+      "path": "public/brand/zeplao/icons/tools/convert-dark-192w.png",
+      "bytes": 4783,
+      "sha256": "6ff01f6ec3e288c94a8f2207c27dc19461679abbb3a2e9ad76c554bde590798f",
+      "width": 192,
+      "height": 192,
+      "mode": "RGBA"
+    },
+    {
+      "path": "public/brand/zeplao/icons/tools/convert-dark-512w.png",
+      "bytes": 13523,
+      "sha256": "cd037d3d64a3709ab97c6559de52684bb89b03ba0b52a569b7688ee152d32d2e",
+      "width": 512,
+      "height": 512,
+      "mode": "RGBA"
+    },
+    {
+      "path": "public/brand/zeplao/icons/tools/convert-dark-96w.png",
+      "bytes": 2642,
+      "sha256": "8f4fe7d86a42d5b7c1ebf9f3b6c094d9603850103243623f59147b66a074a1f1",
+      "width": 96,
+      "height": 96,
+      "mode": "RGBA"
+    },
+    {
+      "path": "public/brand/zeplao/icons/tools/convert-dark.svg",
+      "bytes": 1070,
+      "sha256": "a764df60d419f7e22c3863f289a1d2273056a05e7aeff135a2859c7524eb73ff",
+      "viewBox": "0 0 96 96",
+      "width": "96",
+      "height": "96"
+    },
+    {
+      "path": "public/brand/zeplao/icons/tools/convert-light-192w.png",
+      "bytes": 4608,
+      "sha256": "8ab21b47ed2aacbab64fedf3eeef696221f842ff95b531b202cdde8f97ada15b",
+      "width": 192,
+      "height": 192,
+      "mode": "RGBA"
+    },
+    {
+      "path": "public/brand/zeplao/icons/tools/convert-light-512w.png",
+      "bytes": 12780,
+      "sha256": "548c09aac1a386be57edf5d0b85bfb0fe2cc8b0a5366b5aa4ebe9a9b6839dbdc",
+      "width": 512,
+      "height": 512,
+      "mode": "RGBA"
+    },
+    {
+      "path": "public/brand/zeplao/icons/tools/convert-light-96w.png",
+      "bytes": 2487,
+      "sha256": "af9f802a4e1ab234f7974c388fffae1c395136c81b9d242ac5aa36733afde33b",
+      "width": 96,
+      "height": 96,
+      "mode": "RGBA"
+    },
+    {
+      "path": "public/brand/zeplao/icons/tools/convert-light.svg",
+      "bytes": 1070,
+      "sha256": "ae2beaf4dd864ca55e9da975e8dd6da8c910ec0b566e3680d4db4c862bd8d2ef",
+      "viewBox": "0 0 96 96",
+      "width": "96",
+      "height": "96"
+    },
+    {
+      "path": "public/brand/zeplao/icons/tools/dashboard-dark-192w.png",
+      "bytes": 5413,
+      "sha256": "b000f34da0357a2227bfdffc7f651ec96595552ec1b0078d6999ec08bdb4634a",
+      "width": 192,
+      "height": 192,
+      "mode": "RGBA"
+    },
+    {
+      "path": "public/brand/zeplao/icons/tools/dashboard-dark-512w.png",
+      "bytes": 15473,
+      "sha256": "941e6490a3e50ae59a7e236e1d63395bd4b9fdbc8f556ee5d52aa587b8909901",
+      "width": 512,
+      "height": 512,
+      "mode": "RGBA"
+    },
+    {
+      "path": "public/brand/zeplao/icons/tools/dashboard-dark-96w.png",
+      "bytes": 2875,
+      "sha256": "c956631506961994c64835655be26db424e17757c4d3b93593ce845562772b07",
+      "width": 96,
+      "height": 96,
+      "mode": "RGBA"
+    },
+    {
+      "path": "public/brand/zeplao/icons/tools/dashboard-dark.svg",
+      "bytes": 1142,
+      "sha256": "b209ae57d4d3528fcc9075b2d6bcd6f3261a7088aa05875fc9b2f9d6026b338c",
+      "viewBox": "0 0 96 96",
+      "width": "96",
+      "height": "96"
+    },
+    {
+      "path": "public/brand/zeplao/icons/tools/dashboard-light-192w.png",
+      "bytes": 5174,
+      "sha256": "a225216e47a49d08e08b71299f797d58da93c170130934c9c1e6a3cac1680936",
+      "width": 192,
+      "height": 192,
+      "mode": "RGBA"
+    },
+    {
+      "path": "public/brand/zeplao/icons/tools/dashboard-light-512w.png",
+      "bytes": 14726,
+      "sha256": "6dbb83c4c322b6a1bea2860db788f2f487cbabf13fad7c82e7e740a2757635ba",
+      "width": 512,
+      "height": 512,
+      "mode": "RGBA"
+    },
+    {
+      "path": "public/brand/zeplao/icons/tools/dashboard-light-96w.png",
+      "bytes": 2731,
+      "sha256": "6533bdd85582bb57df1e7c48480748e7872047fe23145c40e68f70aacae27701",
+      "width": 96,
+      "height": 96,
+      "mode": "RGBA"
+    },
+    {
+      "path": "public/brand/zeplao/icons/tools/dashboard-light.svg",
+      "bytes": 1142,
+      "sha256": "a6e09cedd04ad710ad198af6332bc75ef17695654a9feae8627f3d86608d1082",
+      "viewBox": "0 0 96 96",
+      "width": "96",
+      "height": "96"
+    },
+    {
+      "path": "public/brand/zeplao/icons/tools/image-links-dark-192w.png",
+      "bytes": 6580,
+      "sha256": "b02bdc99797fe9656d9bdb6e73e4496c7ecd53229437ea26abc3afb259d985ea",
+      "width": 192,
+      "height": 192,
+      "mode": "RGBA"
+    },
+    {
+      "path": "public/brand/zeplao/icons/tools/image-links-dark-512w.png",
+      "bytes": 18267,
+      "sha256": "26717124df8abd7216dddc6fc63757fb2e42ea1f14c3e2f41ea0d7f04db83c78",
+      "width": 512,
+      "height": 512,
+      "mode": "RGBA"
+    },
+    {
+      "path": "public/brand/zeplao/icons/tools/image-links-dark-96w.png",
+      "bytes": 3446,
+      "sha256": "2c2750dec308245bbeb27977c09c9b4498beeabfc8992af19725365d807414bc",
+      "width": 96,
+      "height": 96,
+      "mode": "RGBA"
+    },
+    {
+      "path": "public/brand/zeplao/icons/tools/image-links-dark.svg",
+      "bytes": 1130,
+      "sha256": "e34b1b5563aa0bdf7dd8e5868064987ead56288fa0c1d1b4aac23cbe9b7ef90b",
+      "viewBox": "0 0 96 96",
+      "width": "96",
+      "height": "96"
+    },
+    {
+      "path": "public/brand/zeplao/icons/tools/image-links-light-192w.png",
+      "bytes": 6301,
+      "sha256": "97674a971523d60bd24f40eb1813db095b8867527000a88c05456121795370ee",
+      "width": 192,
+      "height": 192,
+      "mode": "RGBA"
+    },
+    {
+      "path": "public/brand/zeplao/icons/tools/image-links-light-512w.png",
+      "bytes": 17384,
+      "sha256": "44d80bebd918672d1b197072c56f5d7f264a2889024912461a0a4975267d18e1",
+      "width": 512,
+      "height": 512,
+      "mode": "RGBA"
+    },
+    {
+      "path": "public/brand/zeplao/icons/tools/image-links-light-96w.png",
+      "bytes": 3180,
+      "sha256": "06253c6f88d7c2190cb3acb80faab6595dbb65dec2f851765b7e7d83fab3b5ec",
+      "width": 96,
+      "height": 96,
+      "mode": "RGBA"
+    },
+    {
+      "path": "public/brand/zeplao/icons/tools/image-links-light.svg",
+      "bytes": 1130,
+      "sha256": "b814c4ff2cee91d87427cedd3e2cfeb2eedfb0cba63df67a387d85ca73ea2d7e",
+      "viewBox": "0 0 96 96",
+      "width": "96",
+      "height": "96"
+    },
+    {
+      "path": "public/brand/zeplao/icons/tools/memory-dark-192w.png",
+      "bytes": 7850,
+      "sha256": "0bfb42298af5879624788d1bf7dcced54a1c118f47868afaf4122b55b170d01b",
+      "width": 192,
+      "height": 192,
+      "mode": "RGBA"
+    },
+    {
+      "path": "public/brand/zeplao/icons/tools/memory-dark-512w.png",
+      "bytes": 22733,
+      "sha256": "50d83f9aadb222cc19e2a60cd98ea9a5363bf7512d95ad5e21293a0dacd38aa3",
+      "width": 512,
+      "height": 512,
+      "mode": "RGBA"
+    },
+    {
+      "path": "public/brand/zeplao/icons/tools/memory-dark-96w.png",
+      "bytes": 3895,
+      "sha256": "1fe2cd6dfa5bba816e0db9e0a93d62f0cde79a34bc3a6e96f7f9c516869d937e",
+      "width": 96,
+      "height": 96,
+      "mode": "RGBA"
+    },
+    {
+      "path": "public/brand/zeplao/icons/tools/memory-dark.svg",
+      "bytes": 1334,
+      "sha256": "0e8a446890df2eb8f480556625afcc57be37c8b08ebc561341cb9c5d10db1e91",
+      "viewBox": "0 0 96 96",
+      "width": "96",
+      "height": "96"
+    },
+    {
+      "path": "public/brand/zeplao/icons/tools/memory-light-192w.png",
+      "bytes": 7448,
+      "sha256": "35eec8eb36f9ef9797f89269ceb187903f1060f17434af1716a803bcbf792b3b",
+      "width": 192,
+      "height": 192,
+      "mode": "RGBA"
+    },
+    {
+      "path": "public/brand/zeplao/icons/tools/memory-light-512w.png",
+      "bytes": 21793,
+      "sha256": "9b9f3fed4ff150b4a369d71076984ad8ae8fcf25dd2cc75c19fb9dc936c4e0ec",
+      "width": 512,
+      "height": 512,
+      "mode": "RGBA"
+    },
+    {
+      "path": "public/brand/zeplao/icons/tools/memory-light-96w.png",
+      "bytes": 3728,
+      "sha256": "777aa1f60628e3e8ce83c613cfe9aba2bc7be839a96bec6cc3cab6a20edd7b62",
+      "width": 96,
+      "height": 96,
+      "mode": "RGBA"
+    },
+    {
+      "path": "public/brand/zeplao/icons/tools/memory-light.svg",
+      "bytes": 1334,
+      "sha256": "e8dfd7991e48927f79c96fa5ee6ed056646eb73fd8f6c30b766b298f6ab8bb27",
+      "viewBox": "0 0 96 96",
+      "width": "96",
+      "height": "96"
+    },
+    {
+      "path": "public/brand/zeplao/icons/tools/profile-dark-192w.png",
+      "bytes": 5723,
+      "sha256": "4f679814352e1476afb15856313cc37e8045fe825eded538cf800030fba07315",
+      "width": 192,
+      "height": 192,
+      "mode": "RGBA"
+    },
+    {
+      "path": "public/brand/zeplao/icons/tools/profile-dark-512w.png",
+      "bytes": 16761,
+      "sha256": "a892055504b0660681f4f3410ffa9c265ee907cc45c2e99a17046120b6b8b314",
+      "width": 512,
+      "height": 512,
+      "mode": "RGBA"
+    },
+    {
+      "path": "public/brand/zeplao/icons/tools/profile-dark-96w.png",
+      "bytes": 2882,
+      "sha256": "909a39e20dd1bd242e4dcc17129f2b7705f4f25b6414d69352b65054662b47c9",
+      "width": 96,
+      "height": 96,
+      "mode": "RGBA"
+    },
+    {
+      "path": "public/brand/zeplao/icons/tools/profile-dark.svg",
+      "bytes": 987,
+      "sha256": "299c8c7dfaba622c878a7dd25af6d97f3a32d403af1b113c0453af853be84fde",
+      "viewBox": "0 0 96 96",
+      "width": "96",
+      "height": "96"
+    },
+    {
+      "path": "public/brand/zeplao/icons/tools/profile-light-192w.png",
+      "bytes": 5509,
+      "sha256": "796bb8d597b1458edd2d293794e8213f259e2708344f6200d3610565aee0808d",
+      "width": 192,
+      "height": 192,
+      "mode": "RGBA"
+    },
+    {
+      "path": "public/brand/zeplao/icons/tools/profile-light-512w.png",
+      "bytes": 16019,
+      "sha256": "6651b2d88233afdac1e73a25cac082e1d31086180b99a03e24defe8d5432008b",
+      "width": 512,
+      "height": 512,
+      "mode": "RGBA"
+    },
+    {
+      "path": "public/brand/zeplao/icons/tools/profile-light-96w.png",
+      "bytes": 2752,
+      "sha256": "765a3183a09c16512ae15dcd9abcc4df25f853be87ad0d136cb3fb216b525d0d",
+      "width": 96,
+      "height": 96,
+      "mode": "RGBA"
+    },
+    {
+      "path": "public/brand/zeplao/icons/tools/profile-light.svg",
+      "bytes": 987,
+      "sha256": "a15a6767a04abce8a5fb823409e25c9f434f5c3566b9a0d3f6b0ec169d3d6222",
+      "viewBox": "0 0 96 96",
+      "width": "96",
+      "height": "96"
+    },
+    {
+      "path": "public/brand/zeplao/icons/tools/quote-knm-dark-192w.png",
+      "bytes": 5522,
+      "sha256": "7cf60cd8c65cfe3c8b09a51b5a49f21703f4c61356b432374e55c8c525c0c3d2",
+      "width": 192,
+      "height": 192,
+      "mode": "RGBA"
+    },
+    {
+      "path": "public/brand/zeplao/icons/tools/quote-knm-dark-512w.png",
+      "bytes": 15611,
+      "sha256": "4c20abbbba3b03c86e239546ddd677b7e9d2a78861e0096d65df63928f004052",
+      "width": 512,
+      "height": 512,
+      "mode": "RGBA"
+    },
+    {
+      "path": "public/brand/zeplao/icons/tools/quote-knm-dark-96w.png",
+      "bytes": 2963,
+      "sha256": "de67d7e6a24819976525e80be84fe9ae73119e1dc5688e72c79dcc99507c63d1",
+      "width": 96,
+      "height": 96,
+      "mode": "RGBA"
+    },
+    {
+      "path": "public/brand/zeplao/icons/tools/quote-knm-dark.svg",
+      "bytes": 1755,
+      "sha256": "e075ae3164eefde1b5cede2cc150b0e9e5fb2f9f9b1b24f7f1969fb9b2ef4122",
+      "viewBox": "0 0 96 96",
+      "width": "96",
+      "height": "96"
+    },
+    {
+      "path": "public/brand/zeplao/icons/tools/quote-knm-light-192w.png",
+      "bytes": 5288,
+      "sha256": "666761752545df22ecb8805de383d2d2df3b4bd09b8005737769958a16e48fb8",
+      "width": 192,
+      "height": 192,
+      "mode": "RGBA"
+    },
+    {
+      "path": "public/brand/zeplao/icons/tools/quote-knm-light-512w.png",
+      "bytes": 14801,
+      "sha256": "bcb215fc79e272fded3eeeaf02f5ed4de87a0c13b32aa50eaa1cbe3e34b67275",
+      "width": 512,
+      "height": 512,
+      "mode": "RGBA"
+    },
+    {
+      "path": "public/brand/zeplao/icons/tools/quote-knm-light-96w.png",
+      "bytes": 2816,
+      "sha256": "9a7325815e659ccb76031b476aedc8929c85af901b8ee531e2af440fd7bcee1f",
+      "width": 96,
+      "height": 96,
+      "mode": "RGBA"
+    },
+    {
+      "path": "public/brand/zeplao/icons/tools/quote-knm-light.svg",
+      "bytes": 1755,
+      "sha256": "e6307c28b46074f32f1786e15d9abe48eb0b6acee730cc496a87b5ef194b2ede",
+      "viewBox": "0 0 96 96",
+      "width": "96",
+      "height": "96"
+    },
+    {
+      "path": "public/brand/zeplao/icons/tools/quote-minh-triet-dark-192w.png",
+      "bytes": 5078,
+      "sha256": "09ebbd5dab98d2f6e35a3ac114fbded79184d1cfdb743e43d3507353e4f623ba",
+      "width": 192,
+      "height": 192,
+      "mode": "RGBA"
+    },
+    {
+      "path": "public/brand/zeplao/icons/tools/quote-minh-triet-dark-512w.png",
+      "bytes": 14266,
+      "sha256": "864048b98e77709d4ce1987d0a3357f943a8808288188159992e98bdec40d3aa",
+      "width": 512,
+      "height": 512,
+      "mode": "RGBA"
+    },
+    {
+      "path": "public/brand/zeplao/icons/tools/quote-minh-triet-dark-96w.png",
+      "bytes": 2743,
+      "sha256": "06c40f221c91cb20c453e63d994e5c146d7abc2689cf74c32f6b75220100fd1b",
+      "width": 96,
+      "height": 96,
+      "mode": "RGBA"
+    },
+    {
+      "path": "public/brand/zeplao/icons/tools/quote-minh-triet-dark.svg",
+      "bytes": 1526,
+      "sha256": "4171a5aac1db19396c4207189dc54bdfdd4989d1bf002f9dc5e9964a12e91ec6",
+      "viewBox": "0 0 96 96",
+      "width": "96",
+      "height": "96"
+    },
+    {
+      "path": "public/brand/zeplao/icons/tools/quote-minh-triet-light-192w.png",
+      "bytes": 4852,
+      "sha256": "22c22e93584f498c0540706dfdd4703fe207a20ad082e23e2bd0e444122aa502",
+      "width": 192,
+      "height": 192,
+      "mode": "RGBA"
+    },
+    {
+      "path": "public/brand/zeplao/icons/tools/quote-minh-triet-light-512w.png",
+      "bytes": 13460,
+      "sha256": "ddba6f72144778776e94f1e2acd33d25ea619ebb4663ce4d37058f541f3b8376",
+      "width": 512,
+      "height": 512,
+      "mode": "RGBA"
+    },
+    {
+      "path": "public/brand/zeplao/icons/tools/quote-minh-triet-light-96w.png",
+      "bytes": 2605,
+      "sha256": "f77e7c441a42182e12f6de9705111dacc2d211173e842327f12fddeea63d4079",
+      "width": 96,
+      "height": 96,
+      "mode": "RGBA"
+    },
+    {
+      "path": "public/brand/zeplao/icons/tools/quote-minh-triet-light.svg",
+      "bytes": 1526,
+      "sha256": "2c5c5915b784f73270c259d72a807b35e9ef7c90844a43ac3e48586bbf1901df",
+      "viewBox": "0 0 96 96",
+      "width": "96",
+      "height": "96"
+    },
+    {
+      "path": "public/brand/zeplao/icons/tools/watermark-dark-192w.png",
+      "bytes": 6146,
+      "sha256": "464b8a6f27f1fd63cb7c726b05212de6421b0af97f538e371033734a60f8ba4a",
+      "width": 192,
+      "height": 192,
+      "mode": "RGBA"
+    },
+    {
+      "path": "public/brand/zeplao/icons/tools/watermark-dark-512w.png",
+      "bytes": 17368,
+      "sha256": "aeede9a2ac968a3c43565dfe9888d0b4f5930b95fec4edbe38ef3cb61f35021f",
+      "width": 512,
+      "height": 512,
+      "mode": "RGBA"
+    },
+    {
+      "path": "public/brand/zeplao/icons/tools/watermark-dark-96w.png",
+      "bytes": 3181,
+      "sha256": "94dc324f072c837b0bfa9df74740107fe63579c495cc1f50112b72c75da5dd4e",
+      "width": 96,
+      "height": 96,
+      "mode": "RGBA"
+    },
+    {
+      "path": "public/brand/zeplao/icons/tools/watermark-dark.svg",
+      "bytes": 1109,
+      "sha256": "9eaec5f292fee953ea82118382504748bb7be731e8eb58e62207ada15114a8b0",
+      "viewBox": "0 0 96 96",
+      "width": "96",
+      "height": "96"
+    },
+    {
+      "path": "public/brand/zeplao/icons/tools/watermark-light-192w.png",
+      "bytes": 5994,
+      "sha256": "a1fafec3b5f47a718d889f23859bc0d32d874fa61246622318baf5c63cea97b7",
+      "width": 192,
+      "height": 192,
+      "mode": "RGBA"
+    },
+    {
+      "path": "public/brand/zeplao/icons/tools/watermark-light-512w.png",
+      "bytes": 16604,
+      "sha256": "dd78814ebc329e705868eede15e332b395c9ccc3d87921e8c858c1e3a63ba8ce",
+      "width": 512,
+      "height": 512,
+      "mode": "RGBA"
+    },
+    {
+      "path": "public/brand/zeplao/icons/tools/watermark-light-96w.png",
+      "bytes": 3085,
+      "sha256": "514d88bccb0f98411720f6082cbffa619f7a557245861b0a8760f5445f690c6a",
+      "width": 96,
+      "height": 96,
+      "mode": "RGBA"
+    },
+    {
+      "path": "public/brand/zeplao/icons/tools/watermark-light.svg",
+      "bytes": 1109,
+      "sha256": "a4ba4ed043c70122545c72b96bed1d69b423ee6b772c7ad746c58ae5df09602e",
+      "viewBox": "0 0 96 96",
+      "width": "96",
+      "height": "96"
+    },
+    {
+      "path": "public/brand/zeplao/icons/ui/admin.svg",
+      "bytes": 317,
+      "sha256": "aa94a3fa8a7f94fc0561e6c21bae33d50f78d482ac05cce211704945ff27902c",
+      "viewBox": "0 0 24 24",
+      "width": "24",
+      "height": "24"
+    },
+    {
+      "path": "public/brand/zeplao/icons/ui/arrow-right.svg",
+      "bytes": 241,
+      "sha256": "c1343d9dc1d24fa3c48bed6c35cccda3f3b6d58f70503d1b6aa862f4e8cdbc3e",
+      "viewBox": "0 0 24 24",
+      "width": "24",
+      "height": "24"
+    },
+    {
+      "path": "public/brand/zeplao/icons/ui/check.svg",
+      "bytes": 234,
+      "sha256": "00066270b56397f7fe2f468a411044c0534d7ae66b39f7cb42c2a9974018d45d",
+      "viewBox": "0 0 24 24",
+      "width": "24",
+      "height": "24"
+    },
+    {
+      "path": "public/brand/zeplao/icons/ui/chevron-down.svg",
+      "bytes": 232,
+      "sha256": "9bd91f30d1d68bbbe537d5acdee7fe3b55776c4253d4127c9b3555346285c58b",
+      "viewBox": "0 0 24 24",
+      "width": "24",
+      "height": "24"
+    },
+    {
+      "path": "public/brand/zeplao/icons/ui/close.svg",
+      "bytes": 240,
+      "sha256": "d50ef34072839515a808f5811740b63fbb94b1d033fe16dab95fbcdae8f8cc97",
+      "viewBox": "0 0 24 24",
+      "width": "24",
+      "height": "24"
+    },
+    {
+      "path": "public/brand/zeplao/icons/ui/convert.svg",
+      "bytes": 328,
+      "sha256": "b313f0316e3479f42783ac23822e09fdfa392e2237a0732f94345593081247d1",
+      "viewBox": "0 0 24 24",
+      "width": "24",
+      "height": "24"
+    },
+    {
+      "path": "public/brand/zeplao/icons/ui/copy.svg",
+      "bytes": 283,
+      "sha256": "b0db6211feb2f2a55cc4ff5ba6ce15d5fe3e48aa5b3f44aa76721bb33317d30a",
+      "viewBox": "0 0 24 24",
+      "width": "24",
+      "height": "24"
+    },
+    {
+      "path": "public/brand/zeplao/icons/ui/dashboard.svg",
+      "bytes": 408,
+      "sha256": "30d42310316eae146993f8a5b329b9b7fec1a23f4b425f79efb1057e247cefa5",
+      "viewBox": "0 0 24 24",
+      "width": "24",
+      "height": "24"
+    },
+    {
+      "path": "public/brand/zeplao/icons/ui/download.svg",
+      "bytes": 254,
+      "sha256": "08dd947e59701c84f0e930704c14eed487b02b70cb648ba57953bada678f8370",
+      "viewBox": "0 0 24 24",
+      "width": "24",
+      "height": "24"
+    },
+    {
+      "path": "public/brand/zeplao/icons/ui/home.svg",
+      "bytes": 255,
+      "sha256": "71c97e473c6883337e333348a7cb5fed857483aa73bdd62df193404e02f4423e",
+      "viewBox": "0 0 24 24",
+      "width": "24",
+      "height": "24"
+    },
+    {
+      "path": "public/brand/zeplao/icons/ui/image-links.svg",
+      "bytes": 385,
+      "sha256": "aecc2b086502425912c89ba436be95c86054db67087b970abfe175c65bf6d99f",
+      "viewBox": "0 0 24 24",
+      "width": "24",
+      "height": "24"
+    },
+    {
+      "path": "public/brand/zeplao/icons/ui/memory.svg",
+      "bytes": 404,
+      "sha256": "7dd39ed6f34c2757fbb67d8ddb3058cc7ef6ec339635deaca1ef173fade781c7",
+      "viewBox": "0 0 24 24",
+      "width": "24",
+      "height": "24"
+    },
+    {
+      "path": "public/brand/zeplao/icons/ui/menu.svg",
+      "bytes": 243,
+      "sha256": "c218717c4568d6dc179c9d34c0c94eec9cd209511c699c44fb10e024994789cb",
+      "viewBox": "0 0 24 24",
+      "width": "24",
+      "height": "24"
+    },
+    {
+      "path": "public/brand/zeplao/icons/ui/notification.svg",
+      "bytes": 261,
+      "sha256": "41810031793b57dd9dab364118983089fc0f9a8962e2e006678b3cbe06157a6c",
+      "viewBox": "0 0 24 24",
+      "width": "24",
+      "height": "24"
+    },
+    {
+      "path": "public/brand/zeplao/icons/ui/profile.svg",
+      "bytes": 276,
+      "sha256": "440a28045949a8b18309e98fc03a7790e937f3ff1ba68db15a6438f152f919b7",
+      "viewBox": "0 0 24 24",
+      "width": "24",
+      "height": "24"
+    },
+    {
+      "path": "public/brand/zeplao/icons/ui/quote.svg",
+      "bytes": 301,
+      "sha256": "f51e74d9e14b17d8299217e681e8aa438d29e533dea3ac48a21a8a540510eaf4",
+      "viewBox": "0 0 24 24",
+      "width": "24",
+      "height": "24"
+    },
+    {
+      "path": "public/brand/zeplao/icons/ui/search.svg",
+      "bytes": 261,
+      "sha256": "3d66fa1263e9f6c3bdec974c65093242e4b7fef706d08f467491bce051cf9033",
+      "viewBox": "0 0 24 24",
+      "width": "24",
+      "height": "24"
+    },
+    {
+      "path": "public/brand/zeplao/icons/ui/settings.svg",
+      "bytes": 418,
+      "sha256": "af42c99d61b6bd5589eac4ec500c6cc0fbcb4d39f60095be60f9beaea68ee0a7",
+      "viewBox": "0 0 24 24",
+      "width": "24",
+      "height": "24"
+    },
+    {
+      "path": "public/brand/zeplao/icons/ui/theme.svg",
+      "bytes": 259,
+      "sha256": "d056108b0417c70bb5bd061da6e2bf36c8ea96339728cdfd3e9f627b189202aa",
+      "viewBox": "0 0 24 24",
+      "width": "24",
+      "height": "24"
+    },
+    {
+      "path": "public/brand/zeplao/icons/ui/upload.svg",
+      "bytes": 254,
+      "sha256": "65334b8cb91f95f1568812c208f9c2cd33a9fd08f8c852e88c0938ce71d51515",
+      "viewBox": "0 0 24 24",
+      "width": "24",
+      "height": "24"
+    },
+    {
+      "path": "public/brand/zeplao/icons/ui/watermark.svg",
+      "bytes": 378,
+      "sha256": "47eeeb7a36a209009dd6caba98ec939e6e1006fe3052bcf7a87522258c6a2f51",
+      "viewBox": "0 0 24 24",
+      "width": "24",
+      "height": "24"
+    },
+    {
+      "path": "public/brand/zeplao/icons/zeplao-sprite.svg",
+      "bytes": 5272,
+      "sha256": "ef899fa63573a25ea200acd32bb5b596dec65e0962bc49ce1b38607c90085a76",
+      "viewBox": null,
+      "width": null,
+      "height": null
+    },
+    {
+      "path": "public/brand/zeplao/logos/zeplao-horizontal-dark-1600w.png",
+      "bytes": 47821,
+      "sha256": "34598f0d59f68900fbd14b17193453ace89452874205de51e0630d7e53910fe6",
+      "width": 1600,
+      "height": 441,
+      "mode": "RGBA"
+    },
+    {
+      "path": "public/brand/zeplao/logos/zeplao-horizontal-dark-400w.png",
+      "bytes": 9646,
+      "sha256": "76f7a6e7ea85ddd9ace06436b640ad0849e6c1f0070fed817ddef1e90b925862",
+      "width": 400,
+      "height": 110,
+      "mode": "RGBA"
+    },
+    {
+      "path": "public/brand/zeplao/logos/zeplao-horizontal-dark-800w.png",
+      "bytes": 21657,
+      "sha256": "d22896e9f4352277a77f223d489e356de87cd3c559695d306d6ea00f76c7dfec",
+      "width": 800,
+      "height": 220,
+      "mode": "RGBA"
+    },
+    {
+      "path": "public/brand/zeplao/logos/zeplao-horizontal-dark-compact-1600w.png",
+      "bytes": 41312,
+      "sha256": "7eb422d07889d682073fcfabcfd1a9c75b7f14e5c36af73382a2aa31df3fbf82",
+      "width": 1600,
+      "height": 441,
+      "mode": "RGBA"
+    },
+    {
+      "path": "public/brand/zeplao/logos/zeplao-horizontal-dark-compact-400w.png",
+      "bytes": 7809,
+      "sha256": "c873d8fa7e87cf3cc6f36267c55c9710c35cc60c81320a080263f41e37bb52e4",
+      "width": 400,
+      "height": 110,
+      "mode": "RGBA"
+    },
+    {
+      "path": "public/brand/zeplao/logos/zeplao-horizontal-dark-compact-800w.png",
+      "bytes": 18061,
+      "sha256": "20ad2710275c04b6a9998993c5938e5f245d04fb397a08e2ae9b56463a1c0099",
+      "width": 800,
+      "height": 220,
+      "mode": "RGBA"
+    },
+    {
+      "path": "public/brand/zeplao/logos/zeplao-horizontal-dark-compact.svg",
+      "bytes": 3013,
+      "sha256": "9b339fe3cc71f80cbb251fe4e22b4d435c3b1ed85e4ccb5fb470df4045868c77",
+      "viewBox": "0 0 392 108",
+      "width": "392",
+      "height": "108"
+    },
+    {
+      "path": "public/brand/zeplao/logos/zeplao-horizontal-dark.svg",
+      "bytes": 5969,
+      "sha256": "f6d517692efa6779bf0a3f67ed83fe0602f8dbc6581563d4f48963ca885d5f14",
+      "viewBox": "0 0 392 108",
+      "width": "392",
+      "height": "108"
+    },
+    {
+      "path": "public/brand/zeplao/logos/zeplao-horizontal-light-1600w.png",
+      "bytes": 54069,
+      "sha256": "9e9990b610da1f1783e7c4f9b9e9dc45e78669e9ca765dde3c3ecafdab7f2c6f",
+      "width": 1600,
+      "height": 441,
+      "mode": "RGBA"
+    },
+    {
+      "path": "public/brand/zeplao/logos/zeplao-horizontal-light-400w.png",
+      "bytes": 11109,
+      "sha256": "ebd4ac5fc052c49d25f88a31efbd6e8af72ebd90adcd3eff95a7dde5fb8ceb38",
+      "width": 400,
+      "height": 110,
+      "mode": "RGBA"
+    },
+    {
+      "path": "public/brand/zeplao/logos/zeplao-horizontal-light-800w.png",
+      "bytes": 24713,
+      "sha256": "042d62006263c1e568c3de5abec660eb9a747ca883f97142c46b2c268b3b40b2",
+      "width": 800,
+      "height": 220,
+      "mode": "RGBA"
+    },
+    {
+      "path": "public/brand/zeplao/logos/zeplao-horizontal-light-compact-1600w.png",
+      "bytes": 47092,
+      "sha256": "28ee36f6c9176a748a6789c321eff78ce6abe33f768dbefe0dc566ffd086973c",
+      "width": 1600,
+      "height": 441,
+      "mode": "RGBA"
+    },
+    {
+      "path": "public/brand/zeplao/logos/zeplao-horizontal-light-compact-400w.png",
+      "bytes": 9280,
+      "sha256": "52eabe88f45aaf50d45ada5c4c317cec30ff1f9ae9811ae2d7f61995c04473b0",
+      "width": 400,
+      "height": 110,
+      "mode": "RGBA"
+    },
+    {
+      "path": "public/brand/zeplao/logos/zeplao-horizontal-light-compact-800w.png",
+      "bytes": 21183,
+      "sha256": "04f2410b0d17f829eee700e7c9b86a24faf08625a629865f7591485d2ac81d80",
+      "width": 800,
+      "height": 220,
+      "mode": "RGBA"
+    },
+    {
+      "path": "public/brand/zeplao/logos/zeplao-horizontal-light-compact.svg",
+      "bytes": 3013,
+      "sha256": "ee28db8b3a3c4b8909503517b31db4464eb18c93135ad4d5e8458409eec64fc3",
+      "viewBox": "0 0 392 108",
+      "width": "392",
+      "height": "108"
+    },
+    {
+      "path": "public/brand/zeplao/logos/zeplao-horizontal-light.svg",
+      "bytes": 5969,
+      "sha256": "f42e937938f75f1ee14899ada11cbf327a23575e730640a49a723aa5974568b1",
+      "viewBox": "0 0 392 108",
+      "width": "392",
+      "height": "108"
+    },
+    {
+      "path": "public/brand/zeplao/logos/zeplao-horizontal-mono-black-1600w.png",
+      "bytes": 38859,
+      "sha256": "bd503833b47733662a4f89b4719d7a755412bfa91f2df72e3663d856ba2a623b",
+      "width": 1600,
+      "height": 441,
+      "mode": "RGBA"
+    },
+    {
+      "path": "public/brand/zeplao/logos/zeplao-horizontal-mono-black-800w.png",
+      "bytes": 18435,
+      "sha256": "bfa5ecdb11caba892528a68b44e18f43b8b3994a8f6d6abbdc1d384673a9e035",
+      "width": 800,
+      "height": 220,
+      "mode": "RGBA"
+    },
+    {
+      "path": "public/brand/zeplao/logos/zeplao-horizontal-mono-black.svg",
+      "bytes": 5818,
+      "sha256": "2458efa81d7701468c44c2d4bae85c56f6fdd2fd2531c2036169b4249e849f69",
+      "viewBox": "0 0 392 108",
+      "width": "392",
+      "height": "108"
+    },
+    {
+      "path": "public/brand/zeplao/logos/zeplao-horizontal-mono-white-1600w.png",
+      "bytes": 27964,
+      "sha256": "d3aafb1d87a9cdeade16596624458fbf78a8a39036e71250826bca26d1c0917c",
+      "width": 1600,
+      "height": 441,
+      "mode": "RGBA"
+    },
+    {
+      "path": "public/brand/zeplao/logos/zeplao-horizontal-mono-white-800w.png",
+      "bytes": 13098,
+      "sha256": "6a9a39c10bfb9d65e6a923277db3330e1fba0a8dfec427058f5472d2dd66e00b",
+      "width": 800,
+      "height": 220,
+      "mode": "RGBA"
+    },
+    {
+      "path": "public/brand/zeplao/logos/zeplao-horizontal-mono-white.svg",
+      "bytes": 5818,
+      "sha256": "9c3dbd71f9cd3c9049b39e570b04cffc1af587e0fd9ab21be45502cef2cb138b",
+      "viewBox": "0 0 392 108",
+      "width": "392",
+      "height": "108"
+    },
+    {
+      "path": "public/brand/zeplao/logos/zeplao-stacked-dark-1440w.png",
+      "bytes": 62631,
+      "sha256": "aa5dfb15122fe541abd6540e46f954a7862d4d69b825389669cd63fd834422c2",
+      "width": 1440,
+      "height": 1160,
+      "mode": "RGBA"
+    },
+    {
+      "path": "public/brand/zeplao/logos/zeplao-stacked-dark-360w.png",
+      "bytes": 12895,
+      "sha256": "7d098787e7e79fb97b99bc807d6857743d8b684fb88c02df65d4c4244163f1e9",
+      "width": 360,
+      "height": 290,
+      "mode": "RGBA"
+    },
+    {
+      "path": "public/brand/zeplao/logos/zeplao-stacked-dark-720w.png",
+      "bytes": 28000,
+      "sha256": "b2ccf5ab8e278ffdc63f63b43fa391000250398ef1193dbbde2693d54d7ea4f0",
+      "width": 720,
+      "height": 580,
+      "mode": "RGBA"
+    },
+    {
+      "path": "public/brand/zeplao/logos/zeplao-stacked-dark.svg",
+      "bytes": 6041,
+      "sha256": "84c883a7fa450de8de48deac9010783fcf200a1719504c64206affdfbce3bf62",
+      "viewBox": "0 0 360 290",
+      "width": "360",
+      "height": "290"
+    },
+    {
+      "path": "public/brand/zeplao/logos/zeplao-stacked-light-1440w.png",
+      "bytes": 69213,
+      "sha256": "508a4e501cb1d2e11e4882ed1eb1c3770d7a1e33aec419640ae111ed89972fe6",
+      "width": 1440,
+      "height": 1160,
+      "mode": "RGBA"
+    },
+    {
+      "path": "public/brand/zeplao/logos/zeplao-stacked-light-360w.png",
+      "bytes": 14428,
+      "sha256": "4a478869fce3d7aeb790ef37bfe9117b05eb1ea4cba1af0790f7808ac1bb6ecc",
+      "width": 360,
+      "height": 290,
+      "mode": "RGBA"
+    },
+    {
+      "path": "public/brand/zeplao/logos/zeplao-stacked-light-720w.png",
+      "bytes": 31273,
+      "sha256": "6204b79efd7e850dff5628002796661819034d8927280b720935dfe26975a458",
+      "width": 720,
+      "height": 580,
+      "mode": "RGBA"
+    },
+    {
+      "path": "public/brand/zeplao/logos/zeplao-stacked-light.svg",
+      "bytes": 6041,
+      "sha256": "1453978076b2c18cf36ac1a74248122621d4779a6ec3b303bbd1fe5d110189d8",
+      "viewBox": "0 0 360 290",
+      "width": "360",
+      "height": "290"
+    },
+    {
+      "path": "public/brand/zeplao/marks/zeplao-mark-black-1024w.png",
+      "bytes": 26098,
+      "sha256": "00e1f487d1dff1b8f2d03c090daeafcb40dbcd325ec31f1ada2c228e4eff2c72",
+      "width": 1024,
+      "height": 1024,
+      "mode": "RGBA"
+    },
+    {
+      "path": "public/brand/zeplao/marks/zeplao-mark-black-128w.png",
+      "bytes": 2006,
+      "sha256": "065eaccc3fbcfc9cafe89edc5a027bfdbaf0a69fa12c7e82c635f9be900cbb90",
+      "width": 128,
+      "height": 128,
+      "mode": "RGBA"
+    },
+    {
+      "path": "public/brand/zeplao/marks/zeplao-mark-black-256w.png",
+      "bytes": 4097,
+      "sha256": "7ae5b61bd34eae5cbd5636c9269d058685abc24567b5fb39cb1675ae48d587c2",
+      "width": 256,
+      "height": 256,
+      "mode": "RGBA"
+    },
+    {
+      "path": "public/brand/zeplao/marks/zeplao-mark-black-512w.png",
+      "bytes": 8441,
+      "sha256": "20ba19a9f3b40ace8ba720939ee61a8666bd056543d4c18ee07ee2fd36b8db42",
+      "width": 512,
+      "height": 512,
+      "mode": "RGBA"
+    },
+    {
+      "path": "public/brand/zeplao/marks/zeplao-mark-black-64w.png",
+      "bytes": 1184,
+      "sha256": "93c37e4f15f52219e586c44899784f3c70cb7b0bab6c186af2a8c68221e9d667",
+      "width": 64,
+      "height": 64,
+      "mode": "RGBA"
+    },
+    {
+      "path": "public/brand/zeplao/marks/zeplao-mark-black.svg",
+      "bytes": 891,
+      "sha256": "de075e4fcbe9ef8643fe2ad8e6eb97f70268ea73bf0a58cfc9b91346cfe69ffa",
+      "viewBox": "0 0 100 100",
+      "width": "100",
+      "height": "100"
+    },
+    {
+      "path": "public/brand/zeplao/marks/zeplao-mark-gradient-1024w.png",
+      "bytes": 63805,
+      "sha256": "e4fbd4c1be939f99e55aa0172aadb596d4caa6468ec0ae99ccec1d13ef2d1d80",
+      "width": 1024,
+      "height": 1024,
+      "mode": "RGBA"
+    },
+    {
+      "path": "public/brand/zeplao/marks/zeplao-mark-gradient-128w.png",
+      "bytes": 5231,
+      "sha256": "fad04ab7baa34d96677d76490507f8eff782c919eba92f57e3c919020ea6f8b4",
+      "width": 128,
+      "height": 128,
+      "mode": "RGBA"
+    },
+    {
+      "path": "public/brand/zeplao/marks/zeplao-mark-gradient-256w.png",
+      "bytes": 11588,
+      "sha256": "58ce2c81ab220128ffe8d4c687d981a0b8ca436713d907eea1c5fad66fd79a61",
+      "width": 256,
+      "height": 256,
+      "mode": "RGBA"
+    },
+    {
+      "path": "public/brand/zeplao/marks/zeplao-mark-gradient-512w.png",
+      "bytes": 25904,
+      "sha256": "cd04b6e3f8235168fea1a69938bdd0f13cd8a9e0f222dbd36837d85b8fd2022a",
+      "width": 512,
+      "height": 512,
+      "mode": "RGBA"
+    },
+    {
+      "path": "public/brand/zeplao/marks/zeplao-mark-gradient-64w.png",
+      "bytes": 2337,
+      "sha256": "e61b30151ad30e16b15956027c4c793cff151b483e203f2f9821355d884048b3",
+      "width": 64,
+      "height": 64,
+      "mode": "RGBA"
+    },
+    {
+      "path": "public/brand/zeplao/marks/zeplao-mark-gradient.svg",
+      "bytes": 1042,
+      "sha256": "48921581a9865e502c20e6e103ff48505bc927387747b48b1358f1f601595e8b",
+      "viewBox": "0 0 100 100",
+      "width": "100",
+      "height": "100"
+    },
+    {
+      "path": "public/brand/zeplao/marks/zeplao-mark-primary-1024w.png",
+      "bytes": 26979,
+      "sha256": "dc0a2bfdd05daac8de82c76dbf8b32490cbabd0833d04dd717ff1836dfa22bc7",
+      "width": 1024,
+      "height": 1024,
+      "mode": "RGBA"
+    },
+    {
+      "path": "public/brand/zeplao/marks/zeplao-mark-primary-128w.png",
+      "bytes": 2013,
+      "sha256": "fc028783285aa24a0d0b7a70eda42c49657d2c418e92a3c1d241ae56c7cfcd13",
+      "width": 128,
+      "height": 128,
+      "mode": "RGBA"
+    },
+    {
+      "path": "public/brand/zeplao/marks/zeplao-mark-primary-256w.png",
+      "bytes": 4111,
+      "sha256": "31e110c19c3858de3e945027ecbd05b85ac10d535bb5afe86ba252b523259e3d",
+      "width": 256,
+      "height": 256,
+      "mode": "RGBA"
+    },
+    {
+      "path": "public/brand/zeplao/marks/zeplao-mark-primary-512w.png",
+      "bytes": 8487,
+      "sha256": "eefd48fb98cb06380c687dc48ee5d4c91033b0b70603bd4b143fc5b27d17714f",
+      "width": 512,
+      "height": 512,
+      "mode": "RGBA"
+    },
+    {
+      "path": "public/brand/zeplao/marks/zeplao-mark-primary-64w.png",
+      "bytes": 1234,
+      "sha256": "e2a1b7ac5eecf178927c45cf3680cfd3010dbd56834ae0c47a8f9c63fb8c5c7a",
+      "width": 64,
+      "height": 64,
+      "mode": "RGBA"
+    },
+    {
+      "path": "public/brand/zeplao/marks/zeplao-mark-primary.svg",
+      "bytes": 891,
+      "sha256": "a75e3323886c4dfeaeab74795ebd760dacfe04795bf5624d7cd9a27aeef9646d",
+      "viewBox": "0 0 100 100",
+      "width": "100",
+      "height": "100"
+    },
+    {
+      "path": "public/brand/zeplao/marks/zeplao-mark-white-1024w.png",
+      "bytes": 20416,
+      "sha256": "bcc07c000826de95f926828844121525a3da4a4b605ae57ce2582895e44685a6",
+      "width": 1024,
+      "height": 1024,
+      "mode": "RGBA"
+    },
+    {
+      "path": "public/brand/zeplao/marks/zeplao-mark-white-128w.png",
+      "bytes": 1619,
+      "sha256": "305d5b11434baac7415639440811564bcd7aa7b6166af7c1a4c8fecef437ff77",
+      "width": 128,
+      "height": 128,
+      "mode": "RGBA"
+    },
+    {
+      "path": "public/brand/zeplao/marks/zeplao-mark-white-256w.png",
+      "bytes": 3356,
+      "sha256": "77e92ee0d53efa77804f85b752569ac975bf55438461af78c85b8a19d8ab0c14",
+      "width": 256,
+      "height": 256,
+      "mode": "RGBA"
+    },
+    {
+      "path": "public/brand/zeplao/marks/zeplao-mark-white-512w.png",
+      "bytes": 7125,
+      "sha256": "13623f4ebc3e9611972d387d5cd4f8f3b3ab002319b7cd51ad8871b479fa6bb1",
+      "width": 512,
+      "height": 512,
+      "mode": "RGBA"
+    },
+    {
+      "path": "public/brand/zeplao/marks/zeplao-mark-white-64w.png",
+      "bytes": 954,
+      "sha256": "65da5e00d81f1ab1bf05e1981b76c627d3f34ef0afe4a5fdeca8d4ec99990387",
+      "width": 64,
+      "height": 64,
+      "mode": "RGBA"
+    },
+    {
+      "path": "public/brand/zeplao/marks/zeplao-mark-white.svg",
+      "bytes": 891,
+      "sha256": "77f16a0adb11f6ffa4865734a88fc1ff1abef7400cd52a8f36fa9b1405ddb948",
+      "viewBox": "0 0 100 100",
+      "width": "100",
+      "height": "100"
+    },
+    {
+      "path": "public/brand/zeplao/site.webmanifest",
+      "bytes": 721,
+      "sha256": "e9b51a30adc8f054dd2844c0c11fa37fe9ecf60817f6cd88cef63f9af50780dd"
+    },
+    {
+      "path": "public/brand/zeplao/social/zeplao-og-dark.png",
+      "bytes": 47816,
+      "sha256": "2559224b245e13dd8d6ded69c138c292beee83283d8cf07188ae24ad15a9516a",
+      "width": 1200,
+      "height": 630,
+      "mode": "RGBA"
+    },
+    {
+      "path": "public/brand/zeplao/social/zeplao-og-dark.svg",
+      "bytes": 24304,
+      "sha256": "69ac7017f8489345bab1c04ba55180432ccc664be312c17ce9c2892de11a1b3c",
+      "viewBox": "0 0 1200 630",
+      "width": "1200",
+      "height": "630"
+    },
+    {
+      "path": "public/brand/zeplao/social/zeplao-og-light.png",
+      "bytes": 47440,
+      "sha256": "abfc2ee506c81c045bfae6bf5c6b6cb44de5146ad4fb79442a65ede57b528d54",
+      "width": 1200,
+      "height": 630,
+      "mode": "RGBA"
+    },
+    {
+      "path": "public/brand/zeplao/social/zeplao-og-light.svg",
+      "bytes": 24304,
+      "sha256": "1f29b17a7a95aeba3fdae10e3d40052bd9895480f62337c0d7b6931bb3eb3f29",
+      "viewBox": "0 0 1200 630",
+      "width": "1200",
+      "height": "630"
+    }
+  ]
+}

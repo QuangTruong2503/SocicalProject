@@ -1,9 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
-import { FiArrowRight, FiCheck, FiFolder, FiImage, FiSearch, FiShield, FiVideo, FiX } from 'react-icons/fi';
+import { FiCheck, FiFileText, FiFolder, FiImage, FiSearch, FiShield, FiVideo, FiX } from 'react-icons/fi';
 import { TOOL_CATALOG, filterTools } from './toolCatalog.js';
 import styles from './Tools.module.css';
+import { ZepLaoToolIcon, ZepLaoUIIcon } from '../../components/brand/ZepLaoBrand.jsx';
+
+const TOOL_ICONS = { image: FiImage, video: FiVideo, file: FiFileText };
 
 export default function ToolsPage() {
   const [query, setQuery] = useState('');
@@ -26,11 +29,11 @@ export default function ToolsPage() {
   return (
     <div className={styles.page}>
       <Helmet>
-        <title>Tools - AISEO Tools Suite</title>
-        <meta name="description" content="Bộ sưu tập công cụ tiện ích của AISEO. Khám phá Watermark để đóng dấu ảnh và Clear Video để quét, dọn video trên máy của bạn." />
+        <title>Tools - ZepLao Tools Suite</title>
+        <meta name="description" content="Bộ sưu tập công cụ tiện ích của ZepLao: Watermark để đóng dấu ảnh, Clear Video để dọn video và Chuyển đổi file để xử lý ảnh, PDF." />
       </Helmet>
       <header className={styles.hero}>
-        <span className={styles.eyebrow}>AISEO / TOOLBOX</span>
+        <span className={styles.eyebrow}>ZepLao / TOOLBOX</span>
         <h1>Công cụ nhỏ.<br />Hiệu quả lớn.</h1>
         <div className={styles.heroBottom}>
           <p>Một nơi cho những tiện ích giúp công việc nhẹ nhàng hơn.<br className={styles.desktopBreak} /> Khám phá, chọn công cụ và bắt đầu.</p>
@@ -42,7 +45,7 @@ export default function ToolsPage() {
         <div className={styles.catalogHead}>
           <h2 id="tools-title">Khám phá Tools <span>{String(TOOL_CATALOG.length).padStart(2, '0')}</span></h2>
           <div className={styles.search}>
-            <FiSearch aria-hidden="true" />
+            <ZepLaoUIIcon name="search" size={18} />
             <input ref={searchRef} type="search" aria-label="Tìm công cụ" placeholder="Tìm công cụ…" value={query} onChange={(event) => setQuery(event.target.value)} />
             <kbd title="Ctrl+K hoặc ⌘K">⌘ K</kbd>
           </div>
@@ -53,21 +56,24 @@ export default function ToolsPage() {
         </div>
         <p className={styles.srOnly} role="status">{tools.length} công cụ được tìm thấy</p>
         {tools.length ? <div className={styles.toolGrid}>
-          {tools.map((tool) => (
+          {tools.map((tool) => {
+            const Icon = TOOL_ICONS[tool.icon] || FiFolder;
+            return (
             <Link key={tool.id} to={tool.path} className={styles.toolCard} aria-label={`Mở ${tool.name}`}>
               <div className={styles.cardPreview} aria-hidden="true">
-                <span className={styles.previewTop}><span>{tool.icon === 'image' ? <FiImage /> : <FiVideo />} {tool.category}</span><span>{String(TOOL_CATALOG.indexOf(tool) + 1).padStart(2, '0')} / {tool.local ? 'LOCAL TOOL' : 'IMAGE TOOL'}</span></span>
-                <div className={styles.previewFolder}>{tool.icon === 'image' ? <FiImage /> : <FiFolder />}<span>{tool.previewTitle}</span></div>
+                <span className={styles.previewTop}><span><Icon /> {tool.category}</span><span>{String(TOOL_CATALOG.indexOf(tool) + 1).padStart(2, '0')} / {tool.local ? 'LOCAL TOOL' : 'IMAGE TOOL'}</span></span>
+                <div className={styles.previewFolder}>{tool.brandIcon ? <ZepLaoToolIcon name={tool.brandIcon} /> : <FiFolder />}<span>{tool.previewTitle}</span></div>
                 <div className={styles.previewSteps}>{tool.steps.map((step) => <span key={step}><FiCheck /> {step}</span>)}</div>
               </div>
               <div className={styles.cardBody}>
                 <div className={styles.cardTitle}><h3>{tool.name}</h3><span className={styles.statusBadge}><span /> Sẵn sàng</span></div>
                 <p>{tool.description}</p>
                 <div className={styles.cardTags}><span>{tool.category}</span>{tool.local && <span>Xử lý trên máy</span>}{tool.requiresAuth && <span>Cần đăng nhập</span>}</div>
-                <div className={styles.cardAction}>Mở công cụ <FiArrowRight aria-hidden="true" /></div>
+                <div className={styles.cardAction}>Mở công cụ <ZepLaoUIIcon name="arrow-right" size={18} /></div>
               </div>
             </Link>
-          ))}
+            );
+          })}
           <aside className={styles.collectionNote}>
             <span className={styles.eyebrow}>ĐANG TIẾP TỤC XÂY DỰNG</span>
             <h3>Bộ công cụ sẽ<br />còn lớn hơn.</h3>

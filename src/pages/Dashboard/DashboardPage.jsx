@@ -3,17 +3,13 @@ import { Helmet } from 'react-helmet-async';
 import { Navigate, NavLink, useNavigate, useParams } from 'react-router-dom';
 import {
   FaArrowsRotate,
-  FaBell,
   FaCamera,
   FaCrown,
-  FaGaugeHigh,
-  FaImages,
   FaRightFromBracket,
-  FaShieldHalved,
-  FaUser,
   FaXmark,
 } from 'react-icons/fa6';
 import UserAvatar from '../../components/UserAvatar.jsx';
+import { ZepLaoToolIcon, ZepLaoUIIcon } from '../../components/brand/ZepLaoBrand.jsx';
 import { useAuth } from '../../hooks/useAuth.js';
 import { useAvatarFrames } from '../../hooks/useAvatarFrames.js';
 import { frameLayerProps, resolveAvatarFrame } from '../../utils/avatarFrames.js';
@@ -27,11 +23,11 @@ import styles from './Dashboard.module.css';
 import '../../styles/auth.css';
 
 const SECTIONS = [
-  { id: 'overview', label: 'Tổng quan', title: 'Tổng quan', icon: FaGaugeHigh, Component: OverviewSection },
-  { id: 'profile', label: 'Hồ sơ', title: 'Hồ sơ cá nhân', icon: FaUser, Component: ProfileSection },
-  { id: 'security', label: 'Bảo mật', title: 'Bảo mật', icon: FaShieldHalved, Component: SecuritySection },
-  { id: 'avatar', label: 'Avatar', title: 'Ảnh đại diện', icon: FaCamera, Component: AvatarSection },
-  { id: 'uploads', label: 'Ảnh đã tải', title: 'Ảnh đã tải lên', icon: FaImages, Component: UploadsSection },
+  { id: 'overview', label: 'Tổng quan', title: 'Tổng quan', icon: 'dashboard', Component: OverviewSection },
+  { id: 'profile', label: 'Hồ sơ', title: 'Hồ sơ cá nhân', icon: 'profile', Component: ProfileSection },
+  { id: 'security', label: 'Bảo mật', title: 'Bảo mật', icon: 'settings', Component: SecuritySection },
+  { id: 'avatar', label: 'Avatar', title: 'Ảnh đại diện', icon: 'profile', Component: AvatarSection },
+  { id: 'uploads', label: 'Ảnh đã tải', title: 'Ảnh đã tải lên', icon: 'upload', Component: UploadsSection },
 ];
 
 /** Problems from AuthContext, worded for the user. A profile error with a profile loaded is only a warning. */
@@ -110,7 +106,7 @@ export default function DashboardPage() {
   return (
     <>
       <Helmet>
-        <title>{`${activeSection.title} · Tài khoản · AISEO Tools Suite`}</title>
+        <title>{`${activeSection.title} · Tài khoản · ZepLao Tools Suite`}</title>
         <meta name="description" content="Quản lý tài khoản, hồ sơ, bảo mật và ảnh đã tải lên." />
         <meta name="robots" content="noindex, nofollow" />
       </Helmet>
@@ -139,7 +135,7 @@ export default function DashboardPage() {
             </div>
 
             <nav className="dashboard-sidebar-nav" aria-label="Mục tài khoản">
-              <NavLink to="/notifications" className="dashboard-sidebar-link"><FaBell aria-hidden="true" />Thông báo</NavLink>
+              <NavLink to="/notifications" className="dashboard-sidebar-link"><ZepLaoUIIcon name="notification" />Thông báo</NavLink>
               {SECTIONS.map((item) => (
                 <NavLink
                   key={item.id}
@@ -148,7 +144,7 @@ export default function DashboardPage() {
                   aria-current={activeSection.id === item.id ? 'page' : undefined}
                   end
                 >
-                  <item.icon aria-hidden="true" />
+                  <ZepLaoUIIcon name={item.icon} />
                   {item.label}
                 </NavLink>
               ))}
@@ -162,9 +158,12 @@ export default function DashboardPage() {
 
           <main className="dashboard-main">
             <div className="dashboard-topbar">
-              <div>
+              <div className="zl-dashboard-title">
+                <ZepLaoToolIcon name={activeSection.id === 'overview' ? 'dashboard' : 'profile'} size={48} />
+                <div>
                 <span className="dashboard-panel-kicker">{activeSection.title}</span>
                 <h1>Xin chào, {displayName}</h1>
+                </div>
               </div>
               <div className="dashboard-topbar-actions">
                 <button

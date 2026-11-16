@@ -76,3 +76,20 @@ test('automatic watermark keeps its Pro gate and returns Free users to the canon
   assert.equal(routeState().pathname, '/tools/watermark');
   assert.match(document.body.textContent, /Watermark content/);
 });
+
+test('legacy file conversion URL keeps the selected tool and fragment when replacing history', async () => {
+  await render({ pathname: '/chuyen-doi-file', search: '?cong-cu=tach-pdf', hash: '#pages', state: { source: 'bookmark' } }, ANONYMOUS);
+  assert.equal(routeState().pathname, '/tools/chuyen-doi-file');
+  assert.equal(routeState().search, '?cong-cu=tach-pdf');
+  assert.equal(routeState().hash, '#pages');
+  assert.deepEqual(routeState().state, { source: 'bookmark' });
+  assert.equal(routeState().type, 'REPLACE');
+  assert.match(document.body.textContent, /File conversion content/);
+});
+
+test('canonical file conversion URL remains available without login', async () => {
+  await render('/tools/chuyen-doi-file?cong-cu=gop-pdf', ANONYMOUS);
+  assert.equal(routeState().pathname, '/tools/chuyen-doi-file');
+  assert.equal(routeState().search, '?cong-cu=gop-pdf');
+  assert.match(document.body.textContent, /File conversion content/);
+});
