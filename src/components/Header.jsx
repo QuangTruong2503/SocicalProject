@@ -72,26 +72,21 @@ export default function Header() {
       icon: '🏠',
     },
     {
-      label: 'Watermark',
-      path: '/watermark',
-      icon: '🎨',
-    },
-    {
-      label: 'Báo Giá',
-      path: '/bao-gia-minh-triet',
-      icon: '📜',
+      label: 'Tools',
+      path: '/tools',
+      icon: '🧰',
     },
     ...(user ? [{ label: 'Dashboard', path: '/dashboard/overview', icon: '📊' }] : []),
     ...(profile?.role === 'admin' ? [{ label: 'Quản trị', path: '/admin', icon: '🛠️' }] : []),
   ];
 
   const isActive = (path) => {
-    if (path.startsWith('/dashboard')) {
-      return location.pathname.startsWith('/dashboard');
+    if (path === '/tools') {
+      return location.pathname === '/tools' || location.pathname.startsWith('/tools/');
     }
 
-    if (path === '/watermark') {
-      return location.pathname.startsWith('/watermark');
+    if (path.startsWith('/dashboard')) {
+      return location.pathname.startsWith('/dashboard');
     }
 
     return location.pathname === path;

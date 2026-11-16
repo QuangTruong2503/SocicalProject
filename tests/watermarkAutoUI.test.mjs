@@ -1,4 +1,4 @@
-// The real /watermark/auto page in jsdom: folder picking, permission, start/stop/resume,
+// The real /tools/watermark/auto page in jsdom: folder picking, permission, start/stop/resume,
 // the AI request sent through the production service (fetch mocked) and the files written.
 // Run with: node --import ./tests/watermarkAutoLoader.mjs --test tests/watermarkAutoUI.test.mjs
 import { dom } from './fixtures/notificationsDom.mjs';
@@ -64,10 +64,10 @@ async function render() {
     root.render(React.createElement(HelmetProvider, null,
       React.createElement(ThemeProvider, null,
         React.createElement(AuthContext.Provider, { value: USER },
-          React.createElement(MemoryRouter, { initialEntries: ['/watermark/auto'] },
+          React.createElement(MemoryRouter, { initialEntries: ['/tools/watermark/auto'] },
             React.createElement(Routes, null,
-              React.createElement(Route, { path: '/watermark/auto', element: React.createElement(WatermarkAuto) }),
-              React.createElement(Route, { path: '/watermark', element: React.createElement('h1', null, 'Trang watermark') }),
+              React.createElement(Route, { path: '/tools/watermark/auto', element: React.createElement(WatermarkAuto) }),
+              React.createElement(Route, { path: '/tools/watermark', element: React.createElement('h1', null, 'Trang watermark') }),
             ))))));
   });
   await settle(60);
@@ -116,7 +116,7 @@ test('unsupported browser: explains the limit, no ZIP pretending to create Resul
   assert.match(text(), /không tạo file ZIP thay thế/);
   assert.equal(button('Thêm thư mục sản phẩm').disabled, true);
   assert.equal(button('Bắt đầu xử lý').disabled, true);
-  assert.equal(document.querySelector('a[href="/watermark"]').textContent, '← Quay lại Watermark');
+  assert.equal(document.querySelector('a[href="/tools/watermark"]').textContent, '← Quay lại Watermark');
 });
 
 test('folder Excel export → reorder and edit → import updates AI and Result names, retaining source folders', async () => {

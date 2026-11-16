@@ -15,6 +15,7 @@
     "test:admin-quotations": "node --test src/utils/adminQuotations.test.js tests/adminQuotationsDatabase.test.mjs && node --import ./tests/adminQuotationsLoader.mjs --test tests/adminQuotationsUI.test.mjs",
     "test:admin-users": "node --test tests/adminUsersPlanDatabase.test.mjs",
     "test:file-convert": "node --test src/utils/fileConvert.test.js",
+    "test:tools": "node --test tests/clearVideo.test.mjs && node --import ./tests/aiRenameLoader.mjs --test tests/toolsUI.test.mjs && node --import ./tests/toolRoutesLoader.mjs --test tests/toolRoutesUI.test.mjs",
     "test:ai-image-names": "node --test src/utils/aiImageNaming.test.js tests/suggestImageNamesFunction.test.mjs tests/aiNamingAccessDatabase.test.mjs && node --import ./tests/aiRenameLoader.mjs --test tests/aiRenameUI.test.mjs",
     "test:watermark-auto": "node --test tests/watermarkAutoFolders.test.mjs tests/watermarkAutoFolderExcel.test.mjs tests/watermarkAutoRender.test.mjs && node --import ./tests/aiRenameLoader.mjs --test tests/watermarkAutoRunner.test.mjs && node --import ./tests/watermarkAutoLoader.mjs --test tests/watermarkAutoUI.test.mjs",
     "test:usage": "node --test tests/usageLedgerDatabase.test.mjs tests/usageLedgerFunction.test.mjs tests/planModelAccessDatabase.test.mjs && node --import ./tests/aiRenameLoader.mjs --test tests/usageTelemetry.test.mjs tests/adminUsageUI.test.mjs",

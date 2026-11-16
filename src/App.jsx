@@ -1,7 +1,7 @@
 import { lazy, Suspense } from 'react';
 import { Routes, Route, NavLink, useLocation, Navigate } from 'react-router-dom';
 import { HelmetProvider, Helmet } from 'react-helmet-async';
-import { FiArrowRight, FiFileText, FiImage, FiLink2, FiPlayCircle, FiRepeat, FiUser } from 'react-icons/fi';
+import { FiArrowRight, FiFileText, FiLink2, FiPlayCircle, FiRepeat, FiTool, FiUser } from 'react-icons/fi';
 import { useTheme } from './hooks/useTheme';
 import './styles/auth.css';
 const Watermark = lazy(() => import('./pages/Watermark.jsx'));
@@ -22,6 +22,7 @@ import ProtectedRoute from './components/ProtectedRoute.jsx';
 import AdminRoute from './components/AdminRoute.jsx';
 import ProPlanRoute from './components/ProPlanRoute.jsx';
 import PublicRoute from './components/PublicRoute.jsx';
+import WatermarkRedirect from './pages/Tools/WatermarkRedirect.jsx';
 const AdminLayout = lazy(() => import('./pages/Admin/AdminLayout.jsx'));
 const AdminDashboardPage = lazy(() => import('./pages/Admin/AdminDashboardPage.jsx'));
 const AdminUsersPage = lazy(() => import('./pages/Admin/AdminUsersPage.jsx'));
@@ -34,6 +35,8 @@ const AdminProductLinksPage = lazy(() => import('./pages/Admin/AdminProductLinks
 const AdminNotificationsPage = lazy(() => import('./pages/Admin/AdminNotificationsPage.jsx'));
 const NotificationsPage = lazy(() => import('./pages/NotificationsPage.jsx'));
 const FileConvertPage = lazy(() => import('./pages/FileConvert/FileConvertPage.jsx'));
+const ToolsPage = lazy(() => import('./pages/Tools/ToolsPage.jsx'));
+const ClearVideoPage = lazy(() => import('./pages/Tools/ClearVideoPage.jsx'));
 
 function ToolCard({ icon, title, description, link }) {
   return (
@@ -48,6 +51,12 @@ function ToolCard({ icon, title, description, link }) {
 
 function HomePage() {
   const tools = [
+    {
+      icon: <FiTool />,
+      title: 'Tools',
+      description: 'Khám phá Watermark, Clear Video và các tiện ích mới.',
+      link: '/tools',
+    },
     {
       icon: <FiFileText />,
       title: 'Báo giá Minh Triết',
@@ -65,12 +74,6 @@ function HomePage() {
       title: 'Link ảnh sản phẩm',
       description: 'Tìm và sao chép link theo mã sản phẩm.',
       link: '/link-anh-san-pham',
-    },
-    {
-      icon: <FiImage />,
-      title: 'Watermark',
-      description: 'Thêm dấu bản quyền vào ảnh.',
-      link: '/watermark',
     },
     {
       icon: <FiRepeat />,
@@ -179,7 +182,7 @@ const protectedRouteConfigs = [
     loginLabel: 'Đăng nhập để vào dashboard',
   },
   {
-    path: '/watermark',
+    path: '/tools/watermark',
     element: <Watermark />,
     title: 'Watermark Tool cần đăng nhập để lưu trạng thái làm việc.',
     description: 'Trang này có thể xử lý dữ liệu người dùng và cần phiên đăng nhập để đồng bộ thao tác an toàn hơn.',
@@ -191,12 +194,12 @@ const protectedRouteConfigs = [
     loginLabel: 'Đăng nhập để mở Watermark',
   },
   {
-    path: '/watermark/auto',
+    path: '/tools/watermark/auto',
     element: (
       <ProPlanRoute
         title="Watermark tự động dành cho gói Pro trở lên."
         description="Trang này chỉ mở cho quản trị viên và tài khoản gói Pro hoặc Enterprise. Bạn vẫn dùng được trang Watermark thông thường."
-        backTo="/watermark"
+        backTo="/tools/watermark"
         backLabel="Quay lại Watermark"
       >
         <WatermarkAuto />
@@ -240,6 +243,10 @@ export default function App() {
           <Suspense fallback={<div role="status" style={{ padding: '48px 24px', textAlign: 'center' }}>Đang tải công cụ…</div>}>
           <Routes>
             <Route path="/" element={<HomePage />} />
+            <Route path="/tools" element={<ToolsPage />} />
+            <Route path="/tools/clear-video" element={<ClearVideoPage />} />
+            <Route path="/watermark" element={<WatermarkRedirect to="/tools/watermark" />} />
+            <Route path="/watermark/auto" element={<WatermarkRedirect to="/tools/watermark/auto" />} />
             <Route path="/chuyen-doi-file" element={<FileConvertPage />} />
             <Route path="/notifications" element={<ProtectedRoute title="Đăng nhập để xem thông báo"><NotificationsPage /></ProtectedRoute>} />
             <Route path="/watermark/dashboard" element={<AdminUsageRedirect />} />

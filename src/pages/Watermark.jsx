@@ -724,7 +724,7 @@ export default function Watermark() {
 
   // Existing login flow; /auth sends the user back here afterwards.
   const handleRequestAiLogin = useCallback(() => {
-    navigate('/auth', { state: { from: '/watermark' } });
+    navigate('/auth', { state: { from: '/tools/watermark' } });
   }, [navigate]);
 
   /** Only IDs still present are renamed; unknown IDs are ignored. */
@@ -764,7 +764,7 @@ export default function Watermark() {
               <h1>Thêm logo vào ảnh</h1>
               <p>Chọn ảnh → chỉnh logo → tạo và tải xuống. Ảnh được xử lý ngay trên thiết bị của bạn.</p>
               {hasProAccess(profile) && (
-                <Link to="/watermark/auto" className="wma-entry-link">
+                <Link to="/tools/watermark/auto" className="wma-entry-link">
                   Watermark tự động theo thư mục sản phẩm <span aria-hidden="true">→</span>
                 </Link>
               )}

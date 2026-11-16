@@ -94,7 +94,7 @@ export default function OverviewSection({ refreshToken }) {
   const level = Number(data?.product_links_level) || 0;
 
   const tools = [
-    { to: '/watermark', label: 'Watermark', desc: 'Đóng dấu ảnh hàng loạt', icon: FaDroplet },
+    { to: '/tools/watermark', label: 'Watermark', desc: 'Đóng dấu ảnh hàng loạt', icon: FaDroplet },
     { to: '/bao-gia-minh-triet', label: 'Báo giá Minh Triết', desc: 'Tạo, lưu và in báo giá', icon: FaFileInvoiceDollar },
     { to: '/bao-gia-knm', label: 'Báo giá KNM', desc: 'Báo giá máy móc, thiết bị', icon: FaFileLines },
     (level > 0 || isAdmin) && { to: '/link-anh-san-pham', label: 'Link ảnh sản phẩm', desc: 'Copy link, đánh dấu hoàn thành', icon: FaLink },

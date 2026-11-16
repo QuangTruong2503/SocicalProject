@@ -367,7 +367,7 @@ export default function WatermarkAuto() {
     downloadCsv(REPORT_CSV_HEADER, reportRowsToCsvRows(reportRows()), `watermark-auto-${Date.now()}.csv`, { neutralizeFormulas: true });
   };
 
-  const handleRequestLogin = () => navigate('/auth', { state: { from: '/watermark/auto' } });
+  const handleRequestLogin = () => navigate('/auth', { state: { from: '/tools/watermark/auto' } });
 
   const pauseCode = run?.pause?.code;
   const pauseActions = run?.state === 'paused' && (
@@ -386,7 +386,7 @@ export default function WatermarkAuto() {
       <div className="wm-page wma-page">
         <div className="wm-container">
           <nav className="wma-breadcrumb" aria-label="Điều hướng">
-            <Link to="/watermark">← Quay lại Watermark</Link>
+            <Link to="/tools/watermark">← Quay lại Watermark</Link>
           </nav>
           <header className="wm-workspace-heading">
             <h1>Watermark tự động</h1>
