@@ -146,6 +146,9 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+.wma-page .wma-product-id { color: var(--wm-text-muted); font-size: 0.75rem; overflow-wrap: anywhere; }
+.wma-page .wma-product-output { color: var(--wm-text); font-size: 0.82rem; overflow-wrap: anywhere; }
+.wma-page .wma-folder-excel { display: grid; gap: 8px; min-width: 0; }
 .wma-page .wma-product-meta { display: flex; flex-wrap: wrap; gap: 4px 12px; color: var(--wm-text-muted); font-size: 0.84rem; }
 .wma-page .wma-product-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; align-items: center; gap: 6px; }
 .wma-page .wma-icon-btn {

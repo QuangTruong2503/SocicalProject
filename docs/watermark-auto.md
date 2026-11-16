@@ -11,6 +11,14 @@
 
 Ví dụ chọn thư mục cha `SanPham`: `SanPham/Máy khoan Bosch GSB 13 RE/IMG_001.jpg` → `SanPham/Result/Máy khoan Bosch GSB 13 RE/may-khoan-bosch-gsb-13-re-goc-nhin-mat-truoc.jpg`.
 
+### Đổi tên sản phẩm bằng Excel
+
+Sau khi chọn thư mục cha (hoặc thêm/kéo thả sản phẩm), bấm **Xuất Excel tên folder** để tải toàn bộ danh sách, kể cả sản phẩm bỏ chọn hoặc không có ảnh. File gồm **ID folder**, **Đường dẫn nguồn**, **Tên folder hiện tại**, **Tên folder mới**. Sửa cột **Tên folder mới**, giữ nguyên **ID folder**, rồi bấm **Nhập Excel tên folder** trong cùng phiên trang đang mở. Có thể sắp xếp dòng/cột hoặc xóa những dòng không cần đổi; những sản phẩm không có trong Excel giữ nguyên tên.
+
+Tên nhập áp dụng cho tên sản phẩm gửi AI và `Result/<Tên folder mới>`, giữ nguyên tên/đường dẫn folder nguồn. ID riêng giúp phân biệt các folder cùng tên; ID được giữ khi quét lại nhưng thay khi xóa/thêm lại hoặc tải lại trang, nên cần xuất lại file trong những trường hợp đó. Danh sách hiển thị ID và tên folder kết quả để đối chiếu.
+
+Toàn bộ file phải hợp lệ trước khi áp dụng: báo dòng lỗi nếu thiếu/trùng/lạ ID, tên trống, quá dài, có ký tự đường dẫn/ký tự cấm/tên dành riêng của Windows, hoặc dùng công thức cho ID/tên mới. Folder kết quả trùng tên tiếp tục được phân biệt bằng hậu tố `(2)`, `(3)` như hiện tại. Không nhập/xuất Excel khi đang chạy, dừng, quét hoặc cấp quyền. Khi có tên thay đổi, lượt cũ và tên AI đã nhớ được đặt lại; bấm **Bắt đầu xử lý** để chạy theo tên mới. Các file đã lưu trên máy được giữ lại.
+
 ## Quy tắc
 
 - Chỉ đọc ảnh JPG/PNG/WebP nằm trực tiếp trong thư mục sản phẩm; kiểm tra chữ ký file khi quét và giải mã khi xử lý. Thư mục con, ảnh ở gốc thư mục cha và mọi thư mục `Named`/`Result` (không phân biệt hoa/thường) bị bỏ qua để tránh xử lý lại kết quả.

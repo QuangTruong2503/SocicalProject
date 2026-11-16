@@ -9,6 +9,7 @@ import { createRoot } from 'react-dom/client';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { HelmetProvider } from 'react-helmet-async';
 import { JPEG, imagesSpec, makeTree } from './fixtures/fakeFileSystem.mjs';
+import * as XLSX from 'xlsx';
 
 globalThis.FileReader = dom.window.FileReader;
 globalThis.localStorage = dom.window.localStorage;
@@ -116,6 +117,62 @@ test('unsupported browser: explains the limit, no ZIP pretending to create Resul
   assert.equal(button('Thêm thư mục sản phẩm').disabled, true);
   assert.equal(button('Bắt đầu xử lý').disabled, true);
   assert.equal(document.querySelector('a[href="/watermark"]').textContent, '← Quay lại Watermark');
+});
+
+test('folder Excel export → reorder and edit → import updates AI and Result names, retaining source folders', async () => {
+  globalThis.__aiRenameSession = { access_token: 'user-jwt', user: { id: USER.user.id } };
+  const parent = makeTree('SanPham', { 'Máy khoan': imagesSpec(1), 'Máy mài': imagesSpec(1), 'Trống': {} });
+  picks.push(parent);
+  await render();
+  assert.equal(button('Xuất Excel tên folder'), undefined);
+  await click(button('Chọn thư mục cha'));
+  await waitFor(() => document.querySelectorAll('.wma-product').length === 3, 'folders added');
+  let downloaded;
+  const originalCreate = URL.createObjectURL;
+  const originalClick = dom.window.HTMLAnchorElement.prototype.click;
+  URL.createObjectURL = (blob) => { downloaded = blob; return 'blob:folder-excel'; };
+  dom.window.HTMLAnchorElement.prototype.click = () => {};
+  try {
+    await click(button('Xuất Excel tên folder'));
+    await waitFor(() => Boolean(downloaded), 'Excel exported');
+  } finally {
+    URL.createObjectURL = originalCreate;
+    dom.window.HTMLAnchorElement.prototype.click = originalClick;
+  }
+  const workbook = XLSX.read(await downloaded.arrayBuffer(), { type: 'array' });
+  const sheetName = workbook.SheetNames[0];
+  const rows = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName], { header: 1 });
+  assert.equal(rows.length, 4, 'exports unselected empty folders too');
+  assert.equal(new Set(rows.slice(1).map((row) => row[0])).size, 3);
+  assert.ok(rows.slice(1).every((row) => text().includes(row[0])), 'IDs visible in product list');
+  const updated = [rows[0], ...rows.slice(1).reverse().map((row) => [...row.slice(0, 3), `${row[2]} đã sửa`])];
+  const upload = async (data) => {
+    workbook.Sheets[sheetName] = XLSX.utils.aoa_to_sheet(data);
+    const file = { name: 'Folders.xlsx', arrayBuffer: async () => XLSX.write(workbook, { type: 'array', bookType: 'xlsx' }) };
+    const input = document.querySelector('input[aria-label="File Excel tên folder"]');
+    Object.defineProperty(input, 'files', { value: [file], configurable: true });
+    await act(async () => input.dispatchEvent(new dom.window.Event('change', { bubbles: true })));
+    await waitFor(() => !button('Nhập Excel tên folder').disabled, 'Excel import finished');
+  };
+  const bad = updated.map((row) => [...row]);
+  bad[2][0] = 'wrong-session-id';
+  await upload(bad);
+  assert.match(document.querySelector('[role="alert"]').textContent, /ID folder/);
+  assert.deepEqual([...document.querySelectorAll('.wma-product-title label')].map((label) => label.textContent), ['Máy khoan', 'Máy mài', 'Trống']);
+  await upload(updated);
+  assert.deepEqual([...document.querySelectorAll('.wma-product-title label')].map((label) => label.textContent), ['Máy khoan đã sửa', 'Máy mài đã sửa', 'Trống đã sửa']);
+  assert.match(text(), /SanPham\/Máy khoan/);
+  assert.equal(document.querySelector('.wma-row-error[role="alert"]'), null);
+  await waitFor(() => !button('Bắt đầu xử lý').disabled, 'ready to start');
+  await click(button('Bắt đầu xử lý'));
+  await waitFor(() => /Hoàn tất/.test(document.querySelector('.wma-summary')?.textContent || ''), 'finished');
+  assert.deepEqual(fetchCalls.map((call) => call.body.productName).sort(), ['Máy khoan đã sửa', 'Máy mài đã sửa']);
+  assert.ok(parent.file('Result').handle.file('Máy khoan đã sửa'));
+  assert.ok(parent.file('Result').handle.file('Máy mài đã sửa'));
+  assert.ok(parent.file('Máy khoan').handle.file('IMG_1.jpg'));
+  assert.equal(parent.file('Máy khoan đã sửa'), undefined);
+  // Flush this run's delayed telemetry before the next test resets its mock log.
+  await settle(1700);
 });
 
 test('parent folder → AI names per folder → files in Result/product, with summary and report', async () => {

@@ -108,6 +108,8 @@ export default function WatermarkAuto() {
   const [previewProductId, setPreviewProductId] = useState(null);
   const [startError, setStartError] = useState(null);
   const [starting, setStarting] = useState(false);
+  const [folderExcelBusy, setFolderExcelBusy] = useState(false);
+  const [folderExcelMessage, setFolderExcelMessage] = useState(null);
   const [visitorId] = useState(() => getOrCreateWatermarkVisitorId());
   const userId = user?.id ?? null;
   // Fixed when a run starts, so its events stay with that account.
@@ -279,7 +281,36 @@ export default function WatermarkAuto() {
   else if (!selectedModel) blockers.push('Chưa có model AI được cấp quyền.');
   if (prompt.length > IMAGE_NAME_LIMITS.maxPromptLength) blockers.push(`Prompt tối đa ${IMAGE_NAME_LIMITS.maxPromptLength} ký tự.`);
   if (!engine || !optionsHydrated) blockers.push('Đang chuẩn bị bộ xử lý ảnh…');
-  const canStart = blockers.length === 0 && !locked && !picking && !granting && !starting;
+  const canStart = blockers.length === 0 && !locked && !picking && !granting && !starting && !folderExcelBusy;
+
+  const handleExportFolderNames = async () => {
+    setFolderExcelBusy(true);
+    setFolderExcelMessage(null);
+    try {
+      const { exportFolderNamesToExcel } = await import('../utils/watermarkAutoFolderExcel.js');
+      exportFolderNamesToExcel(products);
+    } catch (error) {
+      setFolderExcelMessage(error.message || 'Không thể xuất Excel. Hãy thử lại.');
+    } finally {
+      setFolderExcelBusy(false);
+    }
+  };
+
+  const handleImportFolderNames = async (file) => {
+    setFolderExcelBusy(true);
+    setFolderExcelMessage(null);
+    try {
+      const { parseFolderNameFile } = await import('../utils/watermarkAutoFolderExcel.js');
+      const rows = await parseFolderNameFile(file);
+      const result = runner.applyFolderNames(rows);
+      if (!result.changed) toast.info('Tên folder trong Excel không có thay đổi.');
+      setStartError(null);
+    } catch (error) {
+      setFolderExcelMessage(error.message || 'Không thể nhập Excel. Hãy kiểm tra file và thử lại.');
+    } finally {
+      setFolderExcelBusy(false);
+    }
+  };
 
   const handleStart = async () => {
     if (!canStart) return;
@@ -377,7 +408,11 @@ export default function WatermarkAuto() {
               notices={notices}
               picking={picking}
               granting={granting}
-              locked={locked}
+              locked={locked || starting || folderExcelBusy}
+              excelBusy={folderExcelBusy}
+              excelError={folderExcelMessage}
+              onExportFolderNames={handleExportFolderNames}
+              onImportFolderNames={handleImportFolderNames}
               supported={support.supported}
               onAddProduct={() => runner.addProductFolder()}
               onDropFolders={(dataTransfer) => runner.addDroppedFolders(dataTransfer)}
@@ -401,7 +436,7 @@ export default function WatermarkAuto() {
                 </div>
               </header>
 
-              <div className="wma-config" inert={locked || undefined}>
+              <div className="wma-config" inert={locked || folderExcelBusy || undefined}>
                 <div className="wma-config-col">
                   <LogoUploader logoUrl={logoUrl} logoName={logoName} onLogoChange={handleLogoChange} onImagePreview={setZoomLogo} />
                   <div inert={!optionsHydrated || undefined}>
@@ -518,7 +553,7 @@ export default function WatermarkAuto() {
 
             <AutoProcessingProgress
               run={run}
-              busy={picking || granting}
+              busy={picking || granting || folderExcelBusy}
               runProducts={runProducts}
               canStart={canStart}
               blockers={blockers}

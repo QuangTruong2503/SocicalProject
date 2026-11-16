@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
+import { getOutputFolderName } from '../../../utils/watermarkAutoFolderNames.js';
 
 const PRODUCT_STATUS_LABELS = {
   waiting: 'Chờ',
@@ -45,6 +46,8 @@ function ProductRow({ product, locked, bulkPermission, onToggle, onRemove, onReq
           <ProductStatusChip product={product} />
         </div>
         <span className="wma-product-path" title={product.relativePath}>{product.relativePath}</span>
+        <span className="wma-product-id">ID: {product.excelId}</span>
+        {product.outputFolderName && <span className="wma-product-output">Folder kết quả: {getOutputFolderName(product)}</span>}
         <div className="wma-product-meta">
           <span>{product.imageIds.length} ảnh hợp lệ</span>
           {skipped > 0 && (
@@ -94,6 +97,10 @@ export default function ProductFolderPicker({
   granting,
   locked,
   supported,
+  excelBusy,
+  excelError,
+  onExportFolderNames,
+  onImportFolderNames,
   onAddProduct,
   onDropFolders,
   onAddParent,
@@ -107,6 +114,7 @@ export default function ProductFolderPicker({
   onDismissNotice,
 }) {
   const [dragging, setDragging] = useState(false);
+  const excelInput = useRef(null);
   const selected = products.filter((product) => product.selected);
   const selectedImages = selected.reduce((sum, product) => sum + product.imageIds.length, 0);
   const eligible = products.filter(isEligible);
@@ -171,6 +179,24 @@ export default function ProductFolderPicker({
       <p className="wma-hint">
         Chỉ xử lý ảnh nằm trực tiếp trong thư mục sản phẩm (JPG, PNG, WebP). Thư mục “Named” và “Result” luôn được bỏ qua khi đọc ảnh.
       </p>
+
+      {products.length > 0 && (
+        <div className="wma-folder-excel" aria-busy={excelBusy}>
+          <div className="wma-picker-actions">
+            <button type="button" className="wm-btn-outline" disabled={listLocked} onClick={onExportFolderNames}>Xuất Excel tên folder</button>
+            <button type="button" className="wm-btn-outline" disabled={listLocked} onClick={() => excelInput.current?.click()}>Nhập Excel tên folder</button>
+            <input ref={excelInput} type="file" accept=".xlsx,.xls" hidden aria-label="File Excel tên folder" onChange={(event) => {
+              const file = event.target.files?.[0];
+              event.target.value = '';
+              if (file && !listLocked) onImportFolderNames(file);
+            }} />
+          </div>
+          <p className="wma-hint">Xuất toàn bộ danh sách, sửa cột “Tên folder mới” rồi nhập lại trong phiên này. Giữ nguyên “ID folder”; có thể sắp xếp lại hoặc bỏ các dòng không cần đổi.</p>
+          <p className="wma-hint">Tên mới dùng cho sản phẩm gửi AI và folder trong Result. Folder nguồn giữ nguyên. Đổi tên sẽ kết thúc lượt cũ; bấm “Bắt đầu xử lý” để chạy theo tên mới, các file đã lưu được giữ lại.</p>
+          {excelBusy && <p className="wma-hint" role="status">Đang xử lý Excel…</p>}
+        </div>
+      )}
+      {excelError && <p className="wma-row-error" role="alert">{excelError}</p>}
 
       {notices.length > 0 && (
         <div className="wma-notices">

@@ -22,6 +22,7 @@ import {
 } from '../utils/productFolderAccess.js';
 import { KEEP_ORIGINAL_SIZE, MAX_OUTPUT_DIMENSION } from '../utils/watermarkRender.js';
 import { normalizeProductName, outputBaseName, validateProductName } from '../utils/watermarkAutoNaming.js';
+import { getOutputFolderName, prepareFolderNameChanges } from '../utils/watermarkAutoFolderNames.js';
 import { supabase } from '../lib/supabase.js';
 
 /**
@@ -176,7 +177,7 @@ export function createAutoRunner(overrides = {}) {
         } else if (image.status === 'error') counts.error += 1;
         else counts.pending += 1;
       }
-      const outputFolderPath = run?.writers.get(product.id)?.folderPath ?? (resultRoot ? `${resultRoot.name}/Result/${product.folderName}` : null);
+      const outputFolderPath = run?.writers.get(product.id)?.folderPath ?? (resultRoot ? `${resultRoot.name}/Result/${getOutputFolderName(product)}` : null);
       return { ...product, images: productImages, counts, status: productStatus(product, productImages), outputFolderPath };
     });
 
@@ -247,6 +248,7 @@ export function createAutoRunner(overrides = {}) {
     });
     products.set(id, {
       id,
+      excelId: deps.newId(),
       name,
       folderName: scan.folderName,
       relativePath: scan.relativePath,
@@ -469,6 +471,28 @@ export function createAutoRunner(overrides = {}) {
     emitNow();
   }
 
+  function applyFolderNames(rows) {
+    if (isLocked() || picking || granting || disposed) throw new Error('Đang xử lý thư mục. Hãy đợi hoặc dừng lượt chạy trước khi nhập Excel.');
+    const changes = prepareFolderNameChanges(rows, [...products.values()])
+      .filter(({ product, folderName }) => getOutputFolderName(product) !== folderName);
+    if (!changes.length) return { changed: 0 };
+    for (const { product, folderName, name } of changes) {
+      products.set(product.id, { ...product, outputFolderName: folderName, name, nameError: null });
+    }
+    // A new name invalidates cached AI suggestions and destination writers.
+    // Keep existing files on disk; the next Start uses the newly imported names.
+    run = null;
+    for (const image of images.values()) {
+      images.set(image.id, {
+        ...image, status: 'queued', errorCode: null, errorMessage: null, suggestion: null,
+        outputName: null, needsReview: false, rendered: false,
+      });
+    }
+    setNotices([{ tone: 'success', text: `Đã áp dụng tên mới cho ${changes.length} thư mục sản phẩm. Bấm “Bắt đầu xử lý” để lưu vào Result theo tên mới.` }]);
+    emitNow();
+    return { changed: changes.length };
+  }
+
   /** From a button: may show the browser's permission prompt for this one folder. */
   async function requestPermission(id) {
     if (granting || picking || isLocked() || disposed) return 'denied';
@@ -547,6 +571,14 @@ export function createAutoRunner(overrides = {}) {
     run?.writers.delete(id);
     forgetProduct(id);
     const next = await addScanned(scan, { permission });
+    // The source folder is the same after rescanning; keep its Excel identity and imported name.
+    next.excelId = product.excelId;
+    if (product.outputFolderName) {
+      next.outputFolderName = product.outputFolderName;
+      next.name = product.name;
+      next.nameError = product.nameError;
+      next.selected = next.imageIds.length > 0 && !next.nameError;
+    }
     // Keep the list order and the run membership of the folder.
     const entries = order.map((key) => (key === id ? [next.id, next] : [key, products.get(key)]));
     products.clear();
@@ -922,7 +954,7 @@ export function createAutoRunner(overrides = {}) {
       imageBatchId: deps.newId(),
       config: Object.freeze({ ...config, renderOptions: Object.freeze({ ...config.renderOptions }) }),
       productIds: ready.map((product) => product.id),
-      writers: createResultCollection(resultRoot, [...products.values()]),
+      writers: createResultCollection(resultRoot, [...products.values()].map((product) => ({ ...product, folderName: getOutputFolderName(product) }))),
       resultRoot,
       state: 'running',
       pause: null,
@@ -1015,6 +1047,7 @@ export function createAutoRunner(overrides = {}) {
     requestAllPermissions,
     refreshPermissions,
     rescanProduct,
+    applyFolderNames,
     start,
     stop,
     resume,

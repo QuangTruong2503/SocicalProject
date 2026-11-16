@@ -75,6 +75,60 @@ function setup({ picks = [], ai = describeAll, now } = {}) {
 }
 
 const resultDir = (root, name) => root.file('Result')?.handle.file(name)?.handle;
+
+test('Excel IDs survive rescans, reject stale sessions, and imported names drive AI and distinct Result folders', async () => {
+  const parent = makeTree('Cha', { 'Máy khoan': imagesSpec(1), 'Máy mài': imagesSpec(1) });
+  const { runner, snap, log, resultRoot } = setup({ picks: [parent] });
+  await runner.addParentFolder();
+  const original = snap().products;
+  assert.equal(new Set(original.map((product) => product.excelId)).size, 2);
+  runner.applyFolderNames(original.slice().reverse().map((product) => ({ id: product.excelId, name: 'Cùng tên mới', rowNumber: 2 })));
+  assert.deepEqual(snap().products.map((product) => product.name), ['Cùng tên mới', 'Cùng tên mới']);
+  assert.deepEqual(snap().products.map((product) => product.relativePath), ['Cha/Máy khoan', 'Cha/Máy mài']);
+  assert.deepEqual(snap().products.map((product) => product.folderName), ['Máy khoan', 'Máy mài']);
+  await runner.rescanProduct(original[0].id);
+  assert.equal(snap().products[0].excelId, original[0].excelId);
+  assert.equal(snap().products[0].name, 'Cùng tên mới');
+  assert.equal((await runner.start(CONFIG)).ok, true);
+  await runner.idle();
+  assert.deepEqual(log.ai.map((call) => call.productName), ['Cùng tên mới', 'Cùng tên mới']);
+  assert.equal(resultDir(resultRoot, 'Cùng tên mới').children.size, 1);
+  assert.equal(resultDir(resultRoot, 'Cùng tên mới (2)').children.size, 1);
+  assert.ok(parent.file('Máy khoan'));
+  assert.equal(parent.file('Cùng tên mới'), undefined);
+
+  const before = snap().products.map((product) => product.name);
+  assert.throws(() => runner.applyFolderNames([
+    { id: original[0].excelId, name: 'Hợp lệ', rowNumber: 2 },
+    { id: 'unknown', name: 'Sai', rowNumber: 3 },
+  ]), /ID folder/);
+  assert.deepEqual(snap().products.map((product) => product.name), before);
+  assert.equal(snap().run.state, 'finished');
+  runner.applyFolderNames([{ id: original[0].excelId, name: 'Tên lần hai', rowNumber: 2 }]);
+  assert.equal(snap().run, null);
+  assert.equal(runner.resume().ok, false);
+  assert.ok(snap().products.every((product) => product.images.every((image) => image.suggestion === null && image.outputName === null)));
+  await runner.start(CONFIG);
+  await runner.idle();
+  assert.ok(log.ai.some((call) => call.productName === 'Tên lần hai'));
+  assert.equal(resultDir(resultRoot, 'Tên lần hai').children.size, 1);
+
+  const other = setup({ picks: [parent] });
+  await other.runner.addParentFolder();
+  assert.throws(() => other.runner.applyFolderNames([{ id: original[0].excelId, name: 'Sai phiên', rowNumber: 2 }]), /ID folder/);
+});
+
+test('import cannot change a running queue or cached writers', async () => {
+  const pending = deferred();
+  const { runner, snap } = setup({ picks: [makeTree('Máy khoan', imagesSpec(1))], ai: async (input) => { await pending.promise; return describeAll(input); } });
+  await runner.addProductFolder();
+  const product = snap().products[0];
+  await runner.start(CONFIG);
+  assert.throws(() => runner.applyFolderNames([{ id: product.excelId, name: 'Tên mới', rowNumber: 2 }]), /Đang xử lý/);
+  assert.equal(snap().products[0].name, 'Máy khoan');
+  pending.resolve();
+  await runner.idle();
+});
 const namesIn = (root, name) => [...(resultDir(root, name)?.children.keys() ?? [])].sort();
 const product = (snap, name) => snap().products.find((item) => item.name === name);
 
