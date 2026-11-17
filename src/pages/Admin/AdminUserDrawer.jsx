@@ -1,206 +1,101 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { FaLock, FaLockOpen, FaPen } from 'react-icons/fa6';
-import {
-  getAdminProfileDetail,
-  getAdminUserActivity,
-  listAdminAuditLog,
-} from '../../services/profileService.js';
-import { ACCESS_LEVEL_OPTIONS } from '../../services/productLinkService.js';
+import { getManagedUser } from '../../services/userManagementService.js';
 import Dialog from '../../components/dialog/Dialog.jsx';
+import UnsavedNavigationGuard from '../../components/dialog/UnsavedNavigationGuard.jsx';
 import { useAvatarFrames } from '../../hooks/useAvatarFrames.js';
 import { frameLayerProps, resolveAvatarFrame } from '../../utils/avatarFrames.js';
 import UserAvatar from './AdminUserAvatar.jsx';
 import { CopyButton } from './AdminTableParts.jsx';
-import { formatDateTime, formatNumber, formatRelative } from './adminUtils.js';
-import {
-  formatChangeValue,
-  getChangeFieldLabel,
-  getPlanLabel,
-  getProfileName,
-  getRoleLabel,
-  getStatusLabel,
-} from './adminUserLabels.js';
+import { formatDateTime, formatNumber } from './adminUtils.js';
+import { getPlanLabel, getProfileName, getRoleLabel, getStatusLabel } from './adminUserLabels.js';
+import { USER_SECTIONS, activityLabel, levelLabel, sourceLabel } from './userManagementLabels.js';
+import UserPermissionForm from './UserPermissionForm.jsx';
+import UserQuotaForm from './UserQuotaForm.jsx';
+import UserHistory from './UserHistory.jsx';
 import styles from './Admin.module.css';
 import us from './AdminUsers.module.css';
 
-const GENDER_LABELS = { male: 'Nam', female: 'Nữ', other: 'Khác' };
-
-function getAccessLevelLabel(level) {
-  return ACCESS_LEVEL_OPTIONS.find((option) => option.value === (level || ''))?.label || level;
-}
-
-function formatDate(value) {
-  if (!value) return '—';
-  const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? '—' : new Intl.DateTimeFormat('vi-VN', { dateStyle: 'medium' }).format(date);
-}
-
-function InfoRow({ label, children }) {
-  return (
-    <div className={us.infoRow}>
-      <dt>{label}</dt>
-      <dd>{children || '—'}</dd>
-    </div>
-  );
-}
-
-/**
- * Side panel with a user's full profile, feature usage and admin change history.
- * `summary` is the row from the list, shown immediately while the rest loads.
- */
-export default function AdminUserDrawer({ summary, isSelf, onClose, onEdit, onToggleLock }) {
-  const [state, setState] = useState({ loading: true, profile: null, activity: null, audit: [], error: '' });
-  const { frames: avatarFrames } = useAvatarFrames();
-
+function Info({ label,children }) { return <div className={us.infoRow}><dt>{label}</dt><dd>{children || '—'}</dd></div>; }
+export default function AdminUserDrawer({ summary,isSelf,section='overview',onSectionChange,onClose,onEdit,onToggleLock,onChanged,onOpenUser,reloadToken }) {
+  const [state,setState] = useState({ data:null,loading:true,error:'' });
+  const [reload,setReload] = useState(0);
+  const [dirty,setDirty] = useState(false);
+  const [busy,setBusy] = useState(false);
+  const [draftVersion,setDraftVersion] = useState(0);
+  const dirtyRef = useRef(false);
+  const requestRef = useRef(0);
+  const identityRef = useRef(null);
+  const { frames } = useAvatarFrames();
+  useEffect(() => { identityRef.current?.scrollIntoView?.({ block:'start' }); },[section,summary.id]);
   useEffect(() => {
-    let isActive = true;
-
-    Promise.all([
-      getAdminProfileDetail(summary.id),
-      getAdminUserActivity(summary.id),
-      listAdminAuditLog(summary.id),
-    ]).then(([profileResult, activityResult, auditResult]) => {
-      if (!isActive) return;
-
-      setState({
-        loading: false,
-        profile: profileResult.data,
-        activity: activityResult.data,
-        audit: auditResult.data || [],
-        error: profileResult.error || activityResult.error || auditResult.error || '',
-      });
-    });
-
-    return () => { isActive = false; };
-  }, [summary.id]);
-
-  const profile = { ...summary, ...(state.profile || {}) };
-  const activity = state.activity;
-  const isSuspended = profile.status === 'suspended';
-  const location = [profile.city, profile.country].filter(Boolean).join(', ');
-
-  return (
-    <Dialog title="Chi tiết người dùng" onClose={onClose} variant="drawer">
-      <div className={us.drawerIdentity}>
-        <UserAvatar profile={profile} size="large" frameSrc={frameLayerProps(resolveAvatarFrame(profile.avatar_frame_id, avatarFrames), { still: true }).frameSrc} />
-        <div>
-          <strong>{getProfileName(profile)}</strong>
-          <span>{profile.email || 'Chưa có email'}</span>
-          <div className={us.badgeRow}>
-            <span className={`${styles.badge} ${profile.role === 'admin' ? styles.badgeAdmin : styles.badgeUser}`}>{getRoleLabel(profile.role)}</span>
-            <span className={`${styles.badge} ${isSuspended ? styles.badgeSuspended : styles.badgeActive}`}>{getStatusLabel(profile.status)}</span>
-            <span className={`${styles.badge} ${profile.is_verified ? styles.badgeActive : styles.badgeDefault}`}>
-              {profile.is_verified ? 'Đã xác minh' : 'Chưa xác minh'}
-            </span>
-          </div>
+    const request = ++requestRef.current;
+    async function load() {
+      setState((s) => ({ ...s,loading:true,error:'' }));
+      const result = await getManagedUser(summary.id);
+      if (request !== requestRef.current) return;
+      setState({ data:result.data,loading:false,error:result.error || '' });
+    }
+    load();
+    return () => { requestRef.current += 1; };
+  }, [summary.id,reload,reloadToken]);
+  useEffect(() => {
+    const beforeUnload = (event) => { if (dirtyRef.current) { event.preventDefault();event.returnValue=''; } };
+    window.addEventListener('beforeunload',beforeUnload);
+    return () => window.removeEventListener('beforeunload',beforeUnload);
+  }, []);
+  function changeDirty(value) { dirtyRef.current=value;setDirty(value); }
+  function guard(action) {
+    if (busy) return;
+    if (dirtyRef.current && !window.confirm('Có thay đổi chưa lưu. Bỏ các thay đổi và tiếp tục?')) return;
+    changeDirty(false);action();
+  }
+  function saved() { changeDirty(false);setReload((n) => n+1);onChanged?.(); }
+  const profile = state.data?.profile || summary;
+  const selected = USER_SECTIONS.some((s) => s.id===section) ? section : 'overview';
+  return <Dialog title={`Hồ sơ · ${getProfileName(profile)}`} onClose={() => guard(onClose)} variant="drawer" wideDrawer busy={busy}>
+    <UnsavedNavigationGuard dirtyRef={dirtyRef} busy={busy} onDiscard={() => { changeDirty(false);setDraftVersion((n) => n+1); }} />
+    <div className={us.drawerIdentity} ref={identityRef}>
+      <UserAvatar profile={profile} size="large" frameSrc={frameLayerProps(resolveAvatarFrame(profile.avatar_frame_id,frames),{ still:true }).frameSrc} />
+      <div><strong>{getProfileName(profile)}</strong><span title={profile.email}>{profile.email || profile.id}</span>
+        <div className={us.badgeRow}><span className={styles.badge}>{getRoleLabel(profile.role)}</span><span className={`${styles.badge} ${profile.status==='suspended' ? styles.badgeSuspended : styles.badgeActive}`}>{getStatusLabel(profile.status)}</span></div>
+      </div>
+    </div>
+    <nav className={us.sectionNav} aria-label="Các mục hồ sơ">{USER_SECTIONS.map((s) => <button type="button" key={s.id} disabled={busy} aria-current={selected===s.id ? 'page' : undefined} onClick={() => guard(() => onSectionChange(s.id))}>{s.label}</button>)}</nav>
+    {dirty && <p role="status" className={us.mutedNote}>Có thay đổi chưa lưu</p>}
+    {state.loading ? <p role="status">Đang tải hồ sơ và quyền…</p> : state.error ? <div role="alert" className={styles.alert}><span>{state.error}</span><button type="button" onClick={() => guard(() => setReload((n) => n+1))}>Tải lại hồ sơ</button></div> : <>
+      {selected==='overview' && <>
+        <div className={us.drawerActions}>
+          <button type="button" className={styles.actionButton} onClick={() => onEdit(profile)} disabled={isSelf}><FaPen aria-hidden="true" />Chỉnh sửa tài khoản</button>
+          <button type="button" className={styles.actionButton} onClick={() => onToggleLock(profile)} disabled={isSelf}>{profile.status==='suspended' ? <FaLockOpen /> : <FaLock />}{profile.status==='suspended' ? 'Mở khóa' : 'Khóa tài khoản'}</button>
         </div>
-      </div>
-
-      <div className={us.drawerActions}>
-        <button type="button" className={styles.actionButton} onClick={() => onEdit(profile)} disabled={isSelf}>
-          <FaPen aria-hidden="true" /> Chỉnh sửa
-        </button>
-        <button type="button" className={styles.actionButton} onClick={() => onToggleLock(profile)} disabled={isSelf}>
-          {isSuspended ? <FaLockOpen aria-hidden="true" /> : <FaLock aria-hidden="true" />}
-          {isSuspended ? 'Mở khóa' : 'Khóa tài khoản'}
-        </button>
-      </div>
-      {isSelf && <p className={us.mutedNote}>Bạn không thể tự thay đổi vai trò hoặc trạng thái của chính mình.</p>}
-
-      {state.error && <div className={styles.alert} role="alert"><span>{state.error}</span></div>}
-
-      <section className={us.drawerSection}>
-        <h4>Tài khoản</h4>
-        <dl className={us.infoList}>
-          <InfoRow label="ID">
-            <span className={us.inlineCode}><code>{profile.id}</code><CopyButton value={profile.id} label="ID" /></span>
-          </InfoRow>
-          <InfoRow label="Tên đăng nhập">{profile.username}</InfoRow>
-          <InfoRow label="Gói / credits">{`${getPlanLabel(profile.plan)} ·${formatNumber(profile.credits)} credits`}</InfoRow>
-          <InfoRow label="Tham gia">{formatDateTime(profile.created_at)}</InfoRow>
-          <InfoRow label="Đăng nhập gần nhất">
-            {profile.last_login_at ? `${formatRelative(profile.last_login_at)} · ${formatDateTime(profile.last_login_at)}` : 'Chưa ghi nhận'}
-          </InfoRow>
-          <InfoRow label="Hoạt động gần nhất">
-            {profile.last_active_at ? `${formatRelative(profile.last_active_at)} · ${formatDateTime(profile.last_active_at)}` : 'Chưa ghi nhận'}
-          </InfoRow>
-        </dl>
-      </section>
-
-      <section className={us.drawerSection}>
-        <h4>Hồ sơ</h4>
-        {state.loading ? (
-          <span className={styles.skeletonLine} aria-hidden="true" />
-        ) : (
-          <dl className={us.infoList}>
-            <InfoRow label="Điện thoại">{profile.phone}</InfoRow>
-            <InfoRow label="Giới tính">{GENDER_LABELS[profile.gender] || profile.gender}</InfoRow>
-            <InfoRow label="Ngày sinh">{profile.date_of_birth ? formatDate(profile.date_of_birth) : ''}</InfoRow>
-            <InfoRow label="Khu vực">{location}</InfoRow>
-            <InfoRow label="Địa chỉ">{profile.address}</InfoRow>
-            <InfoRow label="Giới thiệu">{profile.bio}</InfoRow>
-          </dl>
-        )}
-      </section>
-
-      <section className={us.drawerSection}>
-        <h4>Hoạt động</h4>
-        {state.loading ? (
-          <span className={styles.skeletonLine} aria-hidden="true" />
-        ) : (
-          <div className={us.activityGrid}>
-            {'watermark_images' in (activity || {}) && (
-              <div>
-                <span>Ảnh watermark</span>
-                <strong>{formatNumber(activity.watermark_images)}</strong>
-                <small>{formatNumber(activity.watermark_entries)} lượt · {formatRelative(activity.watermark_last_at)}</small>
-              </div>
-            )}
-            {'quotations' in (activity || {}) && (
-              <div>
-                <span>Báo giá đã tạo</span>
-                <strong>{formatNumber(activity.quotations)}</strong>
-                <small>Gần nhất: {formatRelative(activity.quotations_last_at)}</small>
-              </div>
-            )}
-            {'product_links_level' in (activity || {}) && (
-              <div>
-                <span>Link ảnh SP</span>
-                <strong className={us.activityText}>
-                  {profile.role === 'admin' ? 'Toàn quyền' : getAccessLevelLabel(activity.product_links_level)}
-                </strong>
-              </div>
-            )}
-          </div>
-        )}
-      </section>
-
-      <section className={us.drawerSection}>
-        <h4>Lịch sử thay đổi</h4>
-        {state.loading ? (
-          <span className={styles.skeletonLine} aria-hidden="true" />
-        ) : state.audit.length === 0 ? (
-          <p className={us.mutedNote}>Chưa có thay đổi nào do quản trị viên thực hiện.</p>
-        ) : (
-          <ol className={us.auditList}>
-            {state.audit.map((entry) => (
-              <li key={entry.id}>
-                <div className={us.auditMeta}>
-                  <strong>{entry.actor_email || 'Quản trị viên'}</strong>
-                  <time dateTime={entry.created_at} title={formatDateTime(entry.created_at)}>{formatRelative(entry.created_at)}</time>
-                </div>
-                <ul>
-                  {Object.entries(entry.changes || {}).map(([field, change]) => (
-                    <li key={field}>
-                      {getChangeFieldLabel(field)}: {formatChangeValue(field, change?.from)} → <strong>{formatChangeValue(field, change?.to)}</strong>
-                    </li>
-                  ))}
-                </ul>
-              </li>
-            ))}
-          </ol>
-        )}
-      </section>
-    </Dialog>
-  );
+        {isSelf && <p className={us.mutedNote}>Không thể tự đổi vai trò hoặc khóa tài khoản của chính mình. Máy chủ bảo vệ quản trị viên cuối cùng.</p>}
+        <section className={us.drawerSection}><h4>Tổng quan</h4><dl className={us.infoList}>
+          <Info label="ID"><span className={us.inlineCode}><code>{profile.id}</code><CopyButton value={profile.id} label="ID" /></span></Info>
+          <Info label="Tên đăng nhập">{profile.username}</Info>
+          <Info label="Xác minh hồ sơ">{profile.is_verified ? 'Đã xác minh hồ sơ' : 'Chưa xác minh hồ sơ'}</Info>
+          <Info label="Gói / credits">{getPlanLabel(profile.plan)} · {formatNumber(profile.credits)} credits</Info>
+          <Info label="Ngày tham gia">{formatDateTime(profile.created_at)}</Info>
+          <Info label="Đăng nhập gần nhất">{profile.last_login_at ? formatDateTime(profile.last_login_at) : 'Chưa có bản ghi đăng nhập'}</Info>
+          <Info label="Hoạt động gần nhất">{activityLabel(profile,formatDateTime)}</Info>
+          <Info label="Link ảnh hiệu lực">{levelLabel(profile.effective_level)} · {sourceLabel(profile)}</Info>
+        </dl><p className={us.mutedNote}>Xác minh hồ sơ là cờ quản trị, không xác nhận email và không tự cấp quyền công cụ. Hoạt động ghi nhận lượt mở trang/tương tác khi tab hiển thị của tài khoản đăng nhập, tối đa mỗi phút; không suy ra từ đăng nhập hay log hết hạn.</p></section>
+        <section className={us.drawerSection}><h4>Thông tin hồ sơ</h4><dl className={us.infoList}><Info label="Điện thoại">{profile.phone}</Info><Info label="Ngày sinh">{profile.date_of_birth}</Info><Info label="Giới tính">{({ male:'Nam',female:'Nữ',other:'Khác' })[profile.gender] || profile.gender}</Info><Info label="Khu vực">{[profile.city,profile.country].filter(Boolean).join(', ')}</Info><Info label="Địa chỉ">{profile.address}</Info><Info label="Giới thiệu">{profile.bio}</Info></dl></section>
+        {state.data.activity && <section className={us.drawerSection}><h4>Tóm tắt hoạt động công cụ</h4><dl className={us.infoList}>
+          {Object.hasOwn(state.data.activity,'watermark_images') && <Info label="Ảnh watermark">{formatNumber(state.data.activity.watermark_images)} ảnh · gần nhất {formatDateTime(state.data.activity.watermark_last_at)}</Info>}
+          {Object.hasOwn(state.data.activity,'quotations') && <Info label="Báo giá đã tạo">{formatNumber(state.data.activity.quotations)} báo giá · gần nhất {formatDateTime(state.data.activity.quotations_last_at)}</Info>}
+        </dl></section>}
+      </>}
+      {selected==='permissions' && <section className={us.drawerSection}><h4>Link ảnh sản phẩm</h4><dl className={us.infoList}>
+        <Info label="Quyền đã cấp">{levelLabel(profile.direct_level)}</Info><Info label="Quyền hiệu lực">{levelLabel(profile.effective_level)}</Info><Info label="Nguồn quyền">{sourceLabel(profile)}</Info>
+        <Info label="Người cấp">{profile.granted_by_name ? `${profile.granted_by_name} · ${profile.granted_by_email || profile.granted_by}` : 'Chưa có bản ghi cấp trực tiếp'}</Info><Info label="Cập nhật quyền">{formatDateTime(profile.access_updated_at)}</Info>
+        <Info label="Ghi chú cấp quyền">{profile.access_note || 'Chưa có ghi chú trong lịch sử hiện có'}</Info>
+      </dl><UserPermissionForm key={`${profile.id}:${profile.access_updated_at || ''}:${draftVersion}`} rows={[profile]} onSaved={saved} onDirtyChange={changeDirty} onBusyChange={setBusy} onReload={() => guard(() => setReload((n) => n+1))} /></section>}
+      {selected==='quota' && <section className={us.drawerSection}><h4>Gói & hạn mức</h4>
+        <button type="button" className={styles.actionButton} disabled={isSelf} onClick={() => guard(() => onEdit(profile))}>Chỉnh gói và credits</button>
+        <UserQuotaForm key={`${JSON.stringify(state.data.quota.override)}:${draftVersion}`} profile={profile} quota={state.data.quota} onSaved={saved} onDirtyChange={changeDirty} onBusyChange={setBusy} onReload={() => guard(() => setReload((n) => n+1))} />
+      </section>}
+      {selected==='history' && <UserHistory userId={profile.id} reloadToken={reloadToken} onOpenUser={(id) => guard(() => onOpenUser?.(id))} />}
+    </>}
+  </Dialog>;
 }

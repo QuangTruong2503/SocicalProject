@@ -12,6 +12,7 @@ globalThis.IS_REACT_ACT_ENVIRONMENT = true;
 Object.defineProperty(globalThis, 'navigator', { value: dom.window.navigator, configurable: true });
 const { createRoot } = await import('react-dom/client');
 const { HelmetProvider } = await import('react-helmet-async');
+const { MemoryRouter } = await import('react-router-dom');
 const { AuthContext } = await import('../src/context/authContext.js');
 const { AuthProvider } = await import('../src/context/AuthContext.jsx');
 const { default: Page } = await import('../src/pages/Admin/AdminUsersPage.jsx');
@@ -38,8 +39,9 @@ test('admin users shows activity in the list/detail, sorts server-side and expor
   const calls = [];
   globalThis.__framesRpc = (name, args) => {
     calls.push({ name, args });
-    if (name === 'admin_list_profiles') return { data: rows, error: null };
-    if (name === 'admin_profile_stats') return { data: { total: 2 }, error: null };
+    if (name === 'admin_user_directory') return { data: { rows,totalCount:rows.length }, error: null };
+    if (name === 'admin_user_center_stats') return { data: { total: 2 }, error: null };
+    if (name === 'admin_user_detail') return { data: { profile:rows.find((row) => row.id===args.p_user_id) },error:null };
     if (name === 'admin_user_activity') return { data: {}, error: null };
     return { data: null, error: null };
   };
@@ -47,23 +49,23 @@ test('admin users shows activity in the list/detail, sorts server-side and expor
   const root = createRoot(document.getElementById('root'));
   t.after(async () => { await act(async () => root.unmount()); });
   await act(async () => root.render(React.createElement(HelmetProvider, null,
-    React.createElement(AuthContext.Provider, { value: { user: { id: ADMIN } } }, React.createElement(Page)),
+    React.createElement(MemoryRouter, null, React.createElement(AuthContext.Provider, { value: { user: { id: ADMIN } } }, React.createElement(Page))),
   )));
   await settle();
 
   const headers = [...document.querySelectorAll('thead th')];
-  assert.equal(headers.length, 10);
+  assert.equal(headers.length, 8);
   const activityHeader = headers.find((cell) => cell.textContent.includes('Hoạt động gần nhất'));
   const activityColumn = headers.indexOf(activityHeader);
   const listRows = [...document.querySelectorAll('tbody tr')];
   const activityCell = listRows[0].cells[activityColumn];
   assert.equal(activityCell.querySelector('time').dateTime, LAST_ACTIVE);
   assert.equal(activityCell.querySelector('small').textContent, formatDateTime(LAST_ACTIVE));
-  assert.equal(listRows[1].cells[activityColumn].textContent, 'Chưa ghi nhận');
+  assert.equal(listRows[1].cells[activityColumn].textContent, 'Chưa có bản ghi');
   await click(activityHeader.querySelector('button'));
-  assert.equal(calls.filter((call) => call.name === 'admin_list_profiles').at(-1).args.p_sort, 'last_active_at');
+  assert.equal(calls.filter((call) => call.name === 'admin_user_directory').at(-1).args.p_filters.sort, 'last_active_at');
   await click(activityHeader.querySelector('button'));
-  assert.equal(calls.filter((call) => call.name === 'admin_list_profiles').at(-1).args.p_desc, false);
+  assert.equal(calls.filter((call) => call.name === 'admin_user_directory').at(-1).args.p_filters.desc, false);
 
   await click(document.querySelector('[aria-label="Xem chi tiết Người đang hoạt động"]'));
   const label = [...document.querySelectorAll('[role="dialog"] dt')].find((item) => item.textContent === 'Hoạt động gần nhất');

@@ -1,7 +1,7 @@
 // Vietnamese number / date formatting shared across pages.
 
 const numberFormatter = new Intl.NumberFormat('vi-VN');
-const dateTimeFormatter = new Intl.DateTimeFormat('vi-VN', { dateStyle: 'medium', timeStyle: 'short' });
+const dateTimeFormatter = new Intl.DateTimeFormat('vi-VN', { dateStyle: 'medium', timeStyle: 'short', timeZone: 'Asia/Ho_Chi_Minh' });
 const relativeFormatter = new Intl.RelativeTimeFormat('vi', { numeric: 'auto' });
 const RELATIVE_UNITS = [
   ['year', 31536000],

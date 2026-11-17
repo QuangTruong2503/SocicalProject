@@ -49,11 +49,56 @@
 }
 
 /* ── Table ── */
-.usersTable { min-width: 1150px; }
+.usersTable { min-width: 880px; }
 .usersTable td { vertical-align: middle; }
 
 .activityCell time { display: block; }
 .activityCell small { display: block; color: var(--color-text-secondary); font-size: 12px; }
+
+.userTabs, .sectionNav { display: flex; flex-wrap: wrap; gap: 6px; margin: 18px 0; }
+.userTabs button, .sectionNav button { border: 1px solid var(--color-border); border-radius: 8px; padding: 10px 14px; color: var(--color-text-secondary); background: var(--color-surface); font: inherit; cursor: pointer; }
+.userTabs [aria-selected="true"], .sectionNav [aria-current="page"] { color: var(--color-text); border-color: #278247; background: rgba(34,197,94,.1); font-weight: 700; }
+.identityCell { position: sticky; left: 0; z-index: 1; background: var(--color-surface); }
+.actionsCell { position: sticky; right: 0; z-index: 2; background: var(--color-surface); box-shadow: -4px 0 10px rgba(0,0,0,.04); }
+.userCell strong { max-width: 240px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.permissionCell { max-width: 230px; }
+.permissionLink { display: block; border: 0; padding: 4px 0; background: none; color: inherit; font: inherit; text-align: left; cursor: pointer; }
+.permissionLink small { display: block; margin-top: 3px; color: var(--color-text-secondary); font-size: 12px; }
+.permissionLink:hover strong { text-decoration: underline; }
+.rowMenu summary { display: flex; align-items: center; gap: 8px; padding: 8px; cursor: pointer; white-space: nowrap; border-radius: 6px; }
+.rowMenu summary:hover { background: var(--color-nav-hover); }
+.rowMenu > div { display: grid; gap: 3px; min-width: 150px; padding: 6px; border: 1px solid var(--color-border); border-radius: 8px; }
+.rowMenu button { padding: 8px; border: 0; border-radius: 4px; background: none; color: inherit; text-align: left; font: inherit; cursor: pointer; }
+.rowMenu button:hover { background: var(--color-nav-hover); }
+.rowMenu button:disabled { opacity: .45; cursor: not-allowed; }
+.rowMenu .dangerAction { color: #c34848; border-top: 1px solid var(--color-border); }
+.permissionForm { margin-top: 20px; }
+.stickyActions { position: sticky; bottom: -28px; z-index: 4; background: var(--color-surface); padding: 14px 0; box-shadow: 0 -6px 12px var(--color-surface); }
+.permissionForm p { line-height: 1.6; }
+.permissionForm textarea { width: 100%; min-height: 70px; box-sizing: border-box; padding: 10px; border: 1px solid var(--color-border); border-radius: 6px; color: var(--color-text); background: var(--color-surface); font: inherit; }
+.reviewBox { padding: 14px; border: 1px solid #278247; border-radius: 8px; margin: 16px 0; scroll-margin-top: 80px; }
+.reviewBox h4 { margin-top: 0; }
+.reviewBox ul { padding-left: 18px; max-height: 300px; overflow: auto; }
+.reviewBox li { margin: 10px 0; overflow-wrap: anywhere; }
+.reviewBox small { color: var(--color-text-secondary); }
+.historyList { list-style: none; padding: 0; margin: 15px 0; }
+.historyList > li { border: 1px solid var(--color-border); padding: 14px; margin-bottom: 12px; border-radius: 10px; overflow-wrap: anywhere; }
+.historyList p { font-size: 13px; margin: 8px 0; }
+.historyChanges { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; padding: 10px; background: var(--color-nav-hover); border-radius: 6px; }
+.historyChanges small { display: block; font-weight: 700; margin-bottom: 4px; }
+.historyValue { display: block; font-size: 12px; line-height: 1.6; }
+.tabIntro h2 { font-size: 18px; margin-bottom: 4px; }
+.tabIntro p { color: var(--color-text-secondary); font-size: 13px; }
+@media (max-width: 600px) {
+  .userTabs button, .sectionNav button { padding: 8px 10px; font-size: 12px; }
+  .identityCell { position: static; }
+  .userCell { min-width: 180px; }
+  .userCell strong, .userCell small { max-width: 180px; }
+  .rowMenu summary span { display: none; }
+  .historyChanges { grid-template-columns: 1fr; }
+  .listMeta { display: block; }
+  .stickyActions { bottom: -16px; flex-wrap: wrap; }
+}
 
 .checkCell { width: 36px; }
 .checkCell input { width: 16px; height: 16px; cursor: pointer; }
@@ -165,7 +210,7 @@
 
 
 /* ── Detail drawer ── */
-.drawerIdentity { display: flex; align-items: center; gap: 14px; margin-bottom: 14px; }
+.drawerIdentity { display: flex; align-items: center; gap: 14px; margin-bottom: 14px; scroll-margin-top: 80px; }
 .drawerIdentity > div { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
 .drawerIdentity strong { font-size: 17px; }
 .drawerIdentity > div > span { color: var(--color-text-secondary); font-size: 13px; overflow-wrap: anywhere; }

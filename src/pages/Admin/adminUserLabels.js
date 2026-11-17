@@ -21,7 +21,7 @@ const STATUS_LABELS = Object.fromEntries(STATUS_OPTIONS.map((option) => [option.
 const CHANGE_FIELD_LABELS = {
   role: 'Vai trò',
   status: 'Trạng thái',
-  is_verified: 'Xác minh',
+  is_verified: 'Xác minh hồ sơ',
   plan: 'Gói',
   credits: 'Credits',
 };

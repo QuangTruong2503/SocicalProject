@@ -18,7 +18,7 @@ export const ACCESS_LEVELS = {
 export const ACCESS_LEVEL_OPTIONS = [
   { value: '', label: 'Không có quyền', hint: 'Không thấy trang' },
   { value: 'viewer', label: 'Xem & copy', hint: 'Xem danh sách, copy link' },
-  { value: 'checker', label: 'Đánh dấu hoàn thành', hint: '+ Tick đã làm, ghim, sửa ghi chú' },
+  { value: 'checker', label: 'Cộng tác', hint: '+ Tick đã làm, ghim, sửa ghi chú' },
   { value: 'editor', label: 'Quản lý dữ liệu', hint: '+ Nhập file, thêm/sửa/xóa sản phẩm' },
 ];
 
@@ -265,10 +265,11 @@ export function adminListProductLinkLogs({
   userId = '',
   from = null,
   hideCopy = false,
+  workOnly = false,
   beforeId = null,
   limit = 50,
 } = {}) {
-  return run('adminListLogs', 'Không thể tải nhật ký.', () => supabase.rpc('admin_product_link_logs', {
+  return run('adminListLogs', 'Không thể tải nhật ký.', () => supabase.rpc(workOnly ? 'admin_product_link_work_logs' : 'admin_product_link_logs', {
     p_search: search.trim() || null,
     p_action: action || null,
     p_user_id: userId || null,

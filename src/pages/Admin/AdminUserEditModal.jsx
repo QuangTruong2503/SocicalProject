@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { FaTriangleExclamation } from 'react-icons/fa6';
 import Dialog from '../../components/dialog/Dialog.jsx';
+import UnsavedNavigationGuard from '../../components/dialog/UnsavedNavigationGuard.jsx';
 import {
   MAX_CREDITS,
   PLAN_OPTIONS,
@@ -13,6 +14,7 @@ import {
 } from './adminUserLabels.js';
 import styles from './Admin.module.css';
 import us from './AdminUsers.module.css';
+import { levelLabel } from './userManagementLabels.js';
 
 // What a NULL column means, so "from" values in the change list read correctly.
 const FIELD_DEFAULTS = { role: 'user', status: 'active', plan: 'free' };
@@ -58,7 +60,7 @@ function validate(form) {
   return errors;
 }
 
-export default function AdminUserEditModal({ profile, onSave, onCancel, saving }) {
+export default function AdminUserEditModal({ profile, onSave, onCancel, saving, error, onReload }) {
   const [form, setForm] = useState(() => getInitialForm(profile));
   const [pendingChanges, setPendingChanges] = useState(null);
   const errors = validate(form);
@@ -66,6 +68,18 @@ export default function AdminUserEditModal({ profile, onSave, onCancel, saving }
   const changes = getChanges(profile, form);
   const hasChanges = Object.keys(changes).length > 0;
   const name = getProfileName(profile);
+  const dirtyRef=useRef(false);
+  useEffect(() => {
+    dirtyRef.current=hasChanges;
+    if (!hasChanges) return;
+    const warn = (event) => { event.preventDefault(); event.returnValue=''; };
+    window.addEventListener('beforeunload',warn);
+    return () => window.removeEventListener('beforeunload',warn);
+  },[hasChanges]);
+  function cancel() {
+    if (hasChanges && !window.confirm('Có thay đổi tài khoản chưa lưu. Bỏ thay đổi?')) return;
+    onCancel();
+  }
 
   function updateField(field, value) {
     setForm((current) => ({ ...current, [field]: value }));
@@ -92,15 +106,18 @@ export default function AdminUserEditModal({ profile, onSave, onCancel, saving }
 
     return (
       <Dialog title="Xác nhận thay đổi quan trọng" onClose={() => setPendingChanges(null)} busy={saving}>
+        <UnsavedNavigationGuard dirtyRef={dirtyRef} busy={saving} onDiscard={onCancel} />
         <div className={us.warningBox}>
           <FaTriangleExclamation aria-hidden="true" />
           <div>
             {isPromotion && <p><strong>{name}</strong> sẽ có toàn quyền quản trị: xem và sửa mọi người dùng, báo giá và dữ liệu.</p>}
             {pendingChanges.role === 'user' && <p><strong>{name}</strong> sẽ mất quyền quản trị.</p>}
+            {pendingChanges.role === 'user' && <p>Quyền Link ảnh còn lại: {pendingChanges.status === 'suspended' || (profile.status === 'suspended' && pendingChanges.status !== 'active') ? 'Bị chặn do tài khoản đã khóa' : levelLabel(profile.direct_level)} (theo bản ghi cấp trực tiếp, được giữ nguyên).</p>}
             {isSuspension && <p><strong>{name}</strong> sẽ không thể dùng các trang cần đăng nhập và các tính năng báo giá.</p>}
           </div>
         </div>
         <ChangeList profile={profile} changes={pendingChanges} />
+        {error && <div role="alert" className={us.fieldError}>{error}<button type="button" onClick={onReload} disabled={saving}>Tải lại dữ liệu</button></div>}
         <div className={styles.modalActions}>
           <button type="button" onClick={() => setPendingChanges(null)} disabled={saving}>Quay lại</button>
           <button
@@ -118,7 +135,8 @@ export default function AdminUserEditModal({ profile, onSave, onCancel, saving }
   }
 
   return (
-    <Dialog title={`Chỉnh sửa: ${name}`} onClose={onCancel} busy={saving}>
+    <Dialog title={`Chỉnh sửa: ${name}`} onClose={cancel} busy={saving}>
+      <UnsavedNavigationGuard dirtyRef={dirtyRef} busy={saving} onDiscard={onCancel} />
       <form onSubmit={submit} noValidate>
         <div className={us.formGrid}>
           <label className={styles.modalField}>
@@ -165,13 +183,14 @@ export default function AdminUserEditModal({ profile, onSave, onCancel, saving }
             checked={form.is_verified}
             onChange={(event) => updateField('is_verified', event.target.checked)}
           />
-          Đã xác minh
+          Đã xác minh hồ sơ (không xác nhận email)
         </label>
 
         {hasChanges && <ChangeList profile={profile} changes={changes} />}
+        {error && <div role="alert" className={us.fieldError}>{error}<button type="button" onClick={onReload} disabled={saving}>Tải lại dữ liệu</button></div>}
 
         <div className={styles.modalActions}>
-          <button type="button" onClick={onCancel} disabled={saving}>Hủy</button>
+          <button type="button" onClick={cancel} disabled={saving}>Hủy</button>
           <button type="submit" className={styles.primary} disabled={saving || hasErrors || !hasChanges}>
             {saving ? 'Đang lưu...' : 'Lưu thay đổi'}
           </button>

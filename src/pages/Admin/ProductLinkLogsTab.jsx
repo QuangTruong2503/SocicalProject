@@ -39,10 +39,10 @@ const TONE_CLASS = {
 function getRangeFrom(range) {
   const days = RANGE_OPTIONS.find((option) => option.value === range)?.days;
   if (!days) return null;
-  const start = new Date();
-  start.setHours(0, 0, 0, 0);
-  start.setDate(start.getDate() - (days - 1));
-  return start.toISOString();
+  const start = new Date(Date.now() + 7 * 3600_000);
+  start.setUTCHours(0, 0, 0, 0);
+  start.setUTCDate(start.getUTCDate() - (days - 1));
+  return new Date(start.getTime() - 7 * 3600_000).toISOString();
 }
 
 function exportLogsCsv(logs) {
@@ -56,7 +56,7 @@ function exportLogsCsv(logs) {
   );
 }
 
-export default function ProductLinkLogsTab({ retentionDays, onChanged }) {
+export default function ProductLinkLogsTab({ retentionDays, onChanged, workOnly = false }) {
   const [searchInput, setSearchInput] = useState('');
   const [action, setAction] = useState('');
   const [actorId, setActorId] = useState('');
@@ -77,7 +77,7 @@ export default function ProductLinkLogsTab({ retentionDays, onChanged }) {
   const hideCopyRef = useRef(effectiveHideCopy);
 
   function getFilters() {
-    return { search, action, userId: actorId, from: getRangeFrom(range), hideCopy: effectiveHideCopy };
+    return { search, action, userId: actorId, from: getRangeFrom(range), hideCopy: effectiveHideCopy, workOnly };
   }
 
   useEffect(() => {
@@ -92,6 +92,7 @@ export default function ProductLinkLogsTab({ retentionDays, onChanged }) {
       setNewCount(0);
 
       const result = await adminListProductLinkLogs({
+        workOnly,
         search,
         action,
         userId: actorId,
@@ -111,7 +112,7 @@ export default function ProductLinkLogsTab({ retentionDays, onChanged }) {
     }
 
     load();
-  }, [search, action, actorId, range, effectiveHideCopy, reloadToken]);
+  }, [search, action, actorId, range, effectiveHideCopy, reloadToken, workOnly]);
 
   useEffect(() => {
     let isActive = true;
@@ -123,9 +124,10 @@ export default function ProductLinkLogsTab({ retentionDays, onChanged }) {
 
   // New entries are announced instead of being inserted, so the list never shifts while reading.
   useEffect(() => subscribeProductLinkLogs((row) => {
+    if (workOnly && ['grant','revoke'].includes(row.action)) return;
     if (hideCopyRef.current && row.action === 'copy') return;
     setNewCount((count) => count + 1);
-  }), []);
+  }), [workOnly]);
 
   async function loadMore() {
     const last = logs.rows.at(-1);
@@ -207,7 +209,7 @@ export default function ProductLinkLogsTab({ retentionDays, onChanged }) {
         />
         <select className={styles.control} value={action} onChange={(event) => setAction(event.target.value)} aria-label="Hành động">
           <option value="">Tất cả hành động</option>
-          {LOG_ACTION_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+          {LOG_ACTION_OPTIONS.filter((option) => !workOnly || !['grant','revoke'].includes(option.value)).map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
         </select>
         <select className={styles.control} value={actorId} onChange={(event) => setActorId(event.target.value)} aria-label="Người thực hiện">
           <option value="">Tất cả mọi người</option>

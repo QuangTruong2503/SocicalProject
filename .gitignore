@@ -25,5 +25,6 @@ dist-ssr
 .env
 .codex-backups/
 output/
+.playwright-cli/
 tmp/
 supabase/.temp/

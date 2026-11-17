@@ -56,6 +56,16 @@ test.beforeEach(() => {
 test.afterEach(async () => { if (root) { await act(async () => root.unmount()); root = null; } });
 test.after(() => dom.window.close());
 
+test('an already open page rechecks server rights before copying cached products', async () => {
+  const clipboard=[];
+  Object.defineProperty(navigator,'clipboard',{ configurable:true,value:{ writeText:async (text) => clipboard.push(text) } });
+  await render();
+  globalThis.__productRpc=() => ({ data:0,error:null });
+  await click(document.querySelector('button[title="Bấm để copy mã sản phẩm"]'));
+  assert.deepEqual(clipboard,[]);
+  assert.ok(document.body.textContent.includes('chưa được cấp quyền'));
+});
+
 test('URL selects the company and switching resets search and scopes both products and logs', async () => {
   await render('/link-anh-san-pham?company=tam');
   assert.equal(selector().value, 'tam');

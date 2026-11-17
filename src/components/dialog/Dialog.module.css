@@ -53,6 +53,11 @@
   margin-bottom: 16px;
 }
 
+.drawerWide { width: min(760px, 100%); }
+.drawerWide .head { position: sticky; top: -22px; z-index: 5; background: var(--color-surface); padding: 12px 0; }
+
+@media (max-width: 600px) { .drawerWide { width: 100%; padding: 16px; } }
+
 .head h3 { margin: 0; font-size: 18px; line-height: 1.35; overflow-wrap: anywhere; }
 
 .close {

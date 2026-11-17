@@ -86,7 +86,12 @@ function upsertById(list, row) {
   return next;
 }
 
-function ProductLinkWorkspace({ company, level, companySelector, companyModal }) {
+function ProductLinkWorkspace({ company, level, companySelector, companyModal, onAccessLevel }) {
+  const activeWorkspaceRef = useRef(true);
+  useEffect(() => {
+    activeWorkspaceRef.current = true;
+    return () => { activeWorkspaceRef.current = false; };
+  }, []);
   const { user, profile } = useAuth();
   const actorName = getUserDisplayName(user, profile);
 
@@ -286,11 +291,23 @@ function ProductLinkWorkspace({ company, level, companySelector, companyModal })
     return () => document.removeEventListener('keydown', onKeyDown);
   }, []);
 
+  // Cached clipboard/export actions must also re-check current server access.
+  const checkReadAccess = useCallback(async () => {
+    const result = await getMyProductLinkLevel();
+    if (!activeWorkspaceRef.current) return false;
+    if (result.error) { toast.error(result.error); return false; }
+    const nextLevel = Number(result.data) || 0;
+    onAccessLevel(nextLevel);
+    if (!nextLevel) { toast.error('Quyền truy cập đã bị thu hồi hoặc tài khoản đã khóa.'); return false; }
+    return true;
+  }, [onAccessLevel]);
+
   // ── Actions ─────────────────────────────────────────────────────────
   async function downloadExcel() {
     if (exporting || itemsLoading || loadError || !items.length) return;
     setExporting(true);
     try {
+      if (!(await checkReadAccess())) return;
       const { exportProductLinksToExcel } = await import('../../utils/productLinkExcel.js');
       exportProductLinksToExcel(items, company.name);
       toast.success(`Đã xuất ${items.length} sản phẩm của ${company.name}.`);
@@ -329,6 +346,7 @@ function ProductLinkWorkspace({ company, level, companySelector, companyModal })
   }, [user?.id, actorName]);
 
   const copyLink = useCallback(async (item, link, label) => {
+    if (!(await checkReadAccess())) return;
     if (!(await writeClipboard(link))) {
       toast.error('Trình duyệt chặn copy. Hãy thử lại.');
       return;
@@ -336,9 +354,10 @@ function ProductLinkWorkspace({ company, level, companySelector, companyModal })
     setCopiedLinks((current) => new Set(current).add(link));
     markJustCopied(`link:${link}`);
     logCopy(item, { kind: 'link', label, count: 1 });
-  }, [markJustCopied, logCopy]);
+  }, [markJustCopied, logCopy, checkReadAccess]);
 
   const copyAll = useCallback(async (item) => {
+    if (!(await checkReadAccess())) return;
     if (!(await writeClipboard(item.links.join('\n')))) {
       toast.error('Trình duyệt chặn copy. Hãy thử lại.');
       return;
@@ -351,13 +370,14 @@ function ProductLinkWorkspace({ company, level, companySelector, companyModal })
     markJustCopied(`all:${item.id}`);
     toast.success(`Đã copy ${item.links.length} link của ${item.code}`, { autoClose: 1800 });
     logCopy(item, { kind: 'all', count: item.links.length });
-  }, [markJustCopied, logCopy]);
+  }, [markJustCopied, logCopy, checkReadAccess]);
 
   const copyCode = useCallback(async (item) => {
+    if (!(await checkReadAccess())) return;
     if (!(await writeClipboard(item.code))) return;
     markJustCopied(`code:${item.id}`);
     logCopy(item, { kind: 'code' });
-  }, [markJustCopied, logCopy]);
+  }, [markJustCopied, logCopy, checkReadAccess]);
 
   // Applies `patch` locally right away, then reconciles with the server row (or reverts).
   const optimisticUpdate = useCallback(async (item, patch, request) => {
@@ -729,6 +749,8 @@ export default function ProductLinks() {
     }
   });
   const [level, setLevel] = useState(null);
+  const [accessError, setAccessError] = useState('');
+  const [accessReload, setAccessReload] = useState(0);
   const [companies, setCompanies] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -753,13 +775,23 @@ export default function ProductLinks() {
 
   useEffect(() => {
     let active = true;
-    getMyProductLinkLevel().then((result) => {
+    let pending = false;
+    async function checkAccess() {
+      if (pending) return;
+      pending = true;
+      const result = await getMyProductLinkLevel();
+      pending = false;
       if (!active) return;
-      if (result.error) toast.error(result.error);
-      setLevel(Number(result.data) || 0);
-    });
-    return () => { active = false; };
-  }, [user?.id, profile?.role, profile?.status]);
+      setAccessError(result.error || '');
+      if (!result.error) setLevel(Number(result.data) || 0);
+    }
+    const onVisible = () => { if (document.visibilityState === 'visible') void checkAccess(); };
+    void checkAccess();
+    const timer = window.setInterval(onVisible, 30_000);
+    document.addEventListener('visibilitychange', onVisible);
+    window.addEventListener('focus', onVisible);
+    return () => { active = false; window.clearInterval(timer); document.removeEventListener('visibilitychange', onVisible); window.removeEventListener('focus', onVisible); };
+  }, [user?.id, profile?.role, profile?.status, accessReload]);
 
   const applyCompaniesResult = useCallback((result) => {
     setLoading(false);
@@ -801,6 +833,10 @@ export default function ProductLinks() {
     setCompanyOpen(false);
     setName('');
     toast.success(`Đã thêm công ty ${result.data.name}.`);
+  }
+
+  if (accessError) {
+    return <div className={styles.page}><p role="alert">Không tải được quyền truy cập: {accessError}</p><button type="button" onClick={() => setAccessReload((n) => n + 1)}>Thử lại quyền truy cập</button></div>;
   }
 
   if (level === null) {
@@ -866,5 +902,5 @@ export default function ProductLinks() {
       </form>
     </ModalShell>;
 
-  return <ProductLinkWorkspace key={`${user?.id}:${company.id}`} company={company} level={level} companySelector={selector} companyModal={companyModal} />;
+  return <ProductLinkWorkspace key={`${user?.id}:${company.id}`} company={company} level={level} companySelector={selector} companyModal={companyModal} onAccessLevel={setLevel} />;
 }

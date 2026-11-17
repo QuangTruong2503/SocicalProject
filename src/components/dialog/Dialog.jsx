@@ -15,7 +15,7 @@ const PANEL_CLASS = {
  * click, and refuses to close while `busy`. Only one Dialog should be open at a time.
  * @param {{ title: string, onClose: () => void, busy?: boolean, variant?: 'modal' | 'wide' | 'drawer', children: React.ReactNode }} props
  */
-export default function Dialog({ title, onClose, busy = false, variant = 'modal', children }) {
+export default function Dialog({ title, onClose, busy = false, variant = 'modal', wideDrawer = false, children }) {
   const dialogRef = useDialogFocus();
   const titleId = useId();
 
@@ -42,7 +42,7 @@ export default function Dialog({ title, onClose, busy = false, variant = 'modal'
     >
       <div
         ref={dialogRef}
-        className={PANEL_CLASS[variant] || styles.panel}
+        className={`${PANEL_CLASS[variant] || styles.panel} ${wideDrawer ? styles.drawerWide : ''}`}
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}

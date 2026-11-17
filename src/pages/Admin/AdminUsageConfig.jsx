@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import Dialog from '../../components/dialog/Dialog.jsx';
 import { changeUsageConfig, getUsageConfig } from '../../services/adminUsageService.js';
@@ -116,7 +117,11 @@ export default function AdminUsageConfig({ reloadToken }) {
           <LimitsForm settings={settings} busy={busy} onSave={(patch) => apply('settings.update', patch, 'Đã lưu giới hạn.')} />
         </div>
       </details>
-      <UserQuotas rows={state.data.user_quotas} busy={busy} onSave={(payload) => apply('user_quota.upsert', payload, 'Đã lưu ngoại lệ.')} onDelete={(user) => apply('user_quota.delete', { user }, 'Đã xóa ngoại lệ.')} />
+      <section className={styles.card} aria-labelledby="usage-override-title">
+        <div className={styles.cardHead}><h2 id="usage-override-title">Ngoại lệ theo người dùng</h2><span>Quản lý trong hồ sơ để xem cùng gói, quyền hiệu lực và lịch sử.</span></div>
+        <Link className={styles.actionButton} to="/admin/users?tab=list&quota=override">Mở người dùng có ngoại lệ hạn mức</Link>
+        {(state.data.user_quotas || []).length > 0 && <ul>{state.data.user_quotas.map((row) => <li key={row.user_id}><Link to={`/admin/users?tab=list&user=${row.user_id}&section=quota`}>{row.email || row.user_id}</Link></li>)}</ul>}
+      </section>
       <Budgets budgets={state.data.budgets} statuses={state.data.budget_status} busy={busy} onSave={(payload) => apply('budget.upsert', payload, 'Đã lưu ngân sách.')} onDelete={(id) => apply('budget.delete', { id }, 'Đã xóa ngân sách.')} />
       <Prices prices={state.data.prices} busy={busy} onAdd={(payload) => apply('price.add', payload, 'Đã thêm giá mới.')} />
 
@@ -324,48 +329,6 @@ function PlanQuotas({ quotas, enforced, busy, onSave }) {
         </table>
       </div>
       <p className={us.muted}>Đơn vị là số ảnh đã gửi tới OpenAI (mỗi lô được tính một lần, kể cả khi retry). Ảnh của request quá hạn hoặc lỗi sau khi đã gửi không được hoàn lại.</p>
-    </section>
-  );
-}
-
-function UserQuotas({ rows, busy, onSave, onDelete }) {
-  const [form, setForm] = useState({ user: '', daily: '', monthly: '', unlimited: false, note: '' });
-  return (
-    <section className={styles.card} aria-labelledby="usage-override-title">
-      <div className={styles.cardHead}>
-        <h2 id="usage-override-title">Ngoại lệ theo người dùng</h2>
-        <span>Ghi đè hạn mức của gói; vẫn được ghi usage đầy đủ.</span>
-      </div>
-      {rows.length > 0 && (
-        <div className={styles.tableWrap}>
-          <table className={`${styles.table} ${us.compactTable}`}>
-            <thead><tr><th>Người dùng</th><th>Ảnh / ngày</th><th>Ảnh / tháng</th><th>Không giới hạn</th><th>Ghi chú</th><th aria-label="Xóa" /></tr></thead>
-            <tbody>
-              {rows.map((row) => (
-                <tr key={row.user_id}>
-                  <td>{row.email || row.user_id}</td>
-                  <td>{row.daily_image_limit ?? 'Theo gói'}</td>
-                  <td>{row.monthly_image_limit ?? 'Theo gói'}</td>
-                  <td>{row.unlimited ? 'Có' : 'Không'}</td>
-                  <td>{row.note || '—'}</td>
-                  <td><button type="button" className={us.linkButton} onClick={() => onDelete(row.user_id)} disabled={busy}>Xóa</button></td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
-      <form className={us.formGrid} onSubmit={(event) => {
-        event.preventDefault();
-        onSave({ user: form.user.trim(), daily_image_limit: toIntOrNull(form.daily), monthly_image_limit: toIntOrNull(form.monthly), unlimited: form.unlimited, note: form.note });
-      }}>
-        <label className={styles.modalField}>Email hoặc user ID<input type="text" value={form.user} onChange={(event) => setForm({ ...form, user: event.target.value })} required /></label>
-        <label className={styles.modalField}>Ảnh / ngày<input type="number" min="0" className={styles.control} value={form.daily} onChange={(event) => setForm({ ...form, daily: event.target.value })} /></label>
-        <label className={styles.modalField}>Ảnh / tháng<input type="number" min="0" className={styles.control} value={form.monthly} onChange={(event) => setForm({ ...form, monthly: event.target.value })} /></label>
-        <label className={styles.modalField}>Ghi chú<input type="text" maxLength={200} value={form.note} onChange={(event) => setForm({ ...form, note: event.target.value })} /></label>
-        <label className={styles.modalCheckbox}><input type="checkbox" checked={form.unlimited} onChange={(event) => setForm({ ...form, unlimited: event.target.checked })} /> Không giới hạn</label>
-        <div className={styles.modalActions}><button type="submit" className={styles.primary} disabled={busy || !form.user.trim()}>Lưu ngoại lệ</button></div>
-      </form>
     </section>
   );
 }
