@@ -121,6 +121,9 @@ export default function AdminUserDrawer({ summary, isSelf, onClose, onEdit, onTo
           <InfoRow label="Đăng nhập gần nhất">
             {profile.last_login_at ? `${formatRelative(profile.last_login_at)} · ${formatDateTime(profile.last_login_at)}` : 'Chưa ghi nhận'}
           </InfoRow>
+          <InfoRow label="Hoạt động gần nhất">
+            {profile.last_active_at ? `${formatRelative(profile.last_active_at)} · ${formatDateTime(profile.last_active_at)}` : 'Chưa ghi nhận'}
+          </InfoRow>
         </dl>
       </section>
 

@@ -22,6 +22,8 @@ import { fetchLatestUserUpload } from '../services/uploadService.js';
 import { setMyAvatarFrame } from '../services/avatarFrameService.js';
 import { createServiceResult } from '../services/serviceHelpers.js';
 import { AuthContext } from './authContext.js';
+import { recordUserActivity } from '../services/userActivityService.js';
+import { trackUserActivity } from '../utils/userActivity.js';
 
 export function AuthProvider({ children }) {
   const [session, setSession] = useState(null);
@@ -40,6 +42,11 @@ export function AuthProvider({ children }) {
   const [lastAuthEvent, setLastAuthEvent] = useState('INITIALIZING');
   const profileRequestIdRef = useRef(0);
   const avatarRequestIdRef = useRef(0);
+
+  useEffect(() => {
+    if (!user?.id || profile?.id !== user.id || profile?.status === 'suspended') return;
+    return trackUserActivity({ recordActivity: recordUserActivity });
+  }, [user?.id, profile?.id, profile?.status]);
 
   const syncProfile = useCallback(async (nextUser, source) => {
     const requestId = ++profileRequestIdRef.current;

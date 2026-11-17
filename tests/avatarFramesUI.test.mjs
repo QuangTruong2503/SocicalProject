@@ -87,6 +87,8 @@ function installBackend({ profile = {}, frames = FRAMES, uploads = [] } = {}) {
     return { data: null, error: null };
   };
   globalThis.__framesRpc = (name, args) => {
+    // AuthProvider records activity independently of avatar-frame saves.
+    if (name === 'record_user_activity') return { data: null, error: null };
     backend.rpc.push([name, args]);
     if (name === 'set_my_avatar_frame') {
       if (backend.setFrame) return backend.setFrame(args);
@@ -326,7 +328,7 @@ test('animated frames: stills in the list, motion only in the preview and on app
   await click(button('Áp dụng'));
   assert.deepEqual([headerFrame().dataset.frameState, headerFrame().getAttribute('src')], ['animated', '/avatar-frames/orbit-glow.png']);
   assert.equal(media.adds, 1, 'one reduced-motion listener for every avatar');
-  assert.equal(motion.visibilityListeners, 1, 'one visibilitychange listener for every avatar');
+  assert.equal(motion.visibilityListeners, 2, 'one shared avatar listener plus one activity listener');
   // Detached while no animated avatar needs it (e.g. paused), re-created when one does.
   assert.equal(liveObservers().length, 1, 'one shared IntersectionObserver');
   assert.equal(liveObservers()[0].targets.size, 2, 'only the animated avatars are observed');

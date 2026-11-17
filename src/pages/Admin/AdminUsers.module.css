@@ -49,8 +49,11 @@
 }
 
 /* ── Table ── */
-.usersTable { min-width: 980px; }
+.usersTable { min-width: 1150px; }
 .usersTable td { vertical-align: middle; }
+
+.activityCell time { display: block; }
+.activityCell small { display: block; color: var(--color-text-secondary); font-size: 12px; }
 
 .checkCell { width: 36px; }
 .checkCell input { width: 16px; height: 16px; cursor: pointer; }

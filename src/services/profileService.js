@@ -25,9 +25,9 @@ const PROFILE_BASE_SELECT = [
   'created_at',
   'updated_at',
 ].join(', ');
-// avatar_frame_id comes from the avatar_frames migration. Until it is applied the
-// column is missing, so profile queries fall back to the base list instead of failing.
-let hasAvatarFrameColumn = true;
+// Optional columns are added by later migrations. Profile queries still work
+// while those migrations are waiting to be deployed.
+const optionalProfileColumns = new Set(['avatar_frame_id', 'last_active_at']);
 // avatar_frame_id is not listed: users change it through set_my_avatar_frame().
 const SAFE_PROFILE_UPDATE_FIELDS = new Set([
   'username',
@@ -46,29 +46,24 @@ const SAFE_PROFILE_UPDATE_FIELDS = new Set([
 ]);
 
 function getProfileSelect() {
-  return hasAvatarFrameColumn ? `${PROFILE_BASE_SELECT}, avatar_frame_id` : PROFILE_BASE_SELECT;
-}
-
-function isMissingAvatarFrameColumn(error) {
-  return ['42703', 'PGRST204'].includes(error?.code) && String(error?.message ?? '').includes('avatar_frame_id');
+  return [PROFILE_BASE_SELECT, ...optionalProfileColumns].join(', ');
 }
 
 /**
- * Runs a profiles query with the current select list, retrying once without
- * avatar_frame_id when that column does not exist yet. Postgres rejects such a
+ * Runs a profiles query with the current select list, retrying without missing
+ * optional columns when their migrations have not been applied. Postgres rejects such a
  * statement before running it, so retrying an insert/update is safe.
  * @param {(select: string) => PromiseLike<{ data: any, error: any }>} run
  */
 async function withProfileSelect(run) {
-  const result = await run(getProfileSelect());
-
-  if (hasAvatarFrameColumn && isMissingAvatarFrameColumn(result.error)) {
-    console.warn('[profileService] profiles.avatar_frame_id is missing; apply the avatar_frames migration.');
-    hasAvatarFrameColumn = false;
-    return run(getProfileSelect());
+  while (true) {
+    const result = await run(getProfileSelect());
+    const missingColumn = ['42703', 'PGRST204'].includes(result.error?.code)
+      && [...optionalProfileColumns].find((column) => String(result.error?.message ?? '').includes(column));
+    if (!missingColumn) return result;
+    console.warn(`[profileService] profiles.${missingColumn} is missing; apply its migration.`);
+    optionalProfileColumns.delete(missingColumn);
   }
-
-  return result;
 }
 
 function cleanString(value) {
@@ -281,7 +276,7 @@ async function callAdminRpc(name, params, fallbackMessage) {
  * Returns only the columns the admin table needs, plus the total match count.
  * @param {{
  *   search?: string, role?: string, status?: string, verified?: boolean | null, plan?: string,
- *   sort?: 'created_at' | 'last_login_at' | 'name' | 'email', desc?: boolean, limit?: number, offset?: number,
+ *   sort?: 'created_at' | 'last_login_at' | 'last_active_at' | 'name' | 'email', desc?: boolean, limit?: number, offset?: number,
  * }} [options]
  * @returns {Promise<import('./serviceHelpers.js').ServiceResult<{ rows: Array<Object>, totalCount: number }>>}
  */

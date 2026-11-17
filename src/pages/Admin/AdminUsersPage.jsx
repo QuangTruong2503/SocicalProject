@@ -23,7 +23,7 @@ import us from './AdminUsers.module.css';
 const PAGE_SIZE = 50;
 const CSV_ROW_LIMIT = 5000;
 const SKELETON_ROWS = 6;
-const COLUMN_COUNT = 9;
+const COLUMN_COUNT = 10;
 const SELF_LOCK_HINT = 'Bạn không thể tự thay đổi tài khoản của chính mình';
 
 const VERIFIED_OPTIONS = [
@@ -32,11 +32,11 @@ const VERIFIED_OPTIONS = [
 ];
 
 // Columns returned by admin_list_profiles; used to merge an RPC update into a list row.
-const LIST_FIELDS = ['role', 'status', 'is_verified', 'plan', 'credits', 'last_login_at'];
+const LIST_FIELDS = ['role', 'status', 'is_verified', 'plan', 'credits', 'last_login_at', 'last_active_at'];
 
 function exportUsersCsv(rows) {
   downloadCsv(
-    ['Họ tên', 'Tên đăng nhập', 'Email', 'Vai trò', 'Trạng thái', 'Xác minh', 'Gói', 'Credits', 'Đăng nhập gần nhất', 'Tham gia', 'ID'],
+    ['Họ tên', 'Tên đăng nhập', 'Email', 'Vai trò', 'Trạng thái', 'Xác minh', 'Gói', 'Credits', 'Đăng nhập gần nhất', 'Hoạt động gần nhất', 'Tham gia', 'ID'],
     rows.map((row) => [
       row.full_name,
       row.username,
@@ -47,6 +47,7 @@ function exportUsersCsv(rows) {
       getPlanLabel(row.plan),
       row.credits,
       row.last_login_at,
+      row.last_active_at,
       row.created_at,
       row.id,
     ]),
@@ -468,6 +469,7 @@ export default function AdminUsersPage() {
                 <th>Xác minh</th>
                 <th>Gói</th>
                 <SortHeader label="Đăng nhập gần nhất" sortKey="last_login_at" sort={sort} onSort={handleSort} />
+                <SortHeader label="Hoạt động gần nhất" sortKey="last_active_at" sort={sort} onSort={handleSort} />
                 <SortHeader label="Tham gia" sortKey="created_at" sort={sort} onSort={handleSort} />
                 <th>Thao tác</th>
               </tr>
@@ -536,6 +538,14 @@ export default function AdminUsersPage() {
                     </td>
                     <td className={styles.dateCell} title={formatDateTime(row.last_login_at)}>
                       {row.last_login_at ? formatRelative(row.last_login_at) : 'Chưa ghi nhận'}
+                    </td>
+                    <td className={`${styles.dateCell} ${us.activityCell}`}>
+                      {row.last_active_at ? (
+                        <time dateTime={row.last_active_at} title={formatDateTime(row.last_active_at)}>
+                          {formatRelative(row.last_active_at)}
+                          <small>{formatDateTime(row.last_active_at)}</small>
+                        </time>
+                      ) : 'Chưa ghi nhận'}
                     </td>
                     <td className={styles.dateCell} title={formatDateTime(row.created_at)}>{formatRelative(row.created_at)}</td>
                     <td>
