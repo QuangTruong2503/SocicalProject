@@ -1,7 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { readFile } from 'node:fs/promises';
-import { createUsageDb, ids, queryAs } from './fixtures/usageDb.mjs';
+import { createUsageDb, ids, modelCatalogMigration, queryAs } from './fixtures/usageDb.mjs';
 import { IMAGE_NAME_MODELS } from '../supabase/functions/suggest-image-names/imageNaming.js';
 
 const ALL = IMAGE_NAME_MODELS.map(({ id }) => id);
@@ -19,8 +18,8 @@ test('plan permissions default to existing access; admin changes apply immediate
   assert.deepEqual(await access(db, ids.admin), { models: ALL, allowed: true });
   assert.deepEqual(await access(db, ids.free), { models: [], allowed: false });
   assert.deepEqual(await access(db, ids.suspended), { models: [], allowed: false });
-  await update(db, 'pro', ['gpt-6.1-sol']);
-  assert.deepEqual(await access(db, ids.pro), { models: ['gpt-6.1-sol'], allowed: true });
+  await update(db, 'pro', ['gpt-6.1-terra']);
+  assert.deepEqual(await access(db, ids.pro), { models: ['gpt-6.1-terra'], allowed: true });
   await db.exec(`update public.profiles set plan = 'enterprise' where id = '${ids.pro2}'`);
   assert.deepEqual((await access(db, ids.pro2)).models, ALL, 'Enterprise does not inherit Pro restrictions');
   await update(db, 'free', ['gpt-6-luna']);
@@ -37,20 +36,42 @@ test('plan permissions default to existing access; admin changes apply immediate
   assert.deepEqual(change.before_value, { allowed_models: [] });
   assert.deepEqual(change.after_value, { allowed_models: ['gpt-6-luna'] });
   // Re-applying the migration must never reset an admin's saved selections.
-  await db.exec(await readFile(new URL('../supabase/migrations/20261019045632_ai_naming_plan_models.sql', import.meta.url), 'utf8'));
+  await db.exec(modelCatalogMigration);
   assert.deepEqual((await access(db, ids.free)).models, ['gpt-6-luna']);
 });
 
 test('invalid model configuration is rejected; duplicates normalize and empty/missing profiles stay denied', async (t) => {
   const db = await createUsageDb(t);
-  for (const [plan, models] of [['business', ALL], [null, ALL], ['pro', null], ['pro', 'gpt-6-luna'], ['pro', ['unknown']], ['pro', [null]], ['pro', [42]]]) {
+  for (const [plan, models] of [['business', ALL], [null, ALL], ['pro', null], ['pro', 'gpt-6-luna'], ['pro', ['unknown']], ['pro', ['gpt-6-astra']], ['pro', ['gpt-6.1-sol']], ['pro', [null]], ['pro', [42]]]) {
     await assert.rejects(update(db, plan, models), /không hợp lệ|không được hỗ trợ/);
   }
-  await update(db, 'pro', ['gpt-6-astra', 'gpt-6-astra', 'gpt-6-luna']);
-  assert.deepEqual((await access(db, ids.pro)).models, ['gpt-6-luna', 'gpt-6-astra']);
+  await update(db, 'pro', ['gpt-6.2-sol', 'gpt-6.2-sol', 'gpt-6-luna']);
+  assert.deepEqual((await access(db, ids.pro)).models, ['gpt-6-luna', 'gpt-6.2-sol']);
   await db.exec(`update public.profiles set plan = 'unknown' where id = '${ids.pro}'`);
   assert.deepEqual(await access(db, ids.pro), { models: [], allowed: false });
   assert.deepEqual(await access(db, ''), { models: [], allowed: false });
+});
+
+test('catalog upgrade maps existing grants, preserves disabled plans and seeds the new Standard price bands once', async (t) => {
+  const db = await createUsageDb(t, { legacyModels: true, rerun: false });
+  await update(db, 'pro', ['gpt-6-luna']);
+  await update(db, 'enterprise', ['gpt-6-astra']);
+  await db.exec(modelCatalogMigration);
+  await db.exec(modelCatalogMigration);
+  const { rows: plans } = await db.query('select plan, allowed_models from usage_private.plan_models order by plan');
+  assert.deepEqual(Object.fromEntries(plans.map(({ plan, allowed_models: models }) => [plan, models])), {
+    admin: ALL, enterprise: ['gpt-6.1-terra'], free: [], pro: ['gpt-6-luna'],
+  });
+  const { rows: prices } = await db.query(`select model, max_input_tokens, input_usd_per_mtok::float as input, output_usd_per_mtok::float as output
+    from usage_private.model_prices where model in ('gpt-6.1-terra', 'gpt-6.2-sol') order by model, max_input_tokens`);
+  assert.deepEqual(prices, [
+    { model: 'gpt-6.1-terra', max_input_tokens: 272000, input: 1, output: 5 },
+    { model: 'gpt-6.1-terra', max_input_tokens: null, input: 2, output: 7.5 },
+    { model: 'gpt-6.2-sol', max_input_tokens: 272000, input: 2, output: 10 },
+    { model: 'gpt-6.2-sol', max_input_tokens: null, input: 4, output: 15 },
+  ]);
+  const { rows: [{ count }] } = await db.query("select count(*)::integer as count from usage_private.config_audit where action = 'plan_models.catalog_replace'");
+  assert.equal(count, 2);
 });
 
 test('only active admins can edit, clients cannot bypass RPCs or spoof identity, public wrappers are invokers', async (t) => {

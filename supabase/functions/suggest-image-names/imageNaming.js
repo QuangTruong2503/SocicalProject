@@ -11,8 +11,8 @@
 export const DEFAULT_IMAGE_NAME_MODEL = 'gpt-6-luna';
 export const IMAGE_NAME_MODELS = Object.freeze([
   { id: 'gpt-6-luna', label: 'GPT-6 Luna' },
-  { id: 'gpt-6.1-sol', label: 'GPT-6.1 Sol' },
-  { id: 'gpt-6-astra', label: 'GPT-6 Astra' },
+  { id: 'gpt-6.1-terra', label: 'GPT-6.1 Terra' },
+  { id: 'gpt-6.2-sol', label: 'GPT-6.2 Sol' },
 ]);
 
 export const IMAGE_NAME_LIMITS = Object.freeze({

@@ -231,7 +231,7 @@ test('same requestId twice (also concurrently) calls OpenAI once; a changed payl
   const conflict = await a.handler(post(batch(1, 2, { productName: 'Sản phẩm khác' })));
   assert.equal(conflict.status, 409);
   assert.equal((await conflict.json()).error.code, 'IDEMPOTENCY_CONFLICT');
-  for (const changed of [{ model: 'gpt-6.1-sol' }, { prompt: 'Prompt mới' }]) {
+  for (const changed of [{ model: 'gpt-6.2-sol' }, { prompt: 'Prompt mới' }]) {
     const differentSettings = await a.handler(post(batch(1, 2, changed)));
     assert.equal(differentSettings.status, 409);
     assert.equal((await differentSettings.json()).error.code, 'IDEMPOTENCY_CONFLICT');
@@ -267,18 +267,18 @@ test('a failed or unknown outcome is not retried for free under the same request
 test('admin model changes in SQL are enforced by the handler before another paid call and rejections are logged', async (t) => {
   const db = await createUsageDb(t);
   const { handler, calls } = createInstance(db);
-  assert.equal((await handler(post(batch(1, 1, { model: 'gpt-6.1-sol' })))).status, 200);
+  assert.equal((await handler(post(batch(1, 1, { model: 'gpt-6.2-sol' })))).status, 200);
   await queryAs(db, 'authenticated', ids.admin,
     "select public.admin_usage_config_change('plan_models.update', $1::jsonb)",
     [JSON.stringify({ plan: 'pro', allowed_models: ['gpt-6-luna'] })]);
-  const rejected = await handler(post(batch(2, 1, { model: 'gpt-6.1-sol', role: 'admin', plan: 'enterprise' })));
+  const rejected = await handler(post(batch(2, 1, { model: 'gpt-6.2-sol', role: 'admin', plan: 'enterprise' })));
   assert.equal(rejected.status, 403);
   assert.equal((await rejected.json()).error.code, 'AI_NAMING_MODEL_DENIED');
   assert.equal(calls.openai, 1);
   assert.equal((await handler(post(batch(3, 1, { model: 'gpt-6-luna' })))).status, 200);
   assert.equal(calls.openai, 2);
   const [record] = await rows(db, "select requested_model, status, user_id from usage_private.ai_usage_requests where error_code = 'AI_NAMING_MODEL_DENIED'");
-  assert.deepEqual(record, { requested_model: 'gpt-6.1-sol', status: 'rejected', user_id: ids.pro });
+  assert.deepEqual(record, { requested_model: 'gpt-6.2-sol', status: 'rejected', user_id: ids.pro });
 });
 
 test('ledger down before the call → 503 and OpenAI is never called', async (t) => {
@@ -468,6 +468,6 @@ test('pricing: unknown model stays unpriced; a later price change never rewrites
 
   await assert.rejects(change({ model: 'gpt-6-luna', max_input_tokens: 272000, input_usd_per_mtok: 3, output_usd_per_mtok: 3, version: 'past',
     effective_from: '2026-01-01T00:00:00Z' }), /chỉ thêm được giá mới cho tương lai/);
-  const audit = await rows(db, "select action, actor_id from usage_private.config_audit order by id");
+  const audit = await rows(db, "select action, actor_id from usage_private.config_audit where action = 'price.add' order by id");
   assert.deepEqual(audit.map((a) => [a.action, a.actor_id]), [['price.add', ids.admin], ['price.add', ids.admin]]);
 });

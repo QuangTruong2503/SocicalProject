@@ -4,6 +4,7 @@ import { readFile } from 'node:fs/promises';
 import { PGlite } from '@electric-sql/pglite';
 
 const read = (path) => readFile(new URL(path, import.meta.url), 'utf8');
+export const modelCatalogMigration = await read('../../supabase/migrations/20261119073427_replace_ai_naming_models.sql');
 const sql = await Promise.all([
   read('../../supabase_profiles_auth_sync.sql'),
   read('../../supabase_admin_profiles_policies.sql'),
@@ -22,7 +23,7 @@ export const ids = {
   suspended: '30000000-0000-4000-8000-000000000002',
 };
 
-export async function createUsageDb(t, { rerun = true } = {}) {
+export async function createUsageDb(t, { rerun = true, legacyModels = false } = {}) {
   const db = new PGlite();
   t?.after(() => db.close());
   await db.exec(`
@@ -46,6 +47,10 @@ export async function createUsageDb(t, { rerun = true } = {}) {
   `);
   for (const part of sql) await db.exec(part);
   if (rerun) for (const part of sql.slice(3)) await db.exec(part); // migrations are re-runnable
+  if (!legacyModels) {
+    await db.exec(modelCatalogMigration);
+    if (rerun) await db.exec(modelCatalogMigration);
+  }
   return db;
 }
 

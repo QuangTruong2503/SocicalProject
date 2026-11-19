@@ -28,6 +28,7 @@ const ACTION_LABELS = {
   'settings.update': 'Đổi thiết lập',
   'plan_quota.upsert': 'Hạn mức theo gói',
   'plan_models.update': 'Model theo gói',
+  'plan_models.catalog_replace': 'Đổi danh mục model AI',
   'user_quota.upsert': 'Ngoại lệ người dùng',
   'user_quota.delete': 'Xóa ngoại lệ',
   'budget.upsert': 'Ngân sách',
@@ -256,7 +257,7 @@ function PlanModels({ rows, busy, onSave }) {
     <section className={styles.card} aria-labelledby="usage-models-title">
       <div className={styles.cardHead}>
         <h2 id="usage-models-title">Model AI theo gói</h2>
-        <span>Chọn model được phép dùng cho Đặt tên ảnh bằng AI.</span>
+        <span>Chọn model được phép dùng để đặt tên ảnh và folder bằng AI.</span>
       </div>
       <p className={us.muted}>Mỗi gói dùng đúng các model được chọn, không kế thừa từ gói khác. Bỏ chọn tất cả để tắt AI cho gói đó. Tài khoản admin áp dụng dòng Quản trị viên.</p>
       {!rows ? <p className={us.fieldError} role="alert">Chưa áp dụng migration phân quyền model theo gói (ai_naming_plan_models.sql).</p> : (

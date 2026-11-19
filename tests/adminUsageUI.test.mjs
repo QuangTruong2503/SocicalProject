@@ -85,7 +85,7 @@ function configFixture() {
     settings: { ai_enabled: true, quota_enforced: false, window_seconds: 600, max_requests_per_window: 40, max_images_per_window: 150,
       max_concurrent_per_user: 2, max_concurrent_total: 8, lease_ttl_seconds: 240, usd_to_vnd: null, usd_to_vnd_as_of: null },
     plan_models: ['free', 'pro', 'enterprise', 'admin'].map((plan) => ({ plan,
-      allowed_models: plan === 'free' ? [] : ['gpt-6-luna', 'gpt-6.1-sol', 'gpt-6-astra'] })),
+      allowed_models: plan === 'free' ? [] : ['gpt-6-luna', 'gpt-6.1-terra', 'gpt-6.2-sol'] })),
     plan_quotas: [], user_quotas: [], budgets: [], budget_status: [], prices: [], audit: [],
   };
 }
@@ -105,8 +105,8 @@ test('admin edits models per plan, can disable a plan, saves persist after remou
   await click(button('Cấu hình & cảnh báo'));
   assert.match(text(), /Model AI theo gói/);
   assert.equal(save('Pro').disabled, true);
-  await click(checkbox('GPT-6.1 Sol', 'Pro'));
-  await click(checkbox('GPT-6 Astra', 'Pro'));
+  await click(checkbox('GPT-6.1 Terra', 'Pro'));
+  await click(checkbox('GPT-6.2 Sol', 'Pro'));
   await click(save('Pro'));
   assert.deepEqual(rpcCalls.filter(({ name }) => name === 'admin_usage_config_change').at(-1).params.p_payload,
     { plan: 'pro', allowed_models: ['gpt-6-luna'] });

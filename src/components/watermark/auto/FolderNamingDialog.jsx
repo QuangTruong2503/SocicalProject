@@ -1,6 +1,6 @@
 import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import { loadFolderNamingDraft, saveFolderNamingDraft } from '../../../hooks/useIndexedDB.js';
-import { chunkArray, IMAGE_NAME_LIMITS } from '../../../utils/aiImageNaming.js';
+import { chunkArray, IMAGE_NAME_LIMITS, IMAGE_NAME_MODELS } from '../../../utils/aiImageNaming.js';
 import { getFolderDraftSelection, getFolderDraftSelectionKey, restoreFolderNamingDraft } from '../../../utils/watermarkAutoFolderDraft.js';
 import {
   AI_NAMING_ERRORS,
@@ -152,6 +152,11 @@ export default function FolderNamingDialog({ open, userId, products, models, mod
     if (!canGenerate || operation.current) return;
     const initial = workspaceRef.current;
     const recovery = initial.pending;
+    if (recovery && !IMAGE_NAME_MODELS.some(({ id }) => id === recovery.model)) {
+      await saveWorkspace({ ...initial, pending: null });
+      setError(`Lô gần nhất dùng ${recovery.model}, model đã ngừng hỗ trợ. Tra cứu phần còn lại với model hiện tại sẽ gửi yêu cầu mới.`);
+      return;
+    }
     if (recovery && Date.now() - recovery.sentAt >= RECOVERY_WINDOW_MS) {
       await saveWorkspace({ ...initial, pending: null });
       setError('Đã hết thời gian khôi phục yêu cầu cũ. Tra cứu phần còn lại sẽ gửi yêu cầu mới và có thể phát sinh chi phí.');

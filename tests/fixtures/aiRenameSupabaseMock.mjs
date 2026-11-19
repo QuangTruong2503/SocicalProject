@@ -19,6 +19,6 @@ export const supabase = {
   from: () => ({ insert: async (rows) => { globalThis.__watermarkCountRows?.push(...rows); return { error: null }; } }),
   rpc: async (name, params) => {
     globalThis.__aiRpcCalls?.push({ name, params });
-    return globalThis.__aiAccessRpc ? globalThis.__aiAccessRpc(name, params) : { data: ['gpt-6-luna', 'gpt-6.1-sol', 'gpt-6-astra'], error: null };
+    return globalThis.__aiAccessRpc ? globalThis.__aiAccessRpc(name, params) : { data: ['gpt-6-luna', 'gpt-6.1-terra', 'gpt-6.2-sol'], error: null };
   },
 };

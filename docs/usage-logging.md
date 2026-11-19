@@ -124,6 +124,7 @@ estimated_usd = ( regular_input × input
 - Model trả về dạng `gpt-6-luna-YYYY-MM-DD` khớp giá của `gpt-6-luna` khi `match_snapshots = true`; giá khớp đúng tên luôn được ưu tiên. Tier `auto`/`default`/không có → `default`.
 - Khi thêm giá có thể chọn “tính giá cho attempt chưa có giá” — chỉ điền attempt `unpriced`, không đổi attempt đã ước tính.
 - **Giá có sẵn trong migration** (xác minh ngày 18/10/2026 tại <https://developers.openai.com/api/docs/pricing>): `gpt-6-luna`, USD/1M token — Standard ≤ 272K input: 0,10 / cache 0,01 / cache write 0,125 / output 0,50; > 272K: 0,20 / 0,02 / 0,25 / 0,75; Flex: một nửa Standard. Không gồm phụ phí 10% của data residency. Tier khác (Fast/priority, Batch) chưa có giá → `unpriced`. Hãy kiểm tra lại trước khi đối soát.
+- Migration ngày 19/11/2026 bổ sung giá Standard của `gpt-6.1-terra` và `gpt-6.2-sol` cho hai dải ≤272K và >272K token đầu vào, theo giá ghi cache 30 phút. Chi phí công cụ tra cứu web được tính riêng bởi OpenAI. [Giá Terra](https://developers.openai.com/api/docs/models/gpt-6.1-terra), [Giá Sol](https://developers.openai.com/api/docs/models/gpt-6.2-sol).
 - USD là chuẩn. VND chỉ là quy đổi theo tỷ giá admin nhập (kèm ngày), không phải số tiền hóa đơn.
 - Dashboard ghi “Chi phí ước tính”, và “đã ghi nhận” khi có attempt chưa biết usage hoặc chưa có giá.
 

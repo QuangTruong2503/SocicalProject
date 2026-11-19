@@ -56,7 +56,7 @@ import {
 const DATA_URL_PATTERN = /^data:image\/(?:jpeg|png|webp);base64,[A-Za-z0-9+/]+={0,2}$/;
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 // Empty / unknown → the `reasoning` field is omitted and the model default applies.
-const REASONING_EFFORTS = new Set(['none', 'minimal', 'low', 'medium', 'high', 'xhigh', 'max']);
+const REASONING_EFFORTS = new Set(['none', 'low', 'medium', 'high', 'xhigh', 'max']);
 
 const ERROR_MESSAGES = {
   method_not_allowed: 'Chỉ hỗ trợ phương thức POST.',
@@ -375,7 +375,9 @@ export function createSuggestImageNamesHandler({
       const declaredLength = Number(request.headers.get('content-length'));
       if (declaredLength > IMAGE_NAME_LIMITS.maxBodyLength) throw new RequestError('payload_too_large', 413);
 
-      let model = getEnv('OPENAI_IMAGE_NAME_MODEL') || DEFAULT_IMAGE_NAME_MODEL;
+      const configuredModel = getEnv('OPENAI_IMAGE_NAME_MODEL')?.trim();
+      const fallbackModel = IMAGE_NAME_MODELS.find(({ id }) => id === configuredModel)?.id;
+      let model = fallbackModel || DEFAULT_IMAGE_NAME_MODEL;
       const keyAlias = resolveKeyAlias(getEnv);
       if (!keyAlias.valid && !aliasWarned) {
         aliasWarned = true;
@@ -414,7 +416,7 @@ export function createSuggestImageNamesHandler({
       const payload = validatePayload(body);
       const folderMode = Boolean(payload.folders);
       const requestedIds = (payload.folders ?? payload.images).map(({ id }) => id);
-      model = payload.model || model;
+      model = payload.model || fallbackModel || IMAGE_NAME_MODELS.find(({ id }) => access.models.includes(id))?.id || DEFAULT_IMAGE_NAME_MODEL;
       context = {
         ...context,
         requested_model: model,
@@ -452,9 +454,9 @@ export function createSuggestImageNamesHandler({
 
       const requestId = decision.request_id;
       const configuredEffort = (getEnv('OPENAI_IMAGE_NAME_REASONING_EFFORT') ?? DEFAULT_REASONING_EFFORT).trim().toLowerCase();
-      let reasoningEffort = REASONING_EFFORTS.has(configuredEffort) ? configuredEffort : '';
-      // Sol and Astra require reasoning; neither accepts Luna's default `none`.
-      if (['gpt-6.1-sol', 'gpt-6-astra'].includes(model) && ['none', 'minimal'].includes(reasoningEffort)) {
+      const effort = configuredEffort === 'minimal' ? 'none' : configuredEffort;
+      let reasoningEffort = REASONING_EFFORTS.has(effort) ? effort : '';
+      if (model === 'gpt-6.2-sol' && reasoningEffort === 'none') {
         reasoningEffort = 'low';
       }
 

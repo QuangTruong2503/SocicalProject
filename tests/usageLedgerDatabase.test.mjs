@@ -359,8 +359,8 @@ test('configuration changes are admin-only, validated and audited', async (t) =>
   assert.equal(config.settings.max_concurrent_per_user, 3);
   assert.equal(config.settings.ai_enabled, false);
   assert.equal(config.user_quotas[0].email, 'pro2@example.com');
-  assert.equal(config.prices.length, 4, 'verified seed prices');
-  const audit = [...config.audit].reverse();
+  assert.equal(config.prices.length, 8, 'verified seed prices');
+  const audit = config.audit.filter((entry) => entry.actor_id === ids.admin).reverse();
   assert.deepEqual(audit.map((entry) => entry.action), ['settings.update', 'plan_quota.upsert', 'user_quota.upsert']);
   assert.deepEqual(audit[0].before_value.max_concurrent_per_user, 2);
   assert.deepEqual(audit[0].after_value.max_concurrent_per_user, 3);

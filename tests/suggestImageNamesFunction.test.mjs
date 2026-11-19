@@ -339,19 +339,23 @@ test('builds a cheap structured-output request and maps shuffled results by ID',
 });
 
 test('older clients fall back to server model and reasoning configuration', async () => {
-  const { handler, calls } = setup({ env: { OPENAI_IMAGE_NAME_MODEL: 'gpt-6.1-sol', OPENAI_IMAGE_NAME_REASONING_EFFORT: 'low' } });
+  const { handler, calls } = setup({ env: { OPENAI_IMAGE_NAME_MODEL: 'gpt-6.1-terra', OPENAI_IMAGE_NAME_REASONING_EFFORT: 'low' } });
   await handler(post(validBody({ images: [image('a')] })));
-  assert.equal(calls.openai[0].body.model, 'gpt-6.1-sol');
+  assert.equal(calls.openai[0].body.model, 'gpt-6.1-terra');
   assert.deepEqual(calls.openai[0].body.reasoning, { effort: 'low' });
 
   const omitted = setup({ env: { OPENAI_IMAGE_NAME_REASONING_EFFORT: '' } });
   await omitted.handler(post(validBody({ images: [image('a')] })));
   assert.equal(omitted.calls.openai[0].body.reasoning, undefined);
+
+  const retired = setup({ env: { OPENAI_IMAGE_NAME_MODEL: 'gpt-6-astra' }, entitlement: ['gpt-6.2-sol'] });
+  assert.equal((await retired.handler(post(validBody({ images: [image('a')] })))).status, 200);
+  assert.equal(retired.calls.openai[0].body.model, 'gpt-6.2-sol');
 });
 
 test('selected models override server default, reach OpenAI and are recorded with compatible reasoning', async () => {
-  for (const model of ['gpt-6-luna', 'gpt-6.1-sol', 'gpt-6-astra']) {
-    const { handler, calls } = setup({ env: { OPENAI_IMAGE_NAME_MODEL: 'gpt-6.1-sol' } });
+  for (const model of ['gpt-6-luna', 'gpt-6.1-terra', 'gpt-6.2-sol']) {
+    const { handler, calls } = setup({ env: { OPENAI_IMAGE_NAME_MODEL: 'gpt-6.1-terra' } });
     const response = await handler(post(validBody({ model, images: [image('a')], prompt: 'Chỉ mô tả góc chụp cho {{productName}}' })));
     assert.equal(response.status, 200);
     assert.equal((await response.json()).model, model);
@@ -359,26 +363,41 @@ test('selected models override server default, reach OpenAI and are recorded wit
     assert.equal(request.model, model);
     assert.equal(calls.ledger.begins[0].requested_model, model);
     assert.equal(request.input[0].content[0].text, 'Chỉ mô tả góc chụp cho Máy khoan Bosch GSB 13 RE');
-    assert.equal(request.reasoning.effort, model === 'gpt-6-luna' ? 'none' : 'low');
-    if (model !== 'gpt-6-luna') assert.ok(request.max_output_tokens >= 4096);
+    assert.equal(request.reasoning.effort, model === 'gpt-6.2-sol' ? 'low' : 'none');
+    if (model === 'gpt-6.2-sol') assert.ok(request.max_output_tokens >= 4096);
   }
 });
 
+test('supported models work in folder mode and retired selections never reach OpenAI', async () => {
+  const { handler, calls } = setup({ env: { OPENAI_IMAGE_NAME_REASONING_EFFORT: 'minimal' } });
+  const payload = { kind: 'folders', folders: [{ id: 'f1', name: 'Bosch GSK 190' }] };
+  for (const [model, effort] of [['gpt-6-luna', 'none'], ['gpt-6.1-terra', 'none'], ['gpt-6.2-sol', 'low']]) {
+    assert.equal((await handler(post({ ...payload, model }))).status, 200);
+    assert.equal(calls.openai.at(-1).body.reasoning.effort, effort);
+    assert.equal(calls.openai.at(-1).body.tool_choice, 'required');
+  }
+  for (const model of ['gpt-6-astra', 'gpt-6.1-sol']) {
+    assert.equal((await handler(post({ ...payload, model }))).status, 400);
+    assert.equal((await handler(post(validBody({ model })))).status, 400);
+  }
+  assert.equal(calls.openai.length, 3);
+});
+
 test('allowed models come from the verified account, cannot be spoofed and are rechecked per request', async () => {
-  let models = ['gpt-6-luna', 'gpt-6.1-sol'];
+  let models = ['gpt-6-luna', 'gpt-6.1-terra'];
   const { handler, calls } = setup({ entitlement: () => Response.json(models) });
-  assert.equal((await handler(post(validBody({ model: 'gpt-6.1-sol' })))).status, 200);
+  assert.equal((await handler(post(validBody({ model: 'gpt-6.1-terra' })))).status, 200);
   models = ['gpt-6-luna'];
   const response = await handler(post(validBody({
-    model: 'gpt-6.1-sol', plan: 'enterprise', role: 'admin', allowed_models: ALL_MODELS,
+    model: 'gpt-6.1-terra', plan: 'enterprise', role: 'admin', allowed_models: ALL_MODELS,
   })));
   assert.equal(response.status, 403);
   assert.equal((await response.json()).error.code, 'AI_NAMING_MODEL_DENIED');
   assert.equal(calls.openai.length, 1, 'revoked model never reaches OpenAI');
-  assert.equal(calls.ledger.rejections.at(-1).requested_model, 'gpt-6.1-sol');
+  assert.equal(calls.ledger.rejections.at(-1).requested_model, 'gpt-6.1-terra');
   assert.equal(calls.ledger.rejections.at(-1).user_id, USER_ID);
   assert.equal((await handler(post(validBody({ model: 'gpt-6-luna' })))).status, 200);
-  const legacy = setup({ env: { OPENAI_IMAGE_NAME_MODEL: 'gpt-6-astra' }, entitlement: ['gpt-6-luna'] });
+  const legacy = setup({ env: { OPENAI_IMAGE_NAME_MODEL: 'gpt-6.2-sol' }, entitlement: ['gpt-6-luna'] });
   assert.equal((await legacy.handler(post(validBody()))).status, 403, 'omitting model cannot bypass permissions through server default');
   assert.equal(legacy.calls.openai.length, 0);
 });

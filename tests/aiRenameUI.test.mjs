@@ -15,7 +15,7 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{1
 let applyStats;
 let cardDownloads;
 
-const ALL_MODELS = ['gpt-6-luna', 'gpt-6.1-sol', 'gpt-6-astra'];
+const ALL_MODELS = ['gpt-6-luna', 'gpt-6.1-terra', 'gpt-6.2-sol'];
 const PRODUCT = 'Máy khoan Bosch GSB 13 RE';
 const PRO_USER = { user: { id: 'user-1' }, profile: { id: 'user-1', role: 'user', plan: 'pro', status: 'active' }, isInitializing: false };
 let root;
@@ -378,13 +378,13 @@ test('model and prompt survive close/apply and are sent in every batch; controls
       select.dispatchEvent(new dom.window.Event('change', { bubbles: true }));
     });
   };
-  await selectModel('gpt-6.1-sol');
+  await selectModel('gpt-6.1-terra');
   assert.ok(document.querySelector('label[for="wm-ai-model"]'));
   assert.equal(document.getElementById('wm-ai-prompt').closest('details'), null, 'prompt is visible immediately');
   await click(button('Hủy', dialog()));
   assert.equal(renameCalls.length, 0);
   await openAiDialog();
-  assert.equal(document.getElementById('wm-ai-model').value, 'gpt-6.1-sol');
+  assert.equal(document.getElementById('wm-ai-model').value, 'gpt-6.1-terra');
   assert.equal(document.getElementById('wm-ai-prompt').value, customPrompt);
 
   const pending = [];
@@ -397,18 +397,18 @@ test('model and prompt survive close/apply and are sent in every batch; controls
   assert.equal(fetchCalls.length, 2);
   assert.equal(document.getElementById('wm-ai-model').disabled, true);
   assert.equal(document.getElementById('wm-ai-prompt').disabled, true);
-  assert.ok(fetchCalls.every(({ body }) => body.model === 'gpt-6.1-sol' && body.prompt === customPrompt));
+  assert.ok(fetchCalls.every(({ body }) => body.model === 'gpt-6.1-terra' && body.prompt === customPrompt));
   await act(async () => { pending.forEach((resolve) => resolve()); });
   await settle();
   await click(button('Áp dụng tên', dialog()));
   await openAiDialog();
-  assert.equal(document.getElementById('wm-ai-model').value, 'gpt-6.1-sol');
+  assert.equal(document.getElementById('wm-ai-model').value, 'gpt-6.1-terra');
   assert.equal(document.getElementById('wm-ai-prompt').value, customPrompt);
 
-  await selectModel('gpt-6-astra');
+  await selectModel('gpt-6.2-sol');
   fetchQueue.push(ok([]), ok([]));
   await generate();
-  assert.ok(fetchCalls.slice(2).every(({ body }) => body.model === 'gpt-6-astra'));
+  assert.ok(fetchCalls.slice(2).every(({ body }) => body.model === 'gpt-6.2-sol'));
 });
 
 test('prompt autosaves across page remounts, including blank prompts and restoring the default', async () => {
@@ -458,17 +458,17 @@ test('unavailable local storage does not prevent editing or generating with a cu
 });
 
 test('only server-granted models appear; revoked selections refresh without losing prompt or suggestions', async () => {
-  let models = ['gpt-6.1-sol'];
+  let models = ['gpt-6.1-terra'];
   globalThis.__aiAccessRpc = () => ({ data: models, error: null });
   // Even a Free account may use the models the server grants it.
   await render(makeResults(1), { ...PRO_USER, profile: { ...PRO_USER.profile, plan: 'free' } });
   await openAiDialog();
   assert.deepEqual([...document.querySelectorAll('#wm-ai-model option')].map((option) => option.value), models);
-  assert.equal(document.getElementById('wm-ai-model').value, 'gpt-6.1-sol');
+  assert.equal(document.getElementById('wm-ai-model').value, 'gpt-6.1-terra');
   await type(document.getElementById('wm-ai-prompt'), 'Prompt giữ lại');
   fetchQueue.push(ok([{ imageId: 'res-1', suggestedName: 'ten-sol', needsReview: false }]));
   await generate();
-  assert.equal(fetchCalls[0].body.model, 'gpt-6.1-sol');
+  assert.equal(fetchCalls[0].body.model, 'gpt-6.1-terra');
 
   models = ['gpt-6-luna'];
   fetchQueue.push(respond(403, { error: { code: 'AI_NAMING_MODEL_DENIED' } }));
