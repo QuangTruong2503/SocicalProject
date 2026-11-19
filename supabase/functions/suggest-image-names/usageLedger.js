@@ -79,12 +79,12 @@ async function hmacSha256(keyBytes, message) {
  * AI_USAGE_FINGERPRINT_SECRET, or else derived from the OpenAI key (so rotating
  * that key only affects in-flight resends).
  */
-export async function computeFingerprint(getEnv, { productName, prompt, model, images }) {
+export async function computeFingerprint(getEnv, { productName, prompt, model, images, folders }) {
   const dedicated = getEnv('AI_USAGE_FINGERPRINT_SECRET');
   const keyBytes = dedicated
     ? encoder.encode(dedicated)
     : new Uint8Array(await hmacSha256(encoder.encode(getEnv('OPENAI_IMAGE_NAME_KEY') || ''), 'suggest-image-names/fingerprint/v1'));
-  const canonical = JSON.stringify({
+  const canonical = JSON.stringify(folders ? { kind: 'folders', folders, prompt, model } : {
     productName,
     prompt,
     // Keep old clients' fingerprints stable; a selected model changes the operation.

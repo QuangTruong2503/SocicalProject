@@ -14,6 +14,8 @@ import * as XLSX from 'xlsx';
 globalThis.FileReader = dom.window.FileReader;
 globalThis.localStorage = dom.window.localStorage;
 dom.window.matchMedia = () => ({ matches: false, addEventListener() {}, removeEventListener() {} });
+dom.window.HTMLDialogElement.prototype.showModal ??= function () { this.setAttribute('open', ''); };
+dom.window.HTMLDialogElement.prototype.close ??= function () { this.removeAttribute('open'); };
 const { default: WatermarkAuto } = await import('../src/pages/WatermarkAuto.jsx');
 const { AuthContext } = await import('../src/context/authContext.js');
 const { ThemeProvider } = await import('../src/context/ThemeContext.jsx');
@@ -58,6 +60,14 @@ async function select(element, value) {
   await settle();
 }
 
+async function edit(element, value) {
+  await act(async () => {
+    Object.getOwnPropertyDescriptor(Object.getPrototypeOf(element), 'value').set.call(element, value);
+    element.dispatchEvent(new dom.window.Event('input', { bubbles: true }));
+  });
+  await settle();
+}
+
 async function render() {
   root = createRoot(document.querySelector('#root'));
   await act(async () => {
@@ -79,6 +89,11 @@ const describe = (body) => ({
   failed: [],
 });
 
+const folderReply = (folders) => Response.json({
+  items: folders.map(({ id, name }) => ({ folderId: id, suggestedName: `Máy khoan ${name}`, issues: [] })),
+  failed: [],
+});
+
 test.beforeEach(() => {
   picks = [];
   fetchCalls = [];
@@ -89,6 +104,7 @@ test.beforeEach(() => {
   globalThis.__aiRpcCalls = [];
   globalThis.__aiRenameSession = undefined;
   globalThis.__watermarkCountRows = undefined;
+  globalThis.__folderNamingDrafts = new Map();
   localStorage.clear();
   dom.window.isSecureContext = true;
   dom.window.showDirectoryPicker = async () => {
@@ -173,6 +189,187 @@ test('folder Excel export → reorder and edit → import updates AI and Result 
   assert.equal(parent.file('Máy khoan đã sửa'), undefined);
   // Flush this run's delayed telemetry before the next test resets its mock log.
   await settle(1700);
+});
+
+test('folder AI stops after the first batch if the server only supports image naming', async () => {
+  globalThis.__aiRenameSession = { access_token: 'user-jwt', user: { id: USER.user.id } };
+  picks.push(makeTree('SanPham', Object.fromEntries(Array.from({ length: 12 }, (_, index) => [`Model ${index + 1}`, {}]))));
+  respond = async () => Response.json({ error: { code: 'invalid_request', message: 'Vui lòng nhập tên sản phẩm.' } }, { status: 400 });
+  await render();
+  await click(button('Chọn thư mục cha'));
+  await waitFor(() => document.querySelectorAll('.wma-product').length === 12, 'folders added');
+  await click(button('Đặt tên folder bằng AI'));
+  await click(button('Tra cứu và tạo tên'));
+  const dialog = document.querySelector('dialog[open]');
+  assert.match(dialog.querySelector('[role="alert"]').textContent, /cập nhật Edge Function suggest-image-names/);
+  assert.equal(fetchCalls.length, 1);
+  assert.equal(fetchCalls[0].body.kind, 'folders');
+  assert.equal(button('Tra cứu phần còn lại').disabled, false);
+});
+
+test('folder AI keeps the active batch through Escape, pauses after that batch and resumes only missing folders', async () => {
+  const parent = makeTree('SanPham', { A: {}, B: {}, C: {}, D: {}, E: {} });
+  picks.push(parent);
+  let completeFirst;
+  respond = ({ folders }) => fetchCalls.length === 1
+    ? new Promise((resolve) => { completeFirst = () => resolve(folderReply(folders)); })
+    : Promise.resolve(folderReply(folders));
+  await render();
+  await click(button('Chọn thư mục cha'));
+  await click(button('Đặt tên folder bằng AI'));
+  await click(button('Tra cứu và tạo tên'));
+  await waitFor(() => Boolean(completeFirst), 'first batch in flight');
+
+  const escape = new dom.window.Event('cancel', { bubbles: true, cancelable: true });
+  await act(async () => document.querySelector('dialog[open]').dispatchEvent(escape));
+  await waitFor(() => !document.querySelector('dialog[open]'), 'dialog minimized');
+  assert.equal(fetchCalls[0].signal.aborted, false);
+  assert.match(document.querySelector('.wma-folder-picker-draft').textContent, /Đang tra cứu/);
+  assert.equal(button('Xóa danh sách').disabled, true);
+  await click(button('Mở bản nháp đặt tên AI'));
+  await click(button('Tạm dừng sau lô này'));
+  assert.equal(fetchCalls[0].signal.aborted, false);
+  await act(async () => completeFirst());
+  await waitFor(() => button('Tra cứu phần còn lại') && !button('Tra cứu phần còn lại').disabled, 'lookup paused');
+  assert.equal(fetchCalls.length, 1);
+  assert.match(document.querySelector('dialog[open]').textContent, /4\/5 folder có kết quả/);
+
+  const firstName = () => document.querySelector('dialog[open] input[aria-label="Tên mới dòng 2"]');
+  await edit(firstName(), 'Máy khoan A do tôi sửa');
+  await click(document.querySelector('[aria-label="Đóng đặt tên folder"]'));
+  await click(button('Mở bản nháp đặt tên AI'));
+  assert.equal(firstName().value, 'Máy khoan A do tôi sửa');
+  assert.equal(fetchCalls.length, 1);
+  await click(button('Tra cứu phần còn lại'));
+  await waitFor(() => /5\/5 folder có kết quả/.test(document.querySelector('dialog[open]').textContent), 'lookup completed');
+  assert.deepEqual(fetchCalls[1].body.folders.map(({ name }) => name), ['E']);
+  assert.equal(firstName().value, 'Máy khoan A do tôi sửa');
+
+  await click(button('Tra cứu lại tất cả'));
+  assert.equal(fetchCalls.length, 2, 'regeneration asks before sending');
+  assert.match(document.querySelector('[aria-label="Xác nhận tra cứu lại"]').textContent, /phát sinh chi phí/);
+  await click(button('Giữ bản nháp'));
+  assert.equal(fetchCalls.length, 2);
+});
+
+test('folder AI restores completed work across reload and recovers the last batch with the original request ID', async () => {
+  const folders = { A: {}, B: {}, C: {}, D: {}, E: {}, F: {}, G: {}, H: {}, I: {} };
+  const parent = makeTree('SanPham', folders);
+  picks.push(parent);
+  let releaseLast;
+  respond = async ({ folders }, { signal }) => {
+    if (fetchCalls.length === 1) return folderReply(folders);
+    return new Promise((resolve) => {
+      releaseLast = () => resolve(folderReply(folders));
+      signal.addEventListener('abort', releaseLast, { once: true });
+    });
+  };
+  await render();
+  await click(button('Chọn thư mục cha'));
+  await click(button('Đặt tên folder bằng AI'));
+  await click(button('Tra cứu và tạo tên'));
+  await waitFor(() => Boolean(releaseLast), 'last batch in flight');
+  const previous = fetchCalls[1].body;
+  assert.equal(globalThis.__folderNamingDrafts.get(USER.user.id).suggestions.size, 4);
+
+  await act(async () => root.unmount());
+  picks.push(parent);
+  respond = async ({ folders }) => folderReply(folders);
+  await render();
+  await click(button('Chọn thư mục cha'));
+  await click(button('Đặt tên folder bằng AI'));
+  await waitFor(() => Boolean(button('Kiểm tra yêu cầu đã gửi')), 'saved request restored');
+  assert.equal(fetchCalls.length, 2, 'opening the restored draft does not send another request');
+  assert.match(document.querySelector('dialog[open]').textContent, /4\/9 folder có kết quả/);
+  await click(button('Kiểm tra yêu cầu đã gửi'));
+  await waitFor(() => /8\/9 folder có kết quả/.test(document.querySelector('dialog[open]').textContent), 'restored batch completed');
+  assert.deepEqual(fetchCalls[2].body, previous, 'recovery sends the same idempotent request and input IDs');
+  assert.equal(fetchCalls.length, 3, 'recovery does not send a new batch for the ninth folder');
+  assert.equal(button('Tra cứu phần còn lại').disabled, false);
+
+  const field = document.querySelector('dialog[open] input[aria-label="Tên mới dòng 2"]');
+  await edit(field, 'Máy khoan A do tôi sửa');
+  await act(async () => root.unmount());
+  picks.push(parent);
+  await render();
+  await click(button('Chọn thư mục cha'));
+  await click(button('Đặt tên folder bằng AI'));
+  assert.equal(document.querySelector('dialog[open] input[aria-label="Tên mới dòng 2"]').value, 'Máy khoan A do tôi sửa');
+  assert.equal(fetchCalls.length, 3);
+
+  await click(document.querySelector('[aria-label="Đóng đặt tên folder"]'));
+  await click(button('Xóa danh sách'));
+  picks.push(makeTree('SanPham', folders));
+  await click(button('Chọn thư mục cha'));
+  await click(button('Đặt tên folder bằng AI'));
+  assert.match(document.querySelector('dialog[open]').textContent, /0\/9 folder có kết quả/);
+  assert.equal(document.querySelector('dialog[open] input[aria-label="Tên mới dòng 2"]'), null);
+  assert.equal(fetchCalls.length, 3, 'separate folders with equal names do not receive the saved draft');
+});
+
+test('folder AI generates editable Excel names, remembers its own prompt and asks about labels and model suffixes', async () => {
+  globalThis.__aiRenameSession = { access_token: 'user-jwt', user: { id: USER.user.id } };
+  const parent = makeTree('SanPham', { 'Bosch GSK 190 mới': imagesSpec(1), 'Kingtony 883524M1': imagesSpec(1), 'Chưa rõ': {} });
+  picks.push(parent);
+  respond = async ({ folders }) => Response.json({
+    items: folders.map(({ id, name }) => name.startsWith('Bosch')
+      ? { folderId: id, suggestedName: 'Máy cưa đĩa Bosch GKS 190', issues: ['corrected_model'], note: 'GSK 190 → GKS 190', sourceUrls: ['https://bosch.example/gks-190'] }
+      : name.startsWith('Kingtony')
+        ? { folderId: id, suggestedName: 'Đầu tuýp Kingtony 883524M', issues: ['unusual_suffix'] }
+        : { folderId: id, suggestedName: '', issues: ['not_found'] }).reverse(),
+    failed: [],
+  });
+  await render();
+  await click(button('Chọn thư mục cha'));
+  await waitFor(() => document.querySelectorAll('.wma-product').length === 3, 'folders added');
+  await click(button('Đặt tên folder bằng AI'));
+  const dialog = () => document.querySelector('dialog[open]');
+  assert.ok(dialog());
+  const prompt = () => dialog().querySelector('[aria-label="Prompt đặt tên folder"]');
+  assert.match(prompt().value, /40 ký tự/);
+  await click(dialog().querySelector('summary'));
+  await edit(prompt(), 'Prompt SEO đã tùy chỉnh');
+  await click(dialog().querySelector('[aria-label="Đóng đặt tên folder"]'));
+  await click(button('Đặt tên folder bằng AI'));
+  assert.equal(prompt().value, 'Prompt SEO đã tùy chỉnh');
+  await click(button('Tra cứu và tạo tên'));
+  await waitFor(() => dialog().textContent.includes('3/3'), 'search resolved');
+  assert.equal(fetchCalls[0].body.prompt, 'Prompt SEO đã tùy chỉnh');
+  assert.equal(fetchCalls[0].body.kind, 'folders');
+  assert.ok(fetchCalls[0].body.folders.every((folder) => Object.keys(folder).sort().join() === 'id,name'));
+  assert.ok(dialog().querySelector('a[href="https://bosch.example/gks-190"]'));
+  for (const message of ['Cần kiểm tra', 'GSK 190 → GKS 190', 'Không tìm thấy']) assert.ok(dialog().textContent.includes(message));
+  assert.equal(button('Áp dụng tên folder').disabled, true);
+  const label = dialog().querySelector('[aria-label^="Nhãn tên cũ dòng"]');
+  await select(label, 'remove');
+  await select(dialog().querySelector('[aria-label^="Hậu tố mã dòng"]'), 'suggested');
+  const firstName = label.closest('td').querySelector('input');
+  await edit(firstName, 'a'.repeat(41));
+  assert.equal(button('Xuất Excel với tên AI').disabled, true);
+  await edit(firstName, 'Máy cưa Bosch GKS 190');
+
+  let downloaded;
+  const originalCreate = URL.createObjectURL;
+  const originalClick = dom.window.HTMLAnchorElement.prototype.click;
+  URL.createObjectURL = (blob) => { downloaded = blob; return 'blob:ai-folder-excel'; };
+  dom.window.HTMLAnchorElement.prototype.click = () => {};
+  try {
+    await click(button('Xuất Excel với tên AI'));
+    await waitFor(() => Boolean(downloaded), 'AI workbook exported');
+  } finally {
+    URL.createObjectURL = originalCreate;
+    dom.window.HTMLAnchorElement.prototype.click = originalClick;
+  }
+  const workbook = XLSX.read(await downloaded.arrayBuffer(), { type: 'array' });
+  const cells = XLSX.utils.sheet_to_json(workbook.Sheets['Ten folder san pham'], { header: 1 });
+  assert.deepEqual(Object.fromEntries(cells.slice(1).map((row) => row.slice(2))), {
+    'Bosch GSK 190 mới': 'Máy cưa Bosch GKS 190', 'Kingtony 883524M1': 'Đầu tuýp Kingtony 883524M', 'Chưa rõ': 'Chưa rõ',
+  });
+  await click(button('Áp dụng tên folder'));
+  assert.equal(dialog(), null);
+  assert.deepEqual(new Set([...document.querySelectorAll('.wma-product-title label')].map((label) => label.textContent)), new Set(['Máy cưa Bosch GKS 190', 'Đầu tuýp Kingtony 883524M', 'Chưa rõ']));
+  assert.ok(parent.file('Bosch GSK 190 mới'));
+  assert.equal(parent.file('Máy cưa Bosch GKS 190'), undefined);
 });
 
 test('parent folder → AI names per folder → files in Result/product, with summary and report', async () => {

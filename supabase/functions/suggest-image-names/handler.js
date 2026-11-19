@@ -2,6 +2,7 @@
  * POST /functions/v1/suggest-image-names
  *
  * Body: { productName, prompt?, model?, images: [{ id, position, dataUrl }], requestId?, aiRunId? }  (≤ 6 images)
+ *       or { kind: 'folders', folders: [{ id, name }], prompt?, model?, requestId?, aiRunId? }
  *       requestId: UUID of this batch operation; a resend after a network error
  *       reuses it and never triggers a second provider call. aiRunId groups the
  *       batches of one click. Both optional (older clients).
@@ -44,6 +45,13 @@ import {
   resolveServiceCredentials,
   writeWithRetry,
 } from './usageLedger.js';
+import {
+  DEFAULT_FOLDER_NAME_PROMPT,
+  FOLDER_NAME_LIMITS,
+  buildFolderNameRequest,
+  matchFolderSuggestions,
+  parseFolderNameOutput,
+} from './folderNaming.js';
 
 const DATA_URL_PATTERN = /^data:image\/(?:jpeg|png|webp);base64,[A-Za-z0-9+/]+={0,2}$/;
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -225,19 +233,13 @@ export function validatePayload(body) {
   if (model && !IMAGE_NAME_MODELS.some((option) => option.id === model)) {
     throw invalid('Model không được hỗ trợ. Vui lòng chọn model trong danh sách.');
   }
-
-  const productName = typeof body.productName === 'string'
-    ? stripControlChars(body.productName, ' ').replace(/\s+/g, ' ').trim()
-    : '';
-  if (!productName) throw invalid('Vui lòng nhập tên sản phẩm.');
-  if (productName.length > IMAGE_NAME_LIMITS.maxProductNameLength) {
-    throw invalid(`Tên sản phẩm tối đa ${IMAGE_NAME_LIMITS.maxProductNameLength} ký tự.`);
-  }
-  if (!slugifyFileName(productName)) throw invalid('Tên sản phẩm cần có ít nhất một chữ cái hoặc chữ số.');
+  if (body.kind != null && body.kind !== 'folders') throw invalid();
+  const folderMode = body.kind === 'folders';
 
   if (body.prompt != null && typeof body.prompt !== 'string') throw invalid();
   // Prompts keep line breaks and tabs; other control characters are dropped.
-  const prompt = stripControlChars(body.prompt || '', '', '\n\r\t').trim() || DEFAULT_IMAGE_NAME_PROMPT;
+  const prompt = stripControlChars(body.prompt || '', '', '\n\r\t').trim()
+    || (folderMode ? DEFAULT_FOLDER_NAME_PROMPT : DEFAULT_IMAGE_NAME_PROMPT);
   if (prompt.length > IMAGE_NAME_LIMITS.maxPromptLength) {
     throw invalid(`Prompt tối đa ${IMAGE_NAME_LIMITS.maxPromptLength} ký tự.`);
   }
@@ -249,13 +251,40 @@ export function validatePayload(body) {
   };
   const requestId = optionalUuid(body.requestId);
   const aiRunId = optionalUuid(body.aiRunId);
+  const seen = new Set();
+
+  if (folderMode) {
+    if (body.images != null || !Array.isArray(body.folders) || !body.folders.length
+      || body.folders.length > FOLDER_NAME_LIMITS.maxFoldersPerRequest) {
+      throw invalid(`Mỗi yêu cầu cần từ 1 đến ${FOLDER_NAME_LIMITS.maxFoldersPerRequest} tên folder.`);
+    }
+    const folders = body.folders.map((folder) => {
+      const { id, name } = folder ?? {};
+      if (typeof id !== 'string' || !IMAGE_ID_PATTERN.test(id) || seen.has(id)) throw invalid('ID folder không hợp lệ hoặc bị trùng.');
+      if (typeof name !== 'string' || name.length > FOLDER_NAME_LIMITS.maxSourceNameLength || !name.trim()) {
+        throw invalid(`Tên folder hiện tại cần từ 1 đến ${FOLDER_NAME_LIMITS.maxSourceNameLength} ký tự.`);
+      }
+      seen.add(id);
+      return { id, name: stripControlChars(name, ' ').normalize('NFC').trim() };
+    });
+    if (folders.some(({ name }) => !name)) throw invalid('Tên folder hiện tại không được bỏ trống.');
+    return { folders, prompt, model, requestId, aiRunId };
+  }
+
+  const productName = typeof body.productName === 'string'
+    ? stripControlChars(body.productName, ' ').replace(/\s+/g, ' ').trim()
+    : '';
+  if (!productName) throw invalid('Vui lòng nhập tên sản phẩm.');
+  if (productName.length > IMAGE_NAME_LIMITS.maxProductNameLength) {
+    throw invalid(`Tên sản phẩm tối đa ${IMAGE_NAME_LIMITS.maxProductNameLength} ký tự.`);
+  }
+  if (!slugifyFileName(productName)) throw invalid('Tên sản phẩm cần có ít nhất một chữ cái hoặc chữ số.');
 
   if (!Array.isArray(body.images) || body.images.length === 0) throw invalid('Chưa có ảnh nào để phân tích.');
   if (body.images.length > IMAGE_NAME_LIMITS.maxImagesPerRequest) {
     throw invalid(`Mỗi yêu cầu tối đa ${IMAGE_NAME_LIMITS.maxImagesPerRequest} ảnh.`);
   }
 
-  const seen = new Set();
   const images = body.images.map((image) => {
     if (!image || typeof image !== 'object') throw invalid();
     const { id, position, dataUrl } = image;
@@ -273,14 +302,15 @@ export function validatePayload(body) {
 }
 
 /** A refusal decided by ai_usage_begin (already recorded there). */
-function ledgerRefusal(decision) {
+function ledgerRefusal(decision, folderMode) {
   const extra = {};
   if (decision.retry_after_seconds) extra.retryAfterSeconds = decision.retry_after_seconds;
   let message;
   if (decision.code === 'AI_QUOTA_EXCEEDED' && decision.quota) {
     const scope = decision.quota.scope === 'monthly' ? 'tháng' : 'ngày';
     extra.quota = { scope: decision.quota.scope, limit: decision.quota.limit, used: decision.quota.used };
-    message = `Bạn đã dùng hết hạn mức ${decision.quota.limit} ảnh đặt tên bằng AI trong ${scope} này.`;
+    const unit = folderMode ? 'mục' : 'ảnh';
+    message = `Bạn đã dùng hết hạn mức ${decision.quota.limit} ${unit} đặt tên bằng AI trong ${scope} này.`;
   }
   return new RequestError(decision.code, decision.http_status || 409, message, extra);
 }
@@ -382,13 +412,16 @@ export function createSuggestImageNamesHandler({
         throw new RequestError('invalid_request', 400);
       }
       const payload = validatePayload(body);
+      const folderMode = Boolean(payload.folders);
+      const requestedIds = (payload.folders ?? payload.images).map(({ id }) => id);
       model = payload.model || model;
       context = {
         ...context,
         requested_model: model,
         client_request_id: payload.requestId,
         ai_run_id: payload.aiRunId,
-        images_requested: payload.images.length,
+        // The existing naming quota counts one unit per image or folder.
+        images_requested: requestedIds.length,
       };
       if (!access.models.includes(model)) throw new RequestError('AI_NAMING_MODEL_DENIED', 403);
 
@@ -413,7 +446,7 @@ export function createSuggestImageNamesHandler({
       if (decision?.decision !== 'accepted' || typeof decision.request_id !== 'string') {
         context = null; // already recorded by ai_usage_begin
         if (!decision?.code) throw new RequestError('usage_tracking_unavailable', 503);
-        const refusal = ledgerRefusal(decision);
+        const refusal = ledgerRefusal(decision, folderMode);
         return errorResponse(refusal, cors, decision.request_id);
       }
 
@@ -424,7 +457,6 @@ export function createSuggestImageNamesHandler({
       if (['gpt-6.1-sol', 'gpt-6-astra'].includes(model) && ['none', 'minimal'].includes(reasoningEffort)) {
         reasoningEffort = 'low';
       }
-      const requestedIds = payload.images.map((image) => image.id);
 
       // Each attempt is recorded as it happens; a failed write is logged and
       // never causes another provider call.
@@ -449,17 +481,20 @@ export function createSuggestImageNamesHandler({
         let modelItems = null;
         let outputError = null;
         try {
-          const data = await callOpenAI(
-            buildOpenAIRequest({
+          const providerRequest = folderMode
+            ? buildFolderNameRequest({ model, reasoningEffort, prompt: payload.prompt, folders: payload.folders })
+            : buildOpenAIRequest({
               model,
               reasoningEffort,
               productName: payload.productName,
               userPrompt: renderPromptTemplate(payload.prompt, payload.productName),
               images: payload.images,
-            }),
+            });
+          const data = await callOpenAI(
+            providerRequest,
             { apiKey, fetchImpl, sleep, random, logger, now, onAttemptStart, onAttemptEnd, ...(openAITimeoutMs ? { timeoutMs: openAITimeoutMs } : {}) },
           );
-          modelItems = parseOpenAIOutput(data);
+          modelItems = folderMode ? parseFolderNameOutput(data) : parseOpenAIOutput(data);
         } catch (error) {
           if (error instanceof UpstreamError && OUTPUT_ERROR_CODES.has(error.code)) {
             logger.warn('[suggest-image-names] unusable model output', { code: error.code });
@@ -482,7 +517,16 @@ export function createSuggestImageNamesHandler({
           let failed;
           if (outputError) {
             // HTTP 200, but nothing usable: a business failure, not a success.
-            failed = requestedIds.map((imageId) => ({ imageId, code: outputError }));
+            const idKey = folderMode ? 'folderId' : 'imageId';
+            failed = requestedIds.map((id) => ({ [idKey]: id, code: outputError }));
+          } else if (folderMode) {
+            const matched = matchFolderSuggestions(payload.folders, modelItems);
+            failed = [];
+            for (const folderId of requestedIds) {
+              const item = matched.get(folderId);
+              if (item) items.push(item);
+              else failed.push({ folderId, code: 'missing' });
+            }
           } else {
             const { matched, missingIds, unknownCount, duplicateCount } = matchItemsById(requestedIds, modelItems);
             if (unknownCount || duplicateCount || missingIds.length) {
@@ -511,7 +555,7 @@ export function createSuggestImageNamesHandler({
             counts: {
               images_succeeded: items.length,
               images_failed: failed.length,
-              needs_review_count: items.filter((item) => item.needsReview).length,
+              needs_review_count: items.filter((item) => folderMode ? item.issues.length : item.needsReview).length,
             },
           };
         }

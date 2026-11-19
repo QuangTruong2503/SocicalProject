@@ -99,8 +99,10 @@ export default function ProductFolderPicker({
   supported,
   excelBusy,
   excelError,
+  namingStatus,
   onExportFolderNames,
   onImportFolderNames,
+  onSuggestFolderNames,
   onAddProduct,
   onDropFolders,
   onAddParent,
@@ -121,7 +123,8 @@ export default function ProductFolderPicker({
   const missingPermission = eligible.filter((product) => product.permission !== 'granted');
   const bulkPermission = missingPermission.length > 1;
   const allSelected = eligible.length > 0 && eligible.every((product) => product.selected);
-  const listLocked = locked || picking || granting;
+  const namingDisabled = locked || picking || granting;
+  const listLocked = namingDisabled || Boolean(namingStatus?.busy);
   const pickDisabled = !supported || listLocked;
 
   return (
@@ -183,6 +186,9 @@ export default function ProductFolderPicker({
       {products.length > 0 && (
         <div className="wma-folder-excel" aria-busy={excelBusy}>
           <div className="wma-picker-actions">
+            <button type="button" className="wm-btn-primary" disabled={namingDisabled} onClick={onSuggestFolderNames}>
+              {namingStatus?.busy || namingStatus?.hasDraft ? 'Mở bản nháp đặt tên AI' : 'Đặt tên folder bằng AI'}
+            </button>
             <button type="button" className="wm-btn-outline" disabled={listLocked} onClick={onExportFolderNames}>Xuất Excel tên folder</button>
             <button type="button" className="wm-btn-outline" disabled={listLocked} onClick={() => excelInput.current?.click()}>Nhập Excel tên folder</button>
             <input ref={excelInput} type="file" accept=".xlsx,.xls" hidden aria-label="File Excel tên folder" onChange={(event) => {
@@ -191,6 +197,10 @@ export default function ProductFolderPicker({
               if (file && !listLocked) onImportFolderNames(file);
             }} />
           </div>
+          {namingStatus?.hasDraft && <p className="wma-hint wma-folder-picker-draft" role="status">
+            {namingStatus.busy === 'lookup' ? 'Đang tra cứu · ' : namingStatus.paused ? 'Đã tạm dừng · ' : 'Bản nháp AI · '}
+            {namingStatus.completed}/{namingStatus.total} folder có kết quả
+          </p>}
           <p className="wma-hint">Xuất toàn bộ danh sách, sửa cột “Tên folder mới” rồi nhập lại trong phiên này. Giữ nguyên “ID folder”; có thể sắp xếp lại hoặc bỏ các dòng không cần đổi.</p>
           <p className="wma-hint">Tên mới dùng cho sản phẩm gửi AI và folder trong Result. Folder nguồn giữ nguyên. Đổi tên sẽ kết thúc lượt cũ; bấm “Bắt đầu xử lý” để chạy theo tên mới, các file đã lưu được giữ lại.</p>
           {excelBusy && <p className="wma-hint" role="status">Đang xử lý Excel…</p>}

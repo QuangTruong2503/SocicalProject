@@ -100,6 +100,45 @@ const validBody = (overrides = {}) => ({
   ...overrides,
 });
 
+test('folder naming requires web search, validates names and sources, and reports corrections by folder ID', async () => {
+  const source = 'https://www.bosch-professional.com/vn/vi/gks-190';
+  const answer = openAIResponse([
+    { folderId: 'f2', suggestedName: 'Tên do AI tự nghĩ', issues: ['not_found'], note: '', sourceUrls: [] },
+    { folderId: 'f1', suggestedName: 'Máy cưa đĩa Bosch GKS 190', issues: ['corrected_model'], note: 'GSK 190 → GKS 190', sourceUrls: [source] },
+    { folderId: 'f3', suggestedName: 'Tên không/hợp lệ', issues: [], note: '', sourceUrls: ['https://invented.example/product'] },
+  ]);
+  answer.output.unshift({ type: 'web_search_call', status: 'completed', action: { type: 'search', sources: [{ url: source }] } });
+  const { handler, calls } = setup({ openai: [answer] });
+  const payload = {
+    kind: 'folders', model: 'gpt-6-luna', prompt: 'Quy tắc riêng',
+    folders: [{ id: 'f1', name: 'Bosch GSK 190', path: 'Đường dẫn riêng tư' }, { id: 'f2', name: 'Không rõ' }, { id: 'f3', name: 'Model 3' }],
+  };
+  const response = await handler(post(payload));
+  assert.equal(response.status, 200);
+  const data = await response.json();
+  assert.deepEqual(data.failed, []);
+  assert.deepEqual(data.items.map(({ folderId, suggestedName, issues }) => [folderId, suggestedName, issues]), [
+    ['f1', 'Máy cưa đĩa Bosch GKS 190', ['corrected_model']], ['f2', '', ['not_found']], ['f3', '', ['unverified', 'invalid_name']],
+  ]);
+  assert.deepEqual(data.items[0].sourceUrls, [source]);
+  assert.deepEqual(data.items[2].sourceUrls, []);
+  assert.equal(calls.ledger.begins[0].images_requested, 3);
+  const request = calls.openai[0].body;
+  assert.deepEqual(request.tools, [{ type: 'web_search' }]);
+  assert.equal(request.tool_choice, 'required');
+  assert.equal(request.input[0].content[0].text, 'Quy tắc riêng');
+  assert.doesNotMatch(request.input[0].content[1].text, /Đường dẫn riêng tư/);
+});
+
+test('folder naming refuses duplicate input IDs and refuses to present model output without a completed search', async () => {
+  const folders = [{ id: 'f1', name: 'Bosch GSK 190' }];
+  const { handler, calls } = setup({ openai: [openAIResponse([{ folderId: 'f1', suggestedName: 'Tên chưa tra cứu', issues: [] }])] });
+  assert.equal((await handler(post({ kind: 'folders', folders: [...folders, ...folders] }))).status, 400);
+  assert.equal(calls.openai.length, 0);
+  const response = await handler(post({ kind: 'folders', folders }));
+  assert.deepEqual((await response.json()).failed, [{ folderId: 'f1', code: 'upstream_invalid_output' }]);
+});
+
 test('CORS preflight and method guard', async () => {
   const { handler } = setup();
   const preflight = await handler(new Request('https://fn.example', { method: 'OPTIONS' }));

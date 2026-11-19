@@ -1,14 +1,27 @@
 import * as XLSX from 'xlsx';
 import { saveAs } from './fileSaver.js';
 import { getOutputFolderName } from './watermarkAutoFolderNames.js';
+import { getAiFolderNameError, normalizeFolderName } from '../../supabase/functions/suggest-image-names/folderNaming.js';
 
 export const FOLDER_EXCEL_HEADERS = ['ID folder', 'Đường dẫn nguồn', 'Tên folder hiện tại', 'Tên folder mới'];
 const SHEET_NAME = 'Ten folder san pham';
 
-export function createFolderNameWorkbook(products) {
+export function createFolderNameWorkbook(products, aiNamesById) {
   if (!products.length) throw new Error('Chưa có thư mục sản phẩm để xuất Excel.');
-  const rows = products.map((product) => [product.excelId, product.relativePath, getOutputFolderName(product), getOutputFolderName(product)]);
+  const rows = products.map((product) => {
+    const currentName = getOutputFolderName(product);
+    const newName = aiNamesById ? normalizeFolderName(aiNamesById.get(product.excelId)) : currentName;
+    return [product.excelId, product.relativePath, currentName, newName];
+  });
   const sheet = XLSX.utils.aoa_to_sheet([FOLDER_EXCEL_HEADERS, ...rows]);
+  if (aiNamesById) {
+    rows.forEach((_, index) => {
+      const rowNumber = index + 2;
+      const cell = sheet[`D${rowNumber}`];
+      const error = getAiFolderNameError(cell?.v);
+      if (error || cell?.t !== 's') throw new Error(`Dòng ${rowNumber}: ${error || 'Tên folder phải là văn bản.'}`);
+    });
+  }
   sheet['!cols'] = [{ wch: 40 }, { wch: 60 }, { wch: 45 }, { wch: 45 }];
   sheet['!autofilter'] = { ref: sheet['!ref'] };
   const workbook = XLSX.utils.book_new();
@@ -16,8 +29,8 @@ export function createFolderNameWorkbook(products) {
   return workbook;
 }
 
-export function exportFolderNamesToExcel(products) {
-  const data = XLSX.write(createFolderNameWorkbook(products), { type: 'array', bookType: 'xlsx' });
+export function exportFolderNamesToExcel(products, aiNamesById) {
+  const data = XLSX.write(createFolderNameWorkbook(products, aiNamesById), { type: 'array', bookType: 'xlsx' });
   saveAs(new Blob([data], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }), 'Watermark-ten-folder-san-pham.xlsx');
 }
 

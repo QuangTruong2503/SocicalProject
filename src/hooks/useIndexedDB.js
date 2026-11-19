@@ -141,3 +141,11 @@ export function loadWatermarkOptions() {
 export function clearWatermarkOptions() {
   return clearAsset('watermark-options');
 }
+
+export function saveFolderNamingDraft(userId, draft) {
+  return saveValue(`folder-naming:${userId}`, draft);
+}
+
+export function loadFolderNamingDraft(userId) {
+  return loadValue(`folder-naming:${userId}`);
+}

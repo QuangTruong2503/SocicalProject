@@ -3,6 +3,7 @@ import { IMAGE_NAME_MODELS } from '../../supabase/functions/suggest-image-names/
 
 const FUNCTION_NAME = 'suggest-image-names';
 const REQUEST_TIMEOUT_MS = 150_000;
+const FOLDER_BACKEND_OUTDATED = 'folder_backend_outdated';
 /** One automatic resend after a network failure, with the same requestId (the server dedupes it). */
 export const NETWORK_RESEND_DELAY_MS = 800;
 
@@ -47,6 +48,7 @@ export const FATAL_IMAGE_NAME_ERRORS = new Set([
   'AUTH_REQUIRED', 'AI_NAMING_ACCESS_DENIED', 'AI_NAMING_MODEL_DENIED', 'ACCESS_CHECK_FAILED', 'not_configured', 'not_deployed', 'network',
   'rate_limited', 'upstream_quota', 'upstream_auth', 'upstream_rejected',
   'usage_tracking_unavailable', 'AI_USAGE_PAUSED', 'AI_QUOTA_EXCEEDED',
+  FOLDER_BACKEND_OUTDATED,
 ]);
 
 export function describeImageNameError(code, serverMessage, retryAfterSeconds) {
@@ -76,10 +78,26 @@ const waitUnlessAborted = (ms, signal) => new Promise((resolve) => {
  *   signal?: AbortSignal, requestId?: string, aiRunId?: string }} input
  * @returns {Promise<{ data: { items: unknown[], failed: unknown[] } | null, error: string | null, code: string | null, requestId?: string, retryAfterSeconds?: number }>}
  */
-export async function requestImageNameSuggestions({ productName, prompt, model, images, signal, requestId = newOperationId(), aiRunId }) {
+export function requestImageNameSuggestions({ productName, prompt, model, images, signal, requestId, aiRunId }) {
+  return requestNamingSuggestions({ productName, prompt, model, images }, { signal, requestId, aiRunId });
+}
+
+export function requestFolderNameSuggestions({ folders, prompt, model, signal, requestId, aiRunId }) {
+  return requestNamingSuggestions({ kind: 'folders', folders, prompt, model }, { signal, requestId, aiRunId });
+}
+
+async function requestNamingSuggestions(input, { signal, requestId = newOperationId(), aiRunId }) {
   // retryAfterSeconds is passed on for callers that wait before sending again (e.g. /watermark/auto).
+  const folderErrorMessages = {
+    timeout: 'Máy chủ phản hồi quá lâu. Hãy thử lại các folder chưa có kết quả.',
+    upstream_timeout: 'AI tra cứu quá lâu. Hãy thử lại các folder chưa có kết quả.',
+    usage_tracking_unavailable: 'Máy chủ chưa ghi nhận được lượt sử dụng. Hãy thử lại sau ít phút.',
+    AI_USAGE_PAUSED: 'Đặt tên folder bằng AI đang tạm dừng. Bạn vẫn có thể đổi tên bằng Excel.',
+    [FOLDER_BACKEND_OUTDATED]: 'Dịch vụ AI đang chạy bản chỉ hỗ trợ đặt tên ảnh. Hãy cập nhật Edge Function suggest-image-names để tra cứu tên folder.',
+  };
   const fail = (code, serverMessage, retryAfterSeconds) => ({
-    data: null, code, error: describeImageNameError(code, serverMessage, retryAfterSeconds),
+    data: null, code, error: (input.kind === 'folders' && folderErrorMessages[code])
+      || describeImageNameError(code, serverMessage, retryAfterSeconds),
     ...(retryAfterSeconds ? { retryAfterSeconds } : {}),
   });
 
@@ -101,7 +119,7 @@ export async function requestImageNameSuggestions({ productName, prompt, model, 
       apikey: supabaseConfig.publishableKey || '',
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify({ productName, prompt, ...(model ? { model } : {}), images, requestId, ...(aiRunId ? { aiRunId } : {}) }),
+    body: JSON.stringify({ ...input, requestId, ...(aiRunId ? { aiRunId } : {}) }),
     signal: controller.signal,
   });
 
@@ -126,6 +144,10 @@ export async function requestImageNameSuggestions({ productName, prompt, model, 
 
     if (!response.ok) {
       if (response.status === 404 && !body?.error?.code) return fail('not_deployed');
+      if (input.kind === 'folders' && response.status === 400 && body?.error?.code === 'invalid_request'
+        && body.error.message === 'Vui lòng nhập tên sản phẩm.') {
+        return fail(FOLDER_BACKEND_OUTDATED);
+      }
       const retryAfter = Number(body?.error?.retryAfterSeconds || response.headers.get('retry-after')) || undefined;
       // The Supabase gateway answers an invalid JWT with 401 and no `error.code`.
       const fallbackCode = { 401: AI_NAMING_ERRORS.authRequired, 403: AI_NAMING_ERRORS.accessDenied }[response.status] || 'server_error';

@@ -7,6 +7,7 @@ import WatermarkControls from '../components/watermark/WatermarkControls';
 import WatermarkLivePreview from '../components/watermark/WatermarkLivePreview';
 import ImageLightbox from '../components/watermark/ImageLightbox';
 import ProductFolderPicker from '../components/watermark/auto/ProductFolderPicker.jsx';
+import FolderNamingDialog from '../components/watermark/auto/FolderNamingDialog.jsx';
 import AutoProcessingProgress from '../components/watermark/auto/AutoProcessingProgress.jsx';
 import { useAuth } from '../hooks/useAuth.js';
 import { useAiNamingAccess } from '../hooks/useAiNamingAccess.js';
@@ -110,8 +111,13 @@ export default function WatermarkAuto() {
   const [starting, setStarting] = useState(false);
   const [folderExcelBusy, setFolderExcelBusy] = useState(false);
   const [folderExcelMessage, setFolderExcelMessage] = useState(null);
+  const [folderNamingOpen, setFolderNamingOpen] = useState(false);
+  const [folderNamingStatus, setFolderNamingStatus] = useState(null);
+  const folderNamingTrigger = useRef(null);
   const [visitorId] = useState(() => getOrCreateWatermarkVisitorId());
   const userId = user?.id ?? null;
+  const namingStatus = folderNamingStatus?.userId === userId ? folderNamingStatus : null;
+  const folderNamingBusy = Boolean(namingStatus?.busy);
   // Fixed when a run starts, so its events stay with that account.
   const runContextRef = useRef(null);
 
@@ -285,7 +291,8 @@ export default function WatermarkAuto() {
   else if (!selectedModel) blockers.push('Chưa có model AI được cấp quyền.');
   if (prompt.length > IMAGE_NAME_LIMITS.maxPromptLength) blockers.push(`Prompt tối đa ${IMAGE_NAME_LIMITS.maxPromptLength} ký tự.`);
   if (!engine || !optionsHydrated) blockers.push('Đang chuẩn bị bộ xử lý ảnh…');
-  const canStart = blockers.length === 0 && !locked && !picking && !granting && !starting && !folderExcelBusy;
+  if (folderNamingBusy && !folderNamingOpen) blockers.push('Đang xử lý bản nháp tên folder. Mở hộp thoại để xem tiến độ hoặc tạm dừng.');
+  const canStart = blockers.length === 0 && !locked && !picking && !granting && !starting && !folderExcelBusy && !folderNamingOpen;
 
   const handleExportFolderNames = async () => {
     setFolderExcelBusy(true);
@@ -300,15 +307,18 @@ export default function WatermarkAuto() {
     }
   };
 
+  const applyFolderNames = (rows) => {
+    const result = runner.applyFolderNames(rows);
+    if (!result.changed) toast.info('Tên folder không có thay đổi.');
+    setStartError(null);
+  };
+
   const handleImportFolderNames = async (file) => {
     setFolderExcelBusy(true);
     setFolderExcelMessage(null);
     try {
       const { parseFolderNameFile } = await import('../utils/watermarkAutoFolderExcel.js');
-      const rows = await parseFolderNameFile(file);
-      const result = runner.applyFolderNames(rows);
-      if (!result.changed) toast.info('Tên folder trong Excel không có thay đổi.');
-      setStartError(null);
+      applyFolderNames(await parseFolderNameFile(file));
     } catch (error) {
       setFolderExcelMessage(error.message || 'Không thể nhập Excel. Hãy kiểm tra file và thử lại.');
     } finally {
@@ -412,11 +422,17 @@ export default function WatermarkAuto() {
               notices={notices}
               picking={picking}
               granting={granting}
-              locked={locked || starting || folderExcelBusy}
+              locked={locked || starting || folderExcelBusy || folderNamingOpen}
               excelBusy={folderExcelBusy}
               excelError={folderExcelMessage}
+              namingStatus={namingStatus}
               onExportFolderNames={handleExportFolderNames}
               onImportFolderNames={handleImportFolderNames}
+              onSuggestFolderNames={(event) => {
+                folderNamingTrigger.current = event.currentTarget;
+                setFolderExcelMessage(null);
+                setFolderNamingOpen(true);
+              }}
               supported={support.supported}
               onAddProduct={() => runner.addProductFolder()}
               onDropFolders={(dataTransfer) => runner.addDroppedFolders(dataTransfer)}
@@ -557,7 +573,7 @@ export default function WatermarkAuto() {
 
             <AutoProcessingProgress
               run={run}
-              busy={picking || granting || folderExcelBusy}
+              busy={picking || granting || folderExcelBusy || folderNamingOpen || folderNamingBusy}
               runProducts={runProducts}
               canStart={canStart}
               blockers={blockers}
@@ -574,6 +590,22 @@ export default function WatermarkAuto() {
             {startError && <p className="wma-row-error wma-start-error" role="alert">{startError}</p>}
           </div>
         </div>
+        <FolderNamingDialog
+          key={userId ?? 'anonymous'}
+          open={folderNamingOpen}
+          userId={userId}
+          products={products}
+          models={availableModels}
+          model={selectedModel}
+          accessMessage={accessCopy?.message}
+          onStatusChange={setFolderNamingStatus}
+          onAccessRejected={aiAccess.reportRejection}
+          onApply={applyFolderNames}
+          onClose={() => {
+            setFolderNamingOpen(false);
+            window.requestAnimationFrame(() => folderNamingTrigger.current?.focus());
+          }}
+        />
       </div>
 
       {zoomLogo && <ImageLightbox items={[zoomLogo]} initialIndex={0} onClose={() => setZoomLogo(null)} />}

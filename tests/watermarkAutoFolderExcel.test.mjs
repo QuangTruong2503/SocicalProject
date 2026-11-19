@@ -34,6 +34,23 @@ test('Excel roundtrip preserves unique text IDs, source paths, current names and
   assert.throws(() => createFolderNameWorkbook([]), /Chưa có/);
 });
 
+test('AI Excel roundtrip writes only column D and rejects any blank, unsafe or overlong value', async () => {
+  const names = new Map(products.map(({ excelId }, index) => [excelId, ['Tên mới', 'a'.repeat(40), '=123'][index]]));
+  const workbook = createFolderNameWorkbook(products, names);
+  assert.deepEqual(workbook.SheetNames, ['Ten folder san pham']);
+  const serialized = XLSX.read(await fileFrom(workbook).arrayBuffer(), { type: 'array' });
+  const sheet = serialized.Sheets[serialized.SheetNames[0]];
+  const rows = XLSX.utils.sheet_to_json(sheet, { header: 1 });
+  const original = XLSX.utils.sheet_to_json(createFolderNameWorkbook(products).Sheets['Ten folder san pham'], { header: 1 });
+  assert.deepEqual(rows.map((row) => row.slice(0, 3)), original.map((row) => row.slice(0, 3)));
+  assert.deepEqual(rows.slice(1).map((row) => row[3]), [...names.values()]);
+  assert.equal(sheet.D4.f, undefined);
+  for (const badName of ['', 'a'.repeat(41), 'a/b', 'COM¹.txt']) {
+    const bad = new Map(names).set(products[0].excelId, badName);
+    assert.throws(() => createFolderNameWorkbook(products, bad), /Dòng 2/);
+  }
+});
+
 test('sorted rows, reordered columns, partial imports and blank rows match by ID rather than name or position', async () => {
   const workbook = workbookFrom([
     ['Tên folder mới', 'ID folder'],
