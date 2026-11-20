@@ -12,7 +12,7 @@ export function getFolderDraftSelectionKey(folders) {
 // Excel IDs are recreated on a new page. Match directory handles and the exact
 // input name before attaching a previous result or manual edit to a new ID.
 export async function restoreFolderNamingDraft(saved, folders) {
-  const restored = { folders, suggestions: new Map(), edits: new Map(), pending: null, started: false };
+  const restored = { folders, suggestions: new Map(), edits: new Map(), pending: [], started: false };
   if (!saved?.folders || folders.length === 0) return restored;
 
   const candidates = new Map();
@@ -38,10 +38,11 @@ export async function restoreFolderNamingDraft(saved, folders) {
     if (saved.suggestions?.has(previousId)) restored.suggestions.set(id, saved.suggestions.get(previousId));
     if (saved.edits?.has(previousId)) restored.edits.set(id, saved.edits.get(previousId));
   }
-  if (saved.pending) {
-    const targets = saved.pending.targets.map((id) => ids.get(id) ?? null);
-    if (targets.some(Boolean)) restored.pending = { ...saved.pending, targets };
+  const pending = Array.isArray(saved.pending) ? saved.pending : [saved.pending].filter(Boolean);
+  for (const batch of pending) {
+    const targets = batch.targets.map((id) => ids.get(id) ?? null);
+    if (targets.some(Boolean)) restored.pending.push({ ...batch, targets });
   }
-  restored.started = Boolean((ids.size && saved.started) || restored.pending);
+  restored.started = Boolean((ids.size && saved.started) || restored.pending.length);
   return restored;
 }

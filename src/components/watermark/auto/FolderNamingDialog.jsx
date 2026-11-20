@@ -1,6 +1,6 @@
 import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import { loadFolderNamingDraft, saveFolderNamingDraft } from '../../../hooks/useIndexedDB.js';
-import { chunkArray, IMAGE_NAME_LIMITS, IMAGE_NAME_MODELS } from '../../../utils/aiImageNaming.js';
+import { AI_REQUEST_CONCURRENCY, chunkArray, IMAGE_NAME_LIMITS, IMAGE_NAME_MODELS, runWithConcurrency } from '../../../utils/aiImageNaming.js';
 import { getFolderDraftSelection, getFolderDraftSelectionKey, restoreFolderNamingDraft } from '../../../utils/watermarkAutoFolderDraft.js';
 import {
   AI_NAMING_ERRORS,
@@ -21,6 +21,7 @@ import {
 } from '../../../../supabase/functions/suggest-image-names/folderNaming.js';
 
 const PROMPT_KEY = 'watermark_auto_folder_naming_prompt';
+const FOLDER_LOOKUP_BATCH_SIZE = 2;
 // The server deduplicates request IDs for 24 hours. Leave a margin for clock drift.
 const RECOVERY_WINDOW_MS = 23 * 60 * 60 * 1000;
 const RECOVERABLE_REQUEST_ERRORS = new Set(['network', 'timeout', 'REQUEST_IN_PROGRESS', 'invalid_response', 'server_error']);
@@ -71,7 +72,8 @@ export default function FolderNamingDialog({ open, userId, products, models, mod
   const edits = current?.edits ?? EMPTY_MAP;
   const hasDraft = Boolean(current?.started || suggestions.size || edits.size);
   const busyLookup = busy === 'lookup';
-  const recoveredRequest = current?.pending;
+  const pendingCount = current?.pending.length ?? 0;
+  const recoveredRequest = pendingCount > 0;
   const canGenerate = current && !busy && activeModel && !accessMessage;
   const warnOnLeave = busyLookup || (hasDraft && storage === 'session');
 
@@ -151,77 +153,102 @@ export default function FolderNamingDialog({ open, userId, products, models, mod
   async function generate(replaceAll = false) {
     if (!canGenerate || operation.current) return;
     const initial = workspaceRef.current;
-    const recovery = initial.pending;
-    if (recovery && !IMAGE_NAME_MODELS.some(({ id }) => id === recovery.model)) {
-      await saveWorkspace({ ...initial, pending: null });
-      setError(`Lô gần nhất dùng ${recovery.model}, model đã ngừng hỗ trợ. Tra cứu phần còn lại với model hiện tại sẽ gửi yêu cầu mới.`);
-      return;
-    }
-    if (recovery && Date.now() - recovery.sentAt >= RECOVERY_WINDOW_MS) {
-      await saveWorkspace({ ...initial, pending: null });
-      setError('Đã hết thời gian khôi phục yêu cầu cũ. Tra cứu phần còn lại sẽ gửi yêu cầu mới và có thể phát sinh chi phí.');
+    const recovering = initial.pending.length > 0;
+    const recoverable = initial.pending.filter((batch) => Date.now() - batch.sentAt < RECOVERY_WINDOW_MS
+      && IMAGE_NAME_MODELS.some(({ id }) => id === batch.model));
+    if (recoverable.length < initial.pending.length) {
+      await saveWorkspace({ ...initial, pending: recoverable });
+      setError('Có lô đã hết hạn khôi phục hoặc dùng model đã ngừng hỗ trợ. Tra cứu phần chưa có kết quả sẽ gửi yêu cầu mới.');
       return;
     }
     // Checking an earlier request must not start additional paid batches.
-    const pending = recovery ? [] : folders.filter(({ id }) => replaceAll || !initial.suggestions.has(id));
-    if (!pending.length && !recovery) return;
+    const remaining = recovering ? [] : folders.filter(({ id }) => replaceAll || !initial.suggestions.has(id));
+    if (!remaining.length && !recovering) return;
 
     const controller = new AbortController();
-    const task = { controller, stopAfterBatch: false };
+    const task = { controller, pauseRequested: false, blocked: false };
     operation.current = task;
     setError('');
     setPaused(false);
     setReviewFilter(null);
     setConfirmRegenerate(false);
     setBusy('lookup');
-    const total = pending.length + (recovery?.targets.filter(Boolean).length ?? 0);
-    let finished = 0;
-    setProgress({ finished, total });
     const aiRunId = newOperationId();
-    const batches = chunkArray(pending, FOLDER_NAME_LIMITS.maxFoldersPerRequest).map((batch) => ({
+    const batches = recovering ? recoverable : chunkArray(remaining, FOLDER_LOOKUP_BATCH_SIZE).map((batch) => ({
       folders: batch.map(({ id, name }) => ({ id, name })), targets: batch.map(({ id }) => id),
       prompt, model: activeModel, aiRunId, requestId: newOperationId(),
     }));
-    if (recovery) batches.unshift(recovery);
+    const total = batches.reduce((count, batch) => count + batch.targets.filter(Boolean).length, 0);
+    let finished = 0;
+    setProgress({ finished, total });
 
-    try {
-      for (const batch of batches) {
-        if (controller.signal.aborted || task.stopAfterBatch) break;
+    const deferred = [];
+    let retrySerially = false;
+    const canContinue = () => !controller.signal.aborted && !task.pauseRequested && !task.blocked;
+
+    async function lookupBatch(batch, allowSerialRetry) {
+      if (!canContinue()) return;
+      try {
         // Checkpoint the exact request before sending it. Reload or network loss can
-        // then recover the same server result using the same requestId and payload.
-        if (batch !== recovery) {
-          await saveWorkspace({ ...workspaceRef.current, started: true, pending: { ...batch, sentAt: Date.now() } });
+        // then recover every in-flight batch using the original request IDs.
+        if (!recovering) {
+          const workspace = workspaceRef.current;
+          await saveWorkspace({ ...workspace, started: true, pending: [...workspace.pending, { ...batch, sentAt: Date.now() }] });
         }
-        if (controller.signal.aborted) break;
+        if (controller.signal.aborted) return;
         const { targets, ...request } = batch;
         const response = await requestFolderNameSuggestions({ ...request, signal: controller.signal });
-        if (controller.signal.aborted) break;
+        if (controller.signal.aborted) return;
+        const workspace = workspaceRef.current;
+        const pending = workspace.pending.filter((item) => item.requestId !== batch.requestId);
+        if (response.code === 'too_many_concurrent' && allowSerialRetry) {
+          // The server refused this request before calling AI. Retry after the
+          // other in-flight batch settles, using the same request ID.
+          deferred.push(batch);
+          retrySerially = true;
+          if (!recovering) await saveWorkspace({ ...workspace, pending });
+          return;
+        }
         if (response.error) {
-          const previousOutcome = CLOSED_REQUEST_ERRORS.has(response.code) || (batch === recovery && response.code === AI_NAMING_ERRORS.modelDenied);
-          setError(previousOutcome ? `${response.error} Gửi yêu cầu mới có thể phát sinh chi phí.` : response.error);
+          const previousOutcome = CLOSED_REQUEST_ERRORS.has(response.code) || (recovering && response.code === AI_NAMING_ERRORS.modelDenied);
+          const keepPending = RECOVERABLE_REQUEST_ERRORS.has(response.code) || (recovering && (RECOVERY_ACCESS_ERRORS.has(response.code)
+            || response.code === 'too_many_concurrent'));
+          setError((previous) => previous || (previousOutcome ? `${response.error} Gửi yêu cầu mới có thể phát sinh chi phí.` : response.error));
           if ([AI_NAMING_ERRORS.authRequired, AI_NAMING_ERRORS.modelDenied, AI_NAMING_ERRORS.accessDenied].includes(response.code)) {
             onAccessRejected(response.code);
           }
-          if (RECOVERABLE_REQUEST_ERRORS.has(response.code) || (batch === recovery && RECOVERY_ACCESS_ERRORS.has(response.code))) break;
-          await saveWorkspace({ ...workspaceRef.current, pending: null });
-          if (FATAL_IMAGE_NAME_ERRORS.has(response.code) || CLOSED_REQUEST_ERRORS.has(response.code)
-            || response.code === 'too_many_concurrent' || response.code === 'upstream_rate_limited') break;
-        } else {
-          const results = new Map(workspaceRef.current.suggestions);
-          const found = matchFolderSuggestions(batch.folders, response.data?.items ?? []);
-          batch.folders.forEach(({ id }, index) => {
-            const item = found.get(id);
-            const target = targets[index];
-            if (target && item && typeof item.suggestedName === 'string' && Array.isArray(item.issues)) results.set(target, item);
-          });
-          await saveWorkspace({ ...workspaceRef.current, pending: null, suggestions: results });
+          if (keepPending || FATAL_IMAGE_NAME_ERRORS.has(response.code) || CLOSED_REQUEST_ERRORS.has(response.code)
+            || response.code === 'too_many_concurrent' || response.code === 'upstream_rate_limited') task.blocked = true;
+          if (!keepPending) await saveWorkspace({ ...workspace, pending });
+          return;
         }
+
+        const results = new Map(workspace.suggestions);
+        const found = matchFolderSuggestions(batch.folders, response.data?.items ?? []);
+        batch.folders.forEach(({ id }, index) => {
+          const item = found.get(id);
+          const target = targets[index];
+          if (target && item && typeof item.suggestedName === 'string' && Array.isArray(item.issues)) results.set(target, item);
+        });
+        await saveWorkspace({ ...workspace, pending, suggestions: results });
         finished += targets.filter(Boolean).length;
         setProgress({ finished, total });
+      } catch {
+        if (controller.signal.aborted) return;
+        task.blocked = true;
+        setError((previous) => previous || 'Không thể hoàn tất tra cứu. Hãy thử lại các folder còn thiếu.');
       }
-      if (task.stopAfterBatch) setPaused(finished < total);
-    } catch {
-      if (!controller.signal.aborted) setError('Không thể hoàn tất tra cứu. Hãy thử lại các folder còn thiếu.');
+    }
+
+    try {
+      await runWithConcurrency(batches, AI_REQUEST_CONCURRENCY, async (batch) => {
+        if (retrySerially) deferred.push(batch);
+        else await lookupBatch(batch, batches.length > 1);
+      });
+      if (retrySerially && canContinue()) {
+        await runWithConcurrency(deferred, 1, (batch) => lookupBatch(batch, false));
+      }
+      if (task.pauseRequested) setPaused(finished < total);
     } finally {
       if (operation.current === task) {
         operation.current = null;
@@ -230,9 +257,9 @@ export default function FolderNamingDialog({ open, userId, products, models, mod
     }
   }
 
-  function pauseAfterBatch() {
+  function pauseNewBatches() {
     if (!operation.current) return;
-    operation.current.stopAfterBatch = true;
+    operation.current.pauseRequested = true;
     setPaused(true);
   }
 
@@ -259,9 +286,9 @@ export default function FolderNamingDialog({ open, userId, products, models, mod
   const allLookedUp = folders.length > 0 && suggestions.size === folders.length;
   const showLookupActions = busyLookup || !allLookedUp || recoveredRequest;
   const progressHint = busyLookup ? 'Bạn có thể thu gọn và mở lại để xem tiến độ.'
-    : recoveredRequest ? 'Chưa xác nhận được kết quả của lô gần nhất. Bạn có thể kiểm tra lại yêu cầu cũ.'
+    : recoveredRequest ? `Còn ${pendingCount} lô chưa xác nhận kết quả. Bạn có thể kiểm tra lại các yêu cầu đã gửi.`
       : paused ? 'Đã tạm dừng. Kết quả đã có được giữ trong bản nháp.'
-        : !hasDraft ? 'Kết quả và các chỉnh sửa sẽ được giữ khi đóng hộp thoại.' : null;
+        : !hasDraft ? `Tối đa ${FOLDER_LOOKUP_BATCH_SIZE} folder mỗi lô, ${AI_REQUEST_CONCURRENCY} lô cùng lúc. Kết quả tự lưu theo từng lô.` : null;
 
   async function exportNames() {
     if (!ready) return;
@@ -301,7 +328,7 @@ export default function FolderNamingDialog({ open, userId, products, models, mod
         <section className="wma-folder-naming-progress" aria-label="Tiến độ đặt tên folder">
           <div className="wma-folder-naming-progress-head">
             <strong role="status">{busyLookup
-              ? `${paused ? 'Đang chờ lô hiện tại' : 'Đang tra cứu'} · ${progress?.finished ?? 0}/${progress?.total ?? folders.length}`
+              ? `${paused ? 'Đang chờ các lô đang chạy' : 'Đang tra cứu'} · ${progress?.finished ?? 0}/${progress?.total ?? folders.length}`
               : !current ? 'Đang mở bản nháp' : `${suggestions.size}/${folders.length} folder có kết quả`}</strong>
             {hasDraft && <span className="wma-folder-draft-badge">{userId && storage === 'ready' ? 'Tự lưu trên trình duyệt' : 'Lưu trong trang này'}</span>}
           </div>
@@ -311,7 +338,7 @@ export default function FolderNamingDialog({ open, userId, products, models, mod
             {!busyLookup && (!allLookedUp || recoveredRequest) && <button type="button" className="wm-btn-primary" disabled={!canGenerate} onClick={() => generate()}>
               {recoveredRequest ? 'Kiểm tra yêu cầu đã gửi' : hasDraft ? 'Tra cứu phần còn lại' : 'Tra cứu và tạo tên'}
             </button>}
-            {busyLookup && <button type="button" className="wm-btn-outline" disabled={paused} onClick={pauseAfterBatch}>Tạm dừng sau lô này</button>}
+            {busyLookup && <button type="button" className="wm-btn-outline" disabled={paused} onClick={pauseNewBatches}>Tạm dừng gửi lô mới</button>}
             {busyLookup && <button type="button" className="wm-btn-outline" onClick={closeDialog}>Thu gọn</button>}
           </div>}
         </section>

@@ -191,7 +191,7 @@ test('folder Excel export → reorder and edit → import updates AI and Result 
   await settle(1700);
 });
 
-test('folder AI stops after the first batch if the server only supports image naming', async () => {
+test('folder AI stops scheduling batches if the server only supports image naming', async () => {
   globalThis.__aiRenameSession = { access_token: 'user-jwt', user: { id: USER.user.id } };
   picks.push(makeTree('SanPham', Object.fromEntries(Array.from({ length: 12 }, (_, index) => [`Model ${index + 1}`, {}]))));
   respond = async () => Response.json({ error: { code: 'invalid_request', message: 'Vui lòng nhập tên sản phẩm.' } }, { status: 400 });
@@ -202,23 +202,66 @@ test('folder AI stops after the first batch if the server only supports image na
   await click(button('Tra cứu và tạo tên'));
   const dialog = document.querySelector('dialog[open]');
   assert.match(dialog.querySelector('[role="alert"]').textContent, /cập nhật Edge Function suggest-image-names/);
-  assert.equal(fetchCalls.length, 1);
+  assert.equal(fetchCalls.length, 2, 'only the initial concurrent batches were sent');
   assert.equal(fetchCalls[0].body.kind, 'folders');
   assert.equal(button('Tra cứu phần còn lại').disabled, false);
 });
 
-test('folder AI keeps the active batch through Escape, pauses after that batch and resumes only missing folders', async () => {
+test('folder AI sends eight folders in pairs, showing results and refilling a slot while another batch is still active', async () => {
+  picks.push(makeTree('SanPham', { A: {}, B: {}, C: {}, D: {}, E: {}, F: {}, G: {}, H: {} }));
+  const releases = [];
+  respond = ({ folders }) => new Promise((resolve) => { releases.push(() => resolve(folderReply(folders))); });
+  await render();
+  await click(button('Chọn thư mục cha'));
+  await click(button('Đặt tên folder bằng AI'));
+  await click(button('Tra cứu và tạo tên'));
+  await waitFor(() => releases.length === 2, 'the first two batches started together');
+  await act(async () => releases[1]());
+  await waitFor(() => releases.length === 3, 'the freed slot picked up the next batch');
+  assert.equal(document.querySelector('input[aria-label="Tên mới dòng 2"]').value, 'A');
+  assert.equal(document.querySelector('input[aria-label="Tên mới dòng 4"]').value, 'Máy khoan C');
+  await act(async () => releases[2]());
+  await waitFor(() => releases.length === 4, 'the final batch started');
+  await act(async () => { releases[0](); releases[3](); });
+  await waitFor(() => /8\/8 folder có kết quả/.test(document.querySelector('dialog[open]').textContent), 'all results saved');
+  assert.deepEqual(fetchCalls.map(({ body }) => body.folders.map(({ name }) => name)), [['A', 'B'], ['C', 'D'], ['E', 'F'], ['G', 'H']]);
+  assert.equal(new Set(fetchCalls.map(({ body }) => body.aiRunId)).size, 1);
+  assert.equal(globalThis.__folderNamingDrafts.get(USER.user.id).pending.length, 0);
+});
+
+test('folder AI falls back to one request at a time when the server refuses concurrency', async () => {
+  picks.push(makeTree('SanPham', { A: {}, B: {}, C: {}, D: {}, E: {} }));
+  let completeFirst;
+  respond = ({ folders }) => {
+    if (fetchCalls.length === 1) return new Promise((resolve) => { completeFirst = () => resolve(folderReply(folders)); });
+    if (fetchCalls.length === 2) return Promise.resolve(Response.json({ error: { code: 'too_many_concurrent' } }, { status: 429 }));
+    return Promise.resolve(folderReply(folders));
+  };
+  await render();
+  await click(button('Chọn thư mục cha'));
+  await click(button('Đặt tên folder bằng AI'));
+  await click(button('Tra cứu và tạo tên'));
+  await waitFor(() => fetchCalls.length === 2, 'initial requests sent');
+  assert.equal(fetchCalls.length, 2);
+  await act(async () => completeFirst());
+  await waitFor(() => /5\/5 folder có kết quả/.test(document.querySelector('dialog[open]').textContent), 'serial fallback completed');
+  assert.equal(fetchCalls.length, 4);
+  assert.deepEqual(fetchCalls[2].body, fetchCalls[1].body, 'the rejected batch keeps its request ID');
+  assert.deepEqual(fetchCalls[3].body.folders.map(({ name }) => name), ['E']);
+});
+
+test('folder AI keeps active batches through Escape, pauses new batches and resumes only missing folders', async () => {
   const parent = makeTree('SanPham', { A: {}, B: {}, C: {}, D: {}, E: {} });
   picks.push(parent);
-  let completeFirst;
-  respond = ({ folders }) => fetchCalls.length === 1
-    ? new Promise((resolve) => { completeFirst = () => resolve(folderReply(folders)); })
+  const completeActive = [];
+  respond = ({ folders }) => fetchCalls.length <= 2
+    ? new Promise((resolve) => { completeActive.push(() => resolve(folderReply(folders))); })
     : Promise.resolve(folderReply(folders));
   await render();
   await click(button('Chọn thư mục cha'));
   await click(button('Đặt tên folder bằng AI'));
   await click(button('Tra cứu và tạo tên'));
-  await waitFor(() => Boolean(completeFirst), 'first batch in flight');
+  await waitFor(() => completeActive.length === 2, 'first two batches in flight');
 
   const escape = new dom.window.Event('cancel', { bubbles: true, cancelable: true });
   await act(async () => document.querySelector('dialog[open]').dispatchEvent(escape));
@@ -227,11 +270,11 @@ test('folder AI keeps the active batch through Escape, pauses after that batch a
   assert.match(document.querySelector('.wma-folder-picker-draft').textContent, /Đang tra cứu/);
   assert.equal(button('Xóa danh sách').disabled, true);
   await click(button('Mở bản nháp đặt tên AI'));
-  await click(button('Tạm dừng sau lô này'));
-  assert.equal(fetchCalls[0].signal.aborted, false);
-  await act(async () => completeFirst());
+  await click(button('Tạm dừng gửi lô mới'));
+  assert.ok(fetchCalls.every(({ signal }) => !signal.aborted));
+  await act(async () => completeActive.forEach((complete) => complete()));
   await waitFor(() => button('Tra cứu phần còn lại') && !button('Tra cứu phần còn lại').disabled, 'lookup paused');
-  assert.equal(fetchCalls.length, 1);
+  assert.equal(fetchCalls.length, 2);
   assert.match(document.querySelector('dialog[open]').textContent, /4\/5 folder có kết quả/);
 
   const firstName = () => document.querySelector('dialog[open] input[aria-label="Tên mới dòng 2"]');
@@ -239,38 +282,40 @@ test('folder AI keeps the active batch through Escape, pauses after that batch a
   await click(document.querySelector('[aria-label="Đóng đặt tên folder"]'));
   await click(button('Mở bản nháp đặt tên AI'));
   assert.equal(firstName().value, 'Máy khoan A do tôi sửa');
-  assert.equal(fetchCalls.length, 1);
+  assert.equal(fetchCalls.length, 2);
   await click(button('Tra cứu phần còn lại'));
   await waitFor(() => /5\/5 folder có kết quả/.test(document.querySelector('dialog[open]').textContent), 'lookup completed');
-  assert.deepEqual(fetchCalls[1].body.folders.map(({ name }) => name), ['E']);
+  assert.deepEqual(fetchCalls[2].body.folders.map(({ name }) => name), ['E']);
   assert.equal(firstName().value, 'Máy khoan A do tôi sửa');
 
   await click(button('Tra cứu lại tất cả'));
-  assert.equal(fetchCalls.length, 2, 'regeneration asks before sending');
+  assert.equal(fetchCalls.length, 3, 'regeneration asks before sending');
   assert.match(document.querySelector('[aria-label="Xác nhận tra cứu lại"]').textContent, /phát sinh chi phí/);
   await click(button('Giữ bản nháp'));
-  assert.equal(fetchCalls.length, 2);
+  assert.equal(fetchCalls.length, 3);
 });
 
-test('folder AI restores completed work across reload and recovers the last batch with the original request ID', async () => {
+test('folder AI restores completed work and recovers both in-flight batches with their original request IDs', async () => {
   const folders = { A: {}, B: {}, C: {}, D: {}, E: {}, F: {}, G: {}, H: {}, I: {} };
   const parent = makeTree('SanPham', folders);
   picks.push(parent);
-  let releaseLast;
+  const held = [];
   respond = async ({ folders }, { signal }) => {
-    if (fetchCalls.length === 1) return folderReply(folders);
+    if (fetchCalls.length <= 2) return folderReply(folders);
     return new Promise((resolve) => {
-      releaseLast = () => resolve(folderReply(folders));
-      signal.addEventListener('abort', releaseLast, { once: true });
+      const release = () => resolve(folderReply(folders));
+      held.push(release);
+      signal.addEventListener('abort', release, { once: true });
     });
   };
   await render();
   await click(button('Chọn thư mục cha'));
   await click(button('Đặt tên folder bằng AI'));
   await click(button('Tra cứu và tạo tên'));
-  await waitFor(() => Boolean(releaseLast), 'last batch in flight');
-  const previous = fetchCalls[1].body;
+  await waitFor(() => held.length === 2, 'two batches in flight');
+  const previous = fetchCalls.slice(2).map(({ body }) => body);
   assert.equal(globalThis.__folderNamingDrafts.get(USER.user.id).suggestions.size, 4);
+  assert.equal(globalThis.__folderNamingDrafts.get(USER.user.id).pending.length, 2);
 
   await act(async () => root.unmount());
   picks.push(parent);
@@ -279,12 +324,12 @@ test('folder AI restores completed work across reload and recovers the last batc
   await click(button('Chọn thư mục cha'));
   await click(button('Đặt tên folder bằng AI'));
   await waitFor(() => Boolean(button('Kiểm tra yêu cầu đã gửi')), 'saved request restored');
-  assert.equal(fetchCalls.length, 2, 'opening the restored draft does not send another request');
+  assert.equal(fetchCalls.length, 4, 'opening the restored draft does not send another request');
   assert.match(document.querySelector('dialog[open]').textContent, /4\/9 folder có kết quả/);
   await click(button('Kiểm tra yêu cầu đã gửi'));
   await waitFor(() => /8\/9 folder có kết quả/.test(document.querySelector('dialog[open]').textContent), 'restored batch completed');
-  assert.deepEqual(fetchCalls[2].body, previous, 'recovery sends the same idempotent request and input IDs');
-  assert.equal(fetchCalls.length, 3, 'recovery does not send a new batch for the ninth folder');
+  assert.deepEqual(fetchCalls.slice(4).map(({ body }) => body), previous, 'recovery sends the same idempotent requests and input IDs');
+  assert.equal(fetchCalls.length, 6, 'recovery does not send a new batch for the ninth folder');
   assert.equal(button('Tra cứu phần còn lại').disabled, false);
 
   const field = document.querySelector('dialog[open] input[aria-label="Tên mới dòng 2"]');
@@ -295,7 +340,7 @@ test('folder AI restores completed work across reload and recovers the last batc
   await click(button('Chọn thư mục cha'));
   await click(button('Đặt tên folder bằng AI'));
   assert.equal(document.querySelector('dialog[open] input[aria-label="Tên mới dòng 2"]').value, 'Máy khoan A do tôi sửa');
-  assert.equal(fetchCalls.length, 3);
+  assert.equal(fetchCalls.length, 6);
 
   await click(document.querySelector('[aria-label="Đóng đặt tên folder"]'));
   await click(button('Xóa danh sách'));
@@ -304,7 +349,7 @@ test('folder AI restores completed work across reload and recovers the last batc
   await click(button('Đặt tên folder bằng AI'));
   assert.match(document.querySelector('dialog[open]').textContent, /0\/9 folder có kết quả/);
   assert.equal(document.querySelector('dialog[open] input[aria-label="Tên mới dòng 2"]'), null);
-  assert.equal(fetchCalls.length, 3, 'separate folders with equal names do not receive the saved draft');
+  assert.equal(fetchCalls.length, 6, 'separate folders with equal names do not receive the saved draft');
 });
 
 test('folder AI generates editable Excel names, remembers its own prompt and asks about labels and model suffixes', async () => {

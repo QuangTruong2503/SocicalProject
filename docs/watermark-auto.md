@@ -21,7 +21,9 @@ Toàn bộ file phải hợp lệ trước khi áp dụng: báo dòng lỗi nế
 
 Bấm **Đặt tên folder bằng AI** để tra cứu web cho toàn bộ danh sách. Prompt tiếng Việt có thể chỉnh, tự lưu trong trình duyệt và có nút khôi phục mặc định. Kiểm tra tên, số ký tự, nguồn và ghi chú trong bảng. Nếu tên cũ có nhãn “thực tế”, “mới” hoặc AI phát hiện hậu tố model lạ, chọn cách xử lý ở dòng tương ứng. Tên không tra được dùng tên cũ. Sửa thủ công nếu tên đó vượt 40 ký tự hoặc không hợp lệ. **Xuất Excel với tên AI** điền tên đã duyệt vào cột D. **Áp dụng tên folder** cập nhật tên dùng khi tạo `Result` trong phiên hiện tại.
 
-Đóng hộp thoại hoặc bấm Esc trong lúc tra cứu sẽ thu gọn và tiếp tục lượt đang chạy. **Tạm dừng sau lô này** chờ lô hiện tại trả kết quả. **Tra cứu phần còn lại** tiếp tục từ các folder chưa có kết quả. Bản nháp gần nhất tự lưu theo tài khoản trên trình duyệt, có thể mở lại sau khi tải trang và chọn lại đúng các thư mục. Nếu mất phản hồi của một lô, **Kiểm tra yêu cầu đã gửi** dùng lại mã yêu cầu để nhận kết quả còn lưu trên máy chủ. **Tra cứu lại tất cả** cần xác nhận trước khi gửi yêu cầu tính phí mới.
+Giao diện gửi tối đa 2 folder mỗi lô và chạy tối đa 2 lô song song. Tên xuất hiện và được lưu vào bản nháp ngay khi từng lô trả kết quả. Nếu máy chủ giới hạn số yêu cầu đồng thời, app chờ lô đang chạy rồi thử lại tuần tự.
+
+Đóng hộp thoại hoặc bấm Esc trong lúc tra cứu sẽ thu gọn và tiếp tục lượt đang chạy. **Tạm dừng gửi lô mới** cho các lô đang chạy hoàn tất. **Tra cứu phần còn lại** tiếp tục từ các folder chưa có kết quả. Bản nháp gần nhất tự lưu theo tài khoản trên trình duyệt, có thể mở lại sau khi tải trang và chọn lại đúng các thư mục. Nếu mất phản hồi, **Kiểm tra yêu cầu đã gửi** dùng lại mã yêu cầu của từng lô để nhận kết quả còn lưu trên máy chủ. **Tra cứu lại tất cả** cần xác nhận trước khi gửi yêu cầu tính phí mới.
 
 Tính năng dùng Edge Function `suggest-image-names` với quyền model và hạn mức AI hiện có, tính mỗi folder là một mục trong hạn mức. Để đưa lên môi trường đang chạy, cập nhật frontend và triển khai lại Edge Function. Chức năng tra cứu web của OpenAI có phí công cụ riêng, ngoài chi phí token trong sổ usage hiện tại.
 
